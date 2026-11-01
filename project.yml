@@ -1,0 +1,45 @@
+name: Mawaeed
+options:
+  bundleIdPrefix: com.hamad
+  developmentLanguage: ar
+  deploymentTarget:
+    iOS: "15.0"
+targets:
+  Mawaeed:
+    type: application
+    platform: iOS
+    sources:
+      - path: Sources
+      - path: Resources
+    info:
+      path: Info.plist
+      properties:
+        CFBundleDisplayName: مواعيدي
+        CFBundleDevelopmentRegion: ar
+        CFBundleLocalizations: [ar]
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        UILaunchScreen:
+          UIColorName: LaunchBG
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        UIRequiresFullScreen: true
+        ITSAppUsesNonExemptEncryption: false
+        NSCalendarsUsageDescription: "عشان أضيف مواعيدك في تقويم iCloud وتشوفها على كل أجهزتك."
+        NSCalendarsFullAccessUsageDescription: "عشان أضيف مواعيدك في تقويم iCloud وتشوفها على كل أجهزتك."
+        NSRemindersUsageDescription: "عشان أرسل مهامك لقائمة «مواعيدي» في تطبيق التذكيرات وأعرف لو خلّصتها."
+        NSRemindersFullAccessUsageDescription: "عشان أرسل مهامك لقائمة «مواعيدي» في تطبيق التذكيرات وأعرف لو خلّصتها."
+        NSCameraUsageDescription: "عشان تصوّر الاستمارة أو الفاتورة أو كرت الضمان وترفقها."
+        NSPhotoLibraryUsageDescription: "عشان ترفق صور من ألبومك."
+        NSFaceIDUsageDescription: "عشان تقفل التطبيق وما يفتحه غيرك."
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.hamad.mawaeed
+        PRODUCT_NAME: Mawaeed
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        TARGETED_DEVICE_FAMILY: "1"
+        SWIFT_VERSION: "5.0"
+    scheme: {}
