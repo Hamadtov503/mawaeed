@@ -72,10 +72,10 @@ struct AllItemsView: View {
         f.calendar = Fmt.greg
         f.locale = Fmt.locale
         f.dateFormat = "MMMM y"
-        var groups: [(String, [Item])] = []
+        var groups: [(String, [Item])] = list.contains(where: { $0.isMedicine }) ? [("💊 الأدوية", [])] : []
         let today = Fmt.greg.startOfDay(for: Date())
         for it in list {
-            let key = it.date < today ? "متأخرة" : f.string(from: it.date)
+            let key = it.isMedicine ? "💊 الأدوية" : (it.date < today ? "متأخرة" : f.string(from: it.date))
             if let i = groups.firstIndex(where: { $0.0 == key }) { groups[i].1.append(it) } else { groups.append((key, [it])) }
         }
         return groups

@@ -27,8 +27,15 @@ struct ItemDetailView: View {
                     Text(item.title).font(.title2.bold()).multilineTextAlignment(.center)
                     Text(item.category.title).font(.subheadline).foregroundColor(.secondary)
                     if item.isDone {
-                        Label("منجز", systemImage: "checkmark.seal.fill")
+                        Label(item.isMedicine ? "متوقف" : "منجز", systemImage: "checkmark.seal.fill")
                             .font(.headline).foregroundColor(.green)
+                    } else if item.isMedicine {
+                        let a = item.adherence()
+                        Text(a.due == 0 ? "بداية الكورس" : "التزامك آخر 7 أيام: \(a.taken) من \(a.due)")
+                            .font(.headline)
+                            .foregroundColor(a.due > 0 && a.taken < a.due ? .orange : .green)
+                            .padding(.horizontal, 14).padding(.vertical, 6)
+                            .background(Capsule().fill(Color.red.opacity(0.08)))
                     } else {
                         Text(Fmt.countdown(to: item.date, hasTime: item.hasTime))
                             .font(.headline)
@@ -41,14 +48,47 @@ struct ItemDetailView: View {
                 .padding(.vertical, 8)
             }
 
-            Section(header: Text(item.category == .warranty ? "انتهاء الضمان" : "التاريخ")) {
-                row("calendar", "ميلادي", Fmt.dateText(item.date, hasTime: false, long: true))
-                row("moon.fill", "هجري", Fmt.hijriText(item.date))
-                if item.hasTime { row("clock", "الوقت", Fmt.timeText(item.date)) }
-                row("repeat", "التكرار", item.repeatLabel)
-                row("bell.fill", "التنبيه", ReminderOption.summary(item.reminders, hasTime: item.hasTime))
-                if let s = item.snoozeUntil, s > Date() {
-                    row("zzz", "مؤجّل لين", Fmt.dateText(s, hasTime: true))
+            if item.isMedicine {
+                Section(header: Text("الدواء")) {
+                    if !item.dosage.isEmpty { row("pills", "الجرعة", item.dosage) }
+                    row("clock", "الأوقات", item.doseTimesLabel)
+                    row("calendar", "من", Fmt.dateText(item.date, hasTime: false))
+                    row("hourglass", "المدة", item.courseLabel)
+                }
+                let today = store.doses().filter { $0.item.id == item.id }
+                if !today.isEmpty {
+                    Section(header: Text("جرعات اليوم")) {
+                        ForEach(today) { DoseRow(dose: $0) }
+                    }
+                }
+            } else {
+                Section(header: Text(item.category == .warranty ? "انتهاء الضمان" : "التاريخ")) {
+                    row("calendar", "ميلادي", Fmt.dateText(item.date, hasTime: false, long: true))
+                    row("moon.fill", "هجري", Fmt.hijriText(item.date))
+                    if item.hasTime { row("clock", "الوقت", Fmt.timeText(item.date)) }
+                    row("repeat", "التكرار", item.repeatLabel)
+                    row("bell.fill", "التنبيه", ReminderOption.summary(item.reminders, hasTime: item.hasTime))
+                    if let s = item.snoozeUntil, s > Date() {
+                        row("zzz", "مؤجّل لين", Fmt.dateText(s, hasTime: true))
+                    }
+                }
+            }
+
+            if item.hasInstallments, let total = item.installmentsTotal {
+                Section(header: Text("الأقساط")) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("مدفوع \(min(item.installmentsPaid, total)) من \(total)").font(.headline)
+                            Spacer()
+                            Text(item.installmentsLeft == 0 ? "خلصت 🎉" : "باقي \(item.installmentsLeft)")
+                                .foregroundColor(.secondary)
+                        }
+                        ProgressView(value: Double(min(item.installmentsPaid, total)), total: Double(total))
+                            .tint(.green)
+                    }
+                    .padding(.vertical, 4)
+                    if let r = item.remainingAmount, r > 0 { row("banknote", "المبلغ المتبقي", Fmt.money(r)) }
+                    if let last = item.lastInstallmentDate { row("flag.checkered", "آخر قسط", Fmt.dateText(last, hasTime: false)) }
                 }
             }
 
@@ -96,7 +136,7 @@ struct ItemDetailView: View {
             }
 
             if !item.history.isEmpty {
-                Section(header: Text("سجل التجديد")) {
+                Section(header: Text(item.hasInstallments ? "الأقساط المدفوعة" : "سجل التجديد")) {
                     ForEach(Array(item.history.reversed()), id: \.self) { d in
                         Label(Fmt.dateText(d, hasTime: item.hasTime), systemImage: "checkmark.circle")
                             .foregroundColor(.secondary)
@@ -107,7 +147,16 @@ struct ItemDetailView: View {
             Section {
                 if item.isDone {
                     Button { store.reopen(item.id) } label: {
-                        Label("إرجاعه كغير منجز", systemImage: "arrow.uturn.backward")
+                        Label(item.isMedicine ? "رجّع الدواء" : "إرجاعه كغير منجز", systemImage: "arrow.uturn.backward")
+                    }
+                } else if item.isMedicine {
+                    Button { withAnimation { store.complete(item.id) } } label: {
+                        Label("أوقفت الدواء / خلص الكورس", systemImage: "stop.circle.fill").foregroundColor(.orange)
+                    }
+                } else if item.hasInstallments {
+                    Button { withAnimation { store.complete(item.id) } } label: {
+                        Label(item.installmentsLeft <= 1 ? "دفعت آخر قسط 🎉" : "دفعت هالقسط ✅", systemImage: "checkmark.circle.fill")
+                            .foregroundColor(.green)
                     }
                 } else if item.isRecurring {
                     Button { withAnimation { store.complete(item.id) } } label: {

@@ -2,16 +2,18 @@ import Foundation
 import SwiftUI
 
 enum Category: String, Codable, CaseIterable, Identifiable {
-    case appointment, document, subscription, bill, warranty, maintenance, task, other
+    case appointment, exam, medicine, document, subscription, bill, warranty, maintenance, task, other
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
         case .appointment: return "موعد"
+        case .exam: return "اختبار / تسليم"
+        case .medicine: return "دواء"
         case .document: return "وثيقة / تجديد"
         case .subscription: return "اشتراك / باقة"
-        case .bill: return "فاتورة / قسط"
+        case .bill: return "دفعة / قسط / فاتورة"
         case .warranty: return "ضمان"
         case .maintenance: return "صيانة"
         case .task: return "مهمة"
@@ -22,6 +24,8 @@ enum Category: String, Codable, CaseIterable, Identifiable {
     var icon: String {
         switch self {
         case .appointment: return "calendar.badge.clock"
+        case .exam: return "graduationcap.fill"
+        case .medicine: return "pills.fill"
         case .document: return "doc.text.fill"
         case .subscription: return "arrow.triangle.2.circlepath"
         case .bill: return "creditcard.fill"
@@ -35,6 +39,8 @@ enum Category: String, Codable, CaseIterable, Identifiable {
     var color: Color {
         switch self {
         case .appointment: return .blue
+        case .exam: return .cyan
+        case .medicine: return .red
         case .document: return .indigo
         case .subscription: return .purple
         case .bill: return .pink
@@ -137,13 +143,22 @@ struct Item: Identifiable, Codable, Equatable {
     var createdAt = Date()
     var calendarEventID: String? = nil
     var reminderItemID: String? = nil
+    // Medicine: dose times (minutes after midnight), dosage text, optional last day, taken-dose log.
+    var doseTimes: [Int] = []
+    var dosage = ""
+    var endDate: Date? = nil
+    var takenDoses: [String] = []
+    // Installments: total count, and how many were already paid before adding to the app.
+    var installmentsTotal: Int? = nil
+    var installmentsPaidBefore = 0
 
     init() {}
 
     enum CodingKeys: String, CodingKey {
         case id, title, category, icon, date, hasTime, reminders, repeatUnit, repeatEvery, notes, location, amount,
              purchaseDate, warrantyMonths, photos, isDone, doneAt, snoozeUntil, history, createdAt,
-             calendarEventID, reminderItemID
+             calendarEventID, reminderItemID, doseTimes, dosage, endDate, takenDoses,
+             installmentsTotal, installmentsPaidBefore
     }
 
     /// Tolerant decoding: missing or unknown fields fall back to defaults so old backups keep loading.
@@ -171,11 +186,72 @@ struct Item: Identifiable, Codable, Equatable {
         createdAt = (try? c.decodeIfPresent(Date.self, forKey: .createdAt)) ?? Date()
         calendarEventID = try? c.decodeIfPresent(String.self, forKey: .calendarEventID)
         reminderItemID = try? c.decodeIfPresent(String.self, forKey: .reminderItemID)
+        doseTimes = (try? c.decodeIfPresent([Int].self, forKey: .doseTimes)) ?? []
+        dosage = (try? c.decodeIfPresent(String.self, forKey: .dosage)) ?? ""
+        endDate = try? c.decodeIfPresent(Date.self, forKey: .endDate)
+        takenDoses = (try? c.decodeIfPresent([String].self, forKey: .takenDoses)) ?? []
+        installmentsTotal = try? c.decodeIfPresent(Int.self, forKey: .installmentsTotal)
+        installmentsPaidBefore = (try? c.decodeIfPresent(Int.self, forKey: .installmentsPaidBefore)) ?? 0
     }
 
     // MARK: Derived
 
     var displayIcon: String { icon ?? category.icon }
+    var isMedicine: Bool { category == .medicine }
+
+    // MARK: Medicine
+
+    static func doseKey(day: Date, minutes: Int) -> String {
+        "\(Fmt.fileStamp.string(from: day))|\(minutes)"
+    }
+
+    func isTaken(day: Date, minutes: Int) -> Bool {
+        takenDoses.contains(Item.doseKey(day: day, minutes: minutes))
+    }
+
+    /// Whether the course covers this day (started, and not past its last day).
+    func takesDoses(on day: Date) -> Bool {
+        let cal = Fmt.greg
+        let d = cal.startOfDay(for: day)
+        if isDone || d < cal.startOfDay(for: date) { return false }
+        if let e = endDate, d > cal.startOfDay(for: e) { return false }
+        return true
+    }
+
+    var courseLabel: String {
+        guard let e = endDate else { return "مستمر" }
+        let days = (Fmt.greg.dateComponents([.day], from: Fmt.greg.startOfDay(for: date), to: Fmt.greg.startOfDay(for: e)).day ?? 0) + 1
+        return "لمدة \(Fmt.days(max(1, days))) — آخر يوم \(Fmt.dateText(e, hasTime: false))"
+    }
+
+    var doseTimesLabel: String {
+        doseTimes.sorted().map { Fmt.timeText(AppSettings.date(fromMinutes: $0)) }.joined(separator: " • ")
+    }
+
+    /// Doses taken out of doses due in the last `days` days (today included, only past dose times).
+    func adherence(days: Int = 7, now: Date = Date()) -> (taken: Int, due: Int) {
+        let cal = Fmt.greg
+        var taken = 0, due = 0
+        for back in 0..<days {
+            guard let day = cal.date(byAdding: .day, value: -back, to: cal.startOfDay(for: now)), takesDoses(on: day) else { continue }
+            for m in doseTimes where day.addingTimeInterval(TimeInterval(m * 60)) <= now {
+                due += 1
+                if isTaken(day: day, minutes: m) { taken += 1 }
+            }
+        }
+        return (taken, due)
+    }
+
+    // MARK: Installments
+
+    var hasInstallments: Bool { (installmentsTotal ?? 0) > 0 }
+    var installmentsPaid: Int { installmentsPaidBefore + history.count }
+    var installmentsLeft: Int { max(0, (installmentsTotal ?? 0) - installmentsPaid) }
+    var remainingAmount: Double? { amount.map { $0 * Double(installmentsLeft) } }
+    var lastInstallmentDate: Date? {
+        guard hasInstallments, installmentsLeft > 0 else { return nil }
+        return advanced(date, by: installmentsLeft - 1)
+    }
     var isRecurring: Bool { repeatUnit != .none }
 
     var repeatLabel: String {
@@ -200,6 +276,7 @@ struct Item: Identifiable, Codable, Equatable {
 
     func urgency(now: Date = Date()) -> Urgency {
         if isDone { return .done }
+        if isMedicine { return .later }
         let cal = Fmt.greg
         let today = cal.startOfDay(for: now)
         let day = cal.startOfDay(for: date)
@@ -258,9 +335,15 @@ struct Item: Identifiable, Codable, Equatable {
     }
 
     var shareText: String {
-        var lines = ["📌 \(title)", "📅 \(Fmt.dateText(date, hasTime: hasTime, long: true))", "🌙 \(Fmt.hijriText(date))"]
-        if !isDone { lines.append("⏳ \(Fmt.countdown(to: date, hasTime: hasTime))") }
-        if isRecurring { lines.append("🔁 \(repeatLabel)") }
+        var lines = ["📌 \(title)"]
+        if !isMedicine { lines += ["📅 \(Fmt.dateText(date, hasTime: hasTime, long: true))", "🌙 \(Fmt.hijriText(date))"] }
+        if !isDone && !isMedicine { lines.append("⏳ \(Fmt.countdown(to: date, hasTime: hasTime))") }
+        if isMedicine {
+            if !dosage.isEmpty { lines.append("💊 \(dosage)") }
+            lines.append("⏰ \(doseTimesLabel)")
+            lines.append("🗓️ \(courseLabel)")
+        } else if isRecurring { lines.append("🔁 \(repeatLabel)") }
+        if hasInstallments { lines.append("🧾 القسط \(min(installmentsPaid + 1, installmentsTotal ?? 0)) من \(installmentsTotal ?? 0)") }
         if let a = amount { lines.append("💰 \(Fmt.money(a))") }
         if !location.isEmpty { lines.append("📍 \(location)") }
         if !notes.isEmpty { lines.append("📝 \(notes)") }

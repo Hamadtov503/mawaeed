@@ -40,13 +40,23 @@ struct ItemRow: View {
                         Image(systemName: "paperclip").font(.caption2).foregroundColor(.secondary)
                     }
                 }
-                Text(Fmt.dateText(item.date, hasTime: item.hasTime))
+                Text(subtitle)
                     .font(.caption)
                     .foregroundColor(.secondary)
+                    .lineLimit(1)
             }
             Spacer(minLength: 4)
             if item.isDone {
                 Image(systemName: "checkmark.circle.fill").foregroundColor(.green)
+            } else if item.isMedicine {
+                let today = Store.shared.doses().filter { $0.item.id == item.id }
+                Text("\(today.filter { $0.taken }.count)/\(today.count) اليوم")
+                    .font(.caption.weight(.bold))
+                    .foregroundColor(.red)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Capsule().fill(Color.red.opacity(0.12)))
+                    .fixedSize()
             } else {
                 Text(Fmt.countdown(to: item.date, hasTime: item.hasTime))
                     .font(.caption.weight(.bold))
@@ -57,6 +67,55 @@ struct ItemRow: View {
                     .lineLimit(1)
                     .fixedSize()
             }
+        }
+        .padding(.vertical, 2)
+    }
+
+    private var subtitle: String {
+        if item.isMedicine {
+            let parts = [item.dosage, item.doseTimesLabel].filter { !$0.isEmpty }
+            return parts.joined(separator: " • ")
+        }
+        var s = Fmt.dateText(item.date, hasTime: item.hasTime)
+        if item.hasInstallments, let total = item.installmentsTotal {
+            s += " • قسط \(min(item.installmentsPaid + 1, total))/\(total)"
+        }
+        return s
+    }
+}
+
+/// One medicine dose with a tick button.
+struct DoseRow: View {
+    @EnvironmentObject var store: Store
+    let dose: Store.Dose
+
+    var body: some View {
+        let now = Date()
+        let due = Fmt.greg.startOfDay(for: now).addingTimeInterval(TimeInterval(dose.minutes * 60))
+        let late = !dose.taken && due < now
+        HStack(spacing: 12) {
+            Button {
+                withAnimation { store.toggleDose(dose.item.id, day: now, minutes: dose.minutes) }
+            } label: {
+                Image(systemName: dose.taken ? "checkmark.circle.fill" : "circle")
+                    .font(.title2)
+                    .foregroundColor(dose.taken ? .green : (late ? .red : .secondary))
+            }
+            .buttonStyle(.plain)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(dose.item.title)
+                    .font(.body.weight(.semibold))
+                    .strikethrough(dose.taken)
+                    .foregroundColor(dose.taken ? .secondary : .primary)
+                if !dose.item.dosage.isEmpty {
+                    Text(dose.item.dosage).font(.caption).foregroundColor(.secondary)
+                }
+            }
+            Spacer()
+            Text(Fmt.timeText(due))
+                .font(.subheadline.weight(.bold))
+                .monospacedDigit()
+                .foregroundColor(dose.taken ? .green : (late ? .red : .primary))
         }
         .padding(.vertical, 2)
     }

@@ -14,6 +14,9 @@ struct Template: Identifiable {
     var reminders: [Int] = [1440]
     var warrantyMonths: Int? = nil
     var notes = ""
+    var doseTimes: [Int] = []
+    var courseDays: Int? = nil
+    var installments: Int? = nil
 
     func makeItem(now: Date = Date()) -> Item {
         var it = Item()
@@ -28,6 +31,14 @@ struct Template: Identifiable {
         it.repeatEvery = repeatEvery
         it.reminders = reminders
         it.notes = notes
+        if !doseTimes.isEmpty {
+            it.doseTimes = doseTimes
+            it.date = cal.startOfDay(for: now)
+            it.reminders = []
+            it.repeatUnit = .none
+            if let d = courseDays { it.endDate = cal.date(byAdding: .day, value: d - 1, to: it.date) }
+        }
+        it.installmentsTotal = installments
         if let m = warrantyMonths {
             it.purchaseDate = cal.startOfDay(for: now)
             it.warrantyMonths = m
@@ -72,16 +83,47 @@ extension Template {
             Template(id: "fahs", name: "الفحص الدوري", icon: "gauge", category: .document,
                      daysAhead: 90, repeatUnit: .year, reminders: [43200, 10080]),
         ]),
-        TemplateGroup(id: "subs", title: "اشتراكات وفواتير", templates: [
+        TemplateGroup(id: "meds", title: "أدوية", templates: [
+            Template(id: "med-daily", name: "دواء يومي", icon: "pills.fill", category: .medicine,
+                     reminders: [], doseTimes: [9 * 60]),
+            Template(id: "med-twice", name: "دواء مرتين يومياً", icon: "pills.fill", category: .medicine,
+                     reminders: [], doseTimes: [9 * 60, 21 * 60]),
+            Template(id: "med-antibiotic", name: "مضاد حيوي (7 أيام)", icon: "cross.case.fill", category: .medicine,
+                     reminders: [], notes: "كمّل الكورس حتى لو تحسّنت.", doseTimes: [7 * 60, 15 * 60, 23 * 60], courseDays: 7),
+            Template(id: "vitamin", name: "فيتامين / مكمّل", icon: "leaf.fill", category: .medicine,
+                     reminders: [], doseTimes: [10 * 60]),
+        ]),
+        TemplateGroup(id: "exams", title: "اختبارات ودراسة", templates: [
+            Template(id: "exam", name: "اختبار", icon: "graduationcap.fill", category: .exam,
+                     hasTime: true, daysAhead: 7, hour: 8, reminders: [10080, 4320, 1440, 60],
+                     notes: "المنهج / الفصول المطلوبة:"),
+            Template(id: "final", name: "اختبار نهائي", icon: "graduationcap.fill", category: .exam,
+                     hasTime: true, daysAhead: 14, hour: 8, reminders: [20160, 10080, 4320, 1440, 60],
+                     notes: "المنهج / الفصول المطلوبة:"),
+            Template(id: "homework", name: "تسليم واجب / مشروع", icon: "doc.badge.clock", category: .exam,
+                     hasTime: true, daysAhead: 3, hour: 22, reminders: [4320, 1440, 180]),
+            Template(id: "qudrat", name: "قدرات / تحصيلي / اختبار رخصة", icon: "pencil.and.outline", category: .exam,
+                     hasTime: true, daysAhead: 30, hour: 8, reminders: [43200, 20160, 10080, 1440],
+                     notes: "رقم الحجز / مقر الاختبار:"),
+        ]),
+        TemplateGroup(id: "pay", title: "دفعات وأقساط", templates: [
+            Template(id: "installment", name: "قسط شهري", icon: "creditcard.fill", category: .bill,
+                     daysAhead: 30, repeatUnit: .month, reminders: [4320, 1440], installments: 12),
+            Template(id: "payment", name: "دفعة (مرة وحدة)", icon: "banknote", category: .bill,
+                     daysAhead: 14, reminders: [4320, 1440]),
+            Template(id: "rent", name: "إيجار", icon: "house.fill", category: .bill,
+                     daysAhead: 30, repeatUnit: .month, repeatEvery: 6, reminders: [20160, 10080, 1440]),
+            Template(id: "fees", name: "رسوم دراسية", icon: "building.columns", category: .bill,
+                     daysAhead: 60, repeatUnit: .month, repeatEvery: 6, reminders: [20160, 4320]),
+            Template(id: "bill", name: "فاتورة", icon: "doc.plaintext", category: .bill,
+                     daysAhead: 30, repeatUnit: .month, reminders: [4320, 1440]),
+        ]),
+        TemplateGroup(id: "subs", title: "اشتراكات وباقات", templates: [
             Template(id: "data", name: "باقة النت / الجوال", icon: "wifi", category: .subscription,
                      daysAhead: 30, repeatUnit: .month, reminders: [4320, 1440]),
             Template(id: "sub", name: "اشتراك (تطبيق / منصة)", icon: "play.rectangle.fill", category: .subscription,
                      daysAhead: 30, repeatUnit: .month, reminders: [2880],
                      notes: "لو ما تستخدمه، ألغِه قبل التجديد."),
-            Template(id: "bill", name: "فاتورة", icon: "doc.plaintext", category: .bill,
-                     daysAhead: 30, repeatUnit: .month, reminders: [4320, 1440]),
-            Template(id: "rent", name: "إيجار / قسط", icon: "house.fill", category: .bill,
-                     daysAhead: 30, repeatUnit: .month, reminders: [10080, 1440]),
         ]),
         TemplateGroup(id: "care", title: "ضمان وصيانة", templates: [
             Template(id: "warranty", name: "ضمان جهاز", icon: "checkmark.shield.fill", category: .warranty,

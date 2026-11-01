@@ -42,21 +42,15 @@ struct ItemEditor: View {
                 warrantySection
             }
 
-            dateSection
-            repeatSection
-
-            Section(header: Text("التنبيهات")) {
-                NavigationLink(destination: ReminderPicker(selection: $draft.reminders, hasTime: draft.hasTime)) {
-                    HStack {
-                        Label("ذكّرني", systemImage: "bell.badge.fill")
-                        Spacer()
-                        Text(ReminderOption.summary(draft.reminders, hasTime: draft.hasTime))
-                            .font(.footnote)
-                            .foregroundColor(.secondary)
-                            .lineLimit(2)
-                            .multilineTextAlignment(.trailing)
-                    }
+            if draft.isMedicine {
+                medicineSection
+            } else {
+                dateSection
+                repeatSection
+                if draft.category == .bill || draft.hasInstallments {
+                    installmentsSection
                 }
+                remindersSection
             }
 
             Section(header: Text("تفاصيل إضافية")) {
@@ -104,6 +98,9 @@ struct ItemEditor: View {
         .sheet(isPresented: $showLibrary) { LibraryPicker { addPhoto($0) } }
         .onChange(of: draft.purchaseDate) { _ in recomputeWarranty() }
         .onChange(of: draft.warrantyMonths) { _ in recomputeWarranty() }
+        .onChange(of: draft.category) { c in
+            if c == .medicine && draft.doseTimes.isEmpty { draft.doseTimes = [9 * 60]; draft.reminders = [] }
+        }
         .onChange(of: draft.hasTime) { has in
             if !has { draft.reminders = draft.reminders.filter { $0 == 0 || $0 >= 1440 } }
             if draft.reminders.isEmpty { draft.reminders = [has ? 60 : 1440] }
@@ -111,6 +108,153 @@ struct ItemEditor: View {
     }
 
     // MARK: Sections
+
+    private var remindersSection: some View {
+        Section(header: Text("التنبيهات")) {
+            NavigationLink(destination: ReminderPicker(selection: $draft.reminders, hasTime: draft.hasTime)) {
+                HStack {
+                    Label("ذكّرني", systemImage: "bell.badge.fill")
+                    Spacer()
+                    Text(ReminderOption.summary(draft.reminders, hasTime: draft.hasTime))
+                        .font(.footnote)
+                        .foregroundColor(.secondary)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.trailing)
+                }
+            }
+        }
+    }
+
+    private var medicineSection: some View {
+        Group {
+            Section(header: Text("الجرعة")) {
+                HStack {
+                    Label("الكمية", systemImage: "pills")
+                    TextField("مثلاً: حبة بعد الأكل", text: $draft.dosage)
+                        .multilineTextAlignment(.trailing)
+                }
+            }
+            Section(header: Text("أوقات الجرعات"), footer: Text("يجيك تنبيه بكل جرعة وفيه زر «أخذته ✅».")) {
+                ForEach(draft.doseTimes.indices, id: \.self) { i in
+                    doseTimeRow(i)
+                }
+                Button {
+                    let last = draft.doseTimes.max() ?? 8 * 60
+                    draft.doseTimes.append(min(23 * 60 + 30, last + 4 * 60))
+                } label: { Label("أضف جرعة", systemImage: "plus.circle.fill") }
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        presetDoses("مرة", [9 * 60])
+                        presetDoses("مرتين", [9 * 60, 21 * 60])
+                        presetDoses("3 مرات", [8 * 60, 14 * 60, 20 * 60])
+                        presetDoses("كل 8 ساعات", [7 * 60, 15 * 60, 23 * 60])
+                        presetDoses("4 مرات", [8 * 60, 12 * 60, 16 * 60, 20 * 60])
+                    }
+                }
+            }
+            Section(header: Text("المدة")) {
+                DatePicker("يبدأ من", selection: $draft.date, displayedComponents: .date)
+                Toggle("لمدة محددة", isOn: Binding(
+                    get: { draft.endDate != nil },
+                    set: { on in
+                        draft.endDate = on ? Fmt.greg.date(byAdding: .day, value: 6, to: Fmt.greg.startOfDay(for: draft.date)) : nil
+                    }))
+                if draft.endDate != nil {
+                    Stepper(value: courseDaysBinding, in: 1...365) {
+                        HStack {
+                            Text("عدد الأيام")
+                            Spacer()
+                            Text(Fmt.days(courseDays)).foregroundColor(.secondary)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func doseTimeRow(_ i: Int) -> some View {
+        let binding = Binding<Date>(
+            get: { AppSettings.date(fromMinutes: draft.doseTimes.indices.contains(i) ? draft.doseTimes[i] : 540) },
+            set: { if draft.doseTimes.indices.contains(i) { draft.doseTimes[i] = AppSettings.minutes(from: $0) } })
+        return HStack {
+            DatePicker("جرعة \(i + 1)", selection: binding, displayedComponents: .hourAndMinute)
+            if draft.doseTimes.count > 1 {
+                Button {
+                    if draft.doseTimes.indices.contains(i) { draft.doseTimes.remove(at: i) }
+                } label: {
+                    Image(systemName: "minus.circle.fill").foregroundColor(.red)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    private var courseDays: Int {
+        guard let e = draft.endDate else { return 7 }
+        let d = Fmt.greg.dateComponents([.day], from: Fmt.greg.startOfDay(for: draft.date), to: Fmt.greg.startOfDay(for: e)).day ?? 0
+        return max(1, d + 1)
+    }
+
+    private var courseDaysBinding: Binding<Int> {
+        Binding(get: { courseDays },
+                set: { draft.endDate = Fmt.greg.date(byAdding: .day, value: $0 - 1, to: Fmt.greg.startOfDay(for: draft.date)) })
+    }
+
+    private func presetDoses(_ title: String, _ times: [Int]) -> some View {
+        Button { draft.doseTimes = times } label: {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .padding(.horizontal, 10).padding(.vertical, 6)
+                .background(Capsule().fill(Color.red.opacity(0.12)))
+                .foregroundColor(.red)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var installmentsSection: some View {
+        Section(header: Text("الأقساط"),
+                footer: Text(draft.hasInstallments ? installmentsFooter : "لو هي أقساط بعدد محدد، فعّلها وأحسب لك الباقي.")) {
+            Toggle("عدد أقساط محدد", isOn: Binding(
+                get: { draft.hasInstallments },
+                set: { on in
+                    draft.installmentsTotal = on ? 12 : nil
+                    if on && draft.repeatUnit == .none { draft.repeatUnit = .month; draft.repeatEvery = 1 }
+                }))
+            if draft.hasInstallments {
+                Stepper(value: totalBinding, in: 1...360) {
+                    HStack {
+                        Text("عدد الأقساط")
+                        Spacer()
+                        Text("\(draft.installmentsTotal ?? 12)").foregroundColor(.secondary)
+                    }
+                }
+                Stepper(value: $draft.installmentsPaidBefore, in: 0...max(0, (draft.installmentsTotal ?? 12) - 1)) {
+                    HStack {
+                        Text("دفعت منها قبل")
+                        Spacer()
+                        Text("\(draft.installmentsPaidBefore)").foregroundColor(.secondary)
+                    }
+                }
+            }
+        }
+    }
+
+    private var totalBinding: Binding<Int> {
+        Binding(get: { draft.installmentsTotal ?? 12 },
+                set: { v in
+                    draft.installmentsTotal = v
+                    draft.installmentsPaidBefore = min(draft.installmentsPaidBefore, max(0, v - 1))
+                })
+    }
+
+    private var installmentsFooter: String {
+        var it = draft
+        it.amount = Fmt.parseNumber(amountText)
+        var text = "باقي \(Fmt.count(it.installmentsLeft, one: "قسط واحد", two: "قسطين", few: "أقساط", many: "قسط"))"
+        if let r = it.remainingAmount, r > 0 { text += " = \(Fmt.money(r))" }
+        if let last = it.lastInstallmentDate { text += " • آخر قسط \(Fmt.dateText(last, hasTime: false))" }
+        return text + ". حط مبلغ القسط تحت في «المبلغ»."
+    }
 
     private var warrantySection: some View {
         Section(header: Text("الضمان"), footer: Text("حط تاريخ الشراء ومدة الضمان، وأنا أحسب تاريخ الانتهاء.")) {
@@ -272,6 +416,15 @@ struct ItemEditor: View {
         if draft.category != .warranty || !usePurchaseDate {
             if draft.category != .warranty { draft.purchaseDate = nil; draft.warrantyMonths = nil }
         }
+        if draft.isMedicine {
+            draft.hasTime = false
+            draft.repeatUnit = .none
+            if draft.doseTimes.isEmpty { draft.doseTimes = [9 * 60] }
+            draft.doseTimes = Array(Set(draft.doseTimes)).sorted()
+        } else {
+            draft.doseTimes = []
+        }
+        if draft.category != .bill && !draft.isRecurring { draft.installmentsTotal = nil }
         removedPhotos.forEach(PhotoStore.delete)
         store.upsert(draft)
         onFinish()

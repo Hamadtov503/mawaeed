@@ -81,7 +81,7 @@ final class CalendarSync {
         if hasAccess(.event) {
             let cal = calendar ? appCalendar(.event) : nil
             for it in items {
-                if calendar, let cal = cal {
+                if calendar, let cal = cal, !it.isMedicine {
                     if let newID = upsertEvent(it, in: cal), newID != it.calendarEventID {
                         links[it.id] = (newID, link(it).1)
                     }

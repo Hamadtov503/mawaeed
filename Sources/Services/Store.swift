@@ -68,7 +68,39 @@ final class Store: ObservableObject {
 
     func active(_ u: Urgency) -> [Item] {
         let now = Date()
-        return activeSorted.filter { $0.urgency(now: now) == u }
+        return activeSorted.filter { !$0.isMedicine && $0.urgency(now: now) == u }
+    }
+
+    struct Dose: Identifiable {
+        let item: Item
+        let minutes: Int
+        let taken: Bool
+        var id: String { "\(item.id.uuidString)|\(minutes)" }
+    }
+
+    /// Today's medicine doses in time order.
+    func doses(on day: Date = Date()) -> [Dose] {
+        let d = Fmt.greg.startOfDay(for: day)
+        return items.filter { $0.isMedicine && $0.takesDoses(on: d) }
+            .flatMap { it in it.doseTimes.map { Dose(item: it, minutes: $0, taken: it.isTaken(day: d, minutes: $0)) } }
+            .sorted { $0.minutes < $1.minutes }
+    }
+
+    func toggleDose(_ id: UUID, day: Date, minutes: Int) {
+        guard let i = items.firstIndex(where: { $0.id == id }) else { return }
+        let key = Item.doseKey(day: Fmt.greg.startOfDay(for: day), minutes: minutes)
+        if let k = items[i].takenDoses.firstIndex(of: key) {
+            items[i].takenDoses.remove(at: k)
+        } else {
+            items[i].takenDoses.append(key)
+            // Keep the log small: the last ~90 days are enough.
+            if items[i].takenDoses.count > 400 { items[i].takenDoses.removeFirst(items[i].takenDoses.count - 400) }
+        }
+    }
+
+    func markDoseTaken(_ id: UUID, day: Date, minutes: Int) {
+        guard let it = item(id), !it.isTaken(day: day, minutes: minutes) else { return }
+        toggleDose(id, day: day, minutes: minutes)
     }
 
     var monthlyTotal: Double {
@@ -77,7 +109,10 @@ final class Store: ObservableObject {
 
     var badgeCount: Int {
         let now = Date()
-        return items.filter { !$0.isDone && $0.urgency(now: now) <= .today }.count
+        let pendingDoses = doses(on: now).filter { d in
+            !d.taken && Fmt.greg.startOfDay(for: now).addingTimeInterval(TimeInterval(d.minutes * 60)) <= now
+        }.count
+        return items.filter { !$0.isDone && !$0.isMedicine && $0.urgency(now: now) <= .today }.count + pendingDoses
     }
 
     // MARK: Mutations
@@ -93,9 +128,19 @@ final class Store: ObservableObject {
         guard let i = items.firstIndex(where: { $0.id == id }) else { return }
         var it = items[i]
         it.snoozeUntil = nil
-        if it.isRecurring {
+        if it.isMedicine {
+            it.isDone = true
+            it.doneAt = Date()
+        } else if it.isRecurring {
             it.history.append(it.date)
-            var next = newDate ?? it.nextOccurrence()
+            if it.hasInstallments && it.installmentsLeft == 0 {
+                // Last installment paid.
+                it.isDone = true
+                it.doneAt = Date()
+                items[i] = it
+                return
+            }
+            var next = newDate ?? (it.hasInstallments ? it.advanced(it.date) : it.nextOccurrence())
             if !it.hasTime { next = Fmt.greg.startOfDay(for: next) }
             it.date = next
             it.isDone = false
@@ -111,6 +156,9 @@ final class Store: ObservableObject {
         guard let i = items.firstIndex(where: { $0.id == id }) else { return }
         items[i].isDone = false
         items[i].doneAt = nil
+        if items[i].isMedicine, let e = items[i].endDate, e < Fmt.greg.startOfDay(for: Date()) {
+            items[i].endDate = nil
+        }
     }
 
     func snooze(_ id: UUID, until date: Date) {
@@ -133,6 +181,7 @@ final class Store: ObservableObject {
         it.calendarEventID = nil
         it.reminderItemID = nil
         it.history = []
+        it.takenDoses = []
         it.isDone = false
         it.doneAt = nil
         it.createdAt = Date()

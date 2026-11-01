@@ -16,11 +16,19 @@ struct HomeView: View {
                 .listRowInsets(EdgeInsets())
                 .listRowBackground(Color.clear)
 
-                if store.activeSorted.isEmpty {
+                if store.activeSorted.isEmpty && store.doses().isEmpty {
                     Section {
                         EmptyStateView(icon: "calendar.badge.plus",
                                        title: "ما عندك شي مسجّل",
                                        message: "اضغط + وسجّل أول موعد، أو انتهاء استمارة، أو باقة، أو ضمان… وأنا أذكّرك قبلها.")
+                    }
+                }
+
+                let doses = store.doses()
+                if !doses.isEmpty {
+                    Section(header: SectionTitle(title: "أدوية اليوم", icon: "pills.fill", color: .red,
+                                                 count: doses.filter { !$0.taken }.count)) {
+                        ForEach(doses) { DoseRow(dose: $0) }
                     }
                 }
 
