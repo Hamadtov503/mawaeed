@@ -6,7 +6,7 @@ import EventKit
 struct SettingsView: View {
     @EnvironmentObject var store: Store
     @EnvironmentObject var settings: AppSettings
-    @EnvironmentObject var backup: BackupManager
+    @EnvironmentObject var backup: SyncManager
 
     @State private var notifStatus: UNAuthorizationStatus = .notDetermined
     @State private var importMode: ImportMode = .folder
@@ -31,9 +31,12 @@ struct SettingsView: View {
                 notificationsSection
                 iCloudSection
                 backupSection
+                generalSection
+                exportSection
                 privacySection
                 aboutSection
             }
+            .themedList()
             .navigationTitle("الإعدادات")
             .onAppear(perform: refreshStatus)
             .fileImporter(isPresented: $showImporter,
@@ -114,36 +117,59 @@ struct SettingsView: View {
     }
 
     private var backupSection: some View {
-        Section(header: Text("نسخ احتياطي على iCloud Drive"),
-                footer: Text("اختر مجلد داخل iCloud Drive مرة وحدة، وبعدها كل تعديل ينحفظ هناك تلقائياً (مع الصور). لو غيّرت جوالك، ثبّت التطبيق واسترجع من الملف.")) {
-            if backup.hasFolder {
+        Section(header: Text("المزامنة بين الأجهزة (iCloud Drive)"),
+                footer: Text(backup.isOn
+                             ? "أي تعديل ينحفظ في المجلد، والأجهزة الثانية تسحبه أول ما تفتح التطبيق وكل 30 ثانية وهو مفتوح."
+                             : "عشان تفتح نفس البيانات من جوال ثاني: اختر هنا مجلد في iCloud Drive (مثلاً سوّ مجلد اسمه «مواعيدي»)، وفي الجوال الثاني ثبّت التطبيق واختر نفس المجلد. لو الجوال الثاني بحساب Apple ثاني، شارك المجلد معه من تطبيق الملفات.")) {
+            if backup.isOn {
                 HStack {
                     Label("المجلد", systemImage: "folder.fill")
                     Spacer()
                     Text(backup.folderName ?? "").foregroundColor(.secondary)
                 }
                 HStack {
-                    Label("آخر نسخة", systemImage: "clock.arrow.circlepath")
+                    Label("آخر مزامنة", systemImage: backup.isSyncing ? "arrow.triangle.2.circlepath.icloud" : "checkmark.icloud.fill")
                     Spacer()
-                    Text(backup.lastBackup.map { Fmt.dateText($0, hasTime: true) } ?? "—").foregroundColor(.secondary)
+                    Text(backup.isSyncing ? "جاري…" : (backup.lastSync.map { Fmt.dateText($0, hasTime: true) } ?? "—"))
+                        .foregroundColor(.secondary)
                 }
-                Button { backup.backupNow(items: store.items) } label: {
-                    Label("انسخ الحين", systemImage: "icloud.and.arrow.up.fill")
+                if let other = backup.otherDevice {
+                    HStack {
+                        Label("آخر تعديل من", systemImage: "iphone")
+                        Spacer()
+                        Text(other).foregroundColor(.secondary)
+                    }
                 }
+                Button { backup.sync() } label: { Label("زامن الحين", systemImage: "arrow.triangle.2.circlepath") }
                 Button { pick(.folder) } label: { Label("غيّر المجلد", systemImage: "folder.badge.gearshape") }
-                Button(role: .destructive) { backup.clearFolder() } label: {
-                    Label("أوقف النسخ التلقائي", systemImage: "xmark.icloud")
+                Button(role: .destructive) { backup.turnOff() } label: {
+                    Label("أوقف المزامنة على هالجوال", systemImage: "xmark.icloud")
                 }
             } else {
                 Button { pick(.folder) } label: {
-                    Label("اختر مجلد في iCloud Drive", systemImage: "icloud.fill")
+                    Label("فعّل المزامنة — اختر مجلد في iCloud Drive", systemImage: "icloud.fill")
                 }
             }
             if let err = backup.lastError {
-                Text(err).font(.footnote).foregroundColor(.red)
+                Text(err).font(.footnote).foregroundColor(.orange)
             }
+        }
+    }
+
+    private var exportSection: some View {
+        Section(header: Text("نسخة احتياطية يدوية")) {
             Button { export() } label: { Label("صدّر نسخة لأي مكان…", systemImage: "square.and.arrow.up") }
             Button { pick(.restore) } label: { Label("استرجع من نسخة…", systemImage: "arrow.down.doc.fill") }
+        }
+    }
+
+    private var generalSection: some View {
+        Section(header: Text("عام")) {
+            Picker(selection: $settings.currency) {
+                ForEach(AppSettings.currencies, id: \.self) { Text($0).tag($0) }
+            } label: {
+                Label("العملة", systemImage: "banknote")
+            }
         }
     }
 

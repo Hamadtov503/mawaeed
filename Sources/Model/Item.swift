@@ -120,6 +120,42 @@ enum Urgency: Int, Comparable {
     }
 }
 
+enum LogKind: String, Codable, CaseIterable, Identifiable {
+    case payment, renewal, maintenance, repair, purchase, other
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .payment: return "دفعة"
+        case .renewal: return "تجديد"
+        case .maintenance: return "صيانة دورية"
+        case .repair: return "تصليح"
+        case .purchase: return "شراء"
+        case .other: return "أخرى"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .payment: return "creditcard.fill"
+        case .renewal: return "arrow.clockwise"
+        case .maintenance: return "wrench.and.screwdriver.fill"
+        case .repair: return "hammer.fill"
+        case .purchase: return "bag.fill"
+        case .other: return "ellipsis.circle.fill"
+        }
+    }
+}
+
+/// One entry in an item's log: a payment, renewal, maintenance visit or repair, with its cost.
+struct LogEntry: Identifiable, Codable, Equatable {
+    var id = UUID()
+    var date = Date()
+    var kind: LogKind = .payment
+    var cost: Double? = nil
+    var note = ""
+}
+
 struct Item: Identifiable, Codable, Equatable {
     var id = UUID()
     var title = ""
@@ -151,6 +187,9 @@ struct Item: Identifiable, Codable, Equatable {
     // Installments: total count, and how many were already paid before adding to the app.
     var installmentsTotal: Int? = nil
     var installmentsPaidBefore = 0
+    var logs: [LogEntry] = []
+    /// Last local edit; the newest copy wins when syncing between devices.
+    var updatedAt = Date()
 
     init() {}
 
@@ -158,7 +197,7 @@ struct Item: Identifiable, Codable, Equatable {
         case id, title, category, icon, date, hasTime, reminders, repeatUnit, repeatEvery, notes, location, amount,
              purchaseDate, warrantyMonths, photos, isDone, doneAt, snoozeUntil, history, createdAt,
              calendarEventID, reminderItemID, doseTimes, dosage, endDate, takenDoses,
-             installmentsTotal, installmentsPaidBefore
+             installmentsTotal, installmentsPaidBefore, logs, updatedAt
     }
 
     /// Tolerant decoding: missing or unknown fields fall back to defaults so old backups keep loading.
@@ -192,6 +231,67 @@ struct Item: Identifiable, Codable, Equatable {
         takenDoses = (try? c.decodeIfPresent([String].self, forKey: .takenDoses)) ?? []
         installmentsTotal = try? c.decodeIfPresent(Int.self, forKey: .installmentsTotal)
         installmentsPaidBefore = (try? c.decodeIfPresent(Int.self, forKey: .installmentsPaidBefore)) ?? 0
+        logs = (try? c.decodeIfPresent([LogEntry].self, forKey: .logs)) ?? []
+        updatedAt = (try? c.decodeIfPresent(Date.self, forKey: .updatedAt)) ?? createdAt
+    }
+
+    /// Equal ignoring the edit stamp and this device's calendar links.
+    func sameContent(as o: Item) -> Bool {
+        var a = self, b = o
+        a.updatedAt = .distantPast; b.updatedAt = .distantPast
+        a.calendarEventID = nil; b.calendarEventID = nil
+        a.reminderItemID = nil; b.reminderItemID = nil
+        return a == b
+    }
+
+    /// The kind of log entry that completing this item records.
+    var completionLogKind: LogKind {
+        switch category {
+        case .bill, .subscription: return .payment
+        case .maintenance: return .maintenance
+        case .document, .warranty: return .renewal
+        default: return .other
+        }
+    }
+
+    /// Short status for cards, e.g. "ينتهي بعد 3 أشهر", "الصيانة الجاية اليوم", "القسط 4/12 بكرة".
+    var pillText: String {
+        if isDone { return isMedicine ? "متوقف" : "منجز ✓" }
+        if isMedicine {
+            let today = Fmt.greg.startOfDay(for: Date())
+            let due = takesDoses(on: today) ? doseTimes.count : 0
+            let taken = doseTimes.filter { isTaken(day: today, minutes: $0) }.count
+            return due == 0 ? "ما فيه جرعات اليوم" : "جرعات اليوم \(taken) من \(due)"
+        }
+        let c = Fmt.countdown(to: date, hasTime: hasTime)
+        let late = Fmt.span(from: date, to: Date())
+        let overdue = urgency() == .overdue
+        let installment: String? = hasInstallments ? "القسط \(min(installmentsPaid + 1, installmentsTotal ?? 0))/\(installmentsTotal ?? 0)" : nil
+        switch category {
+        case .document: return overdue ? "منتهي من \(late)" : "ينتهي \(c)"
+        case .warranty: return overdue ? "الضمان منتهي" : "الضمان ينتهي \(c)"
+        case .subscription: return overdue ? "فات التجديد من \(late)" : "يتجدد \(c)"
+        case .maintenance: return overdue ? "الصيانة متأخرة \(late)" : "الصيانة الجاية \(c)"
+        case .bill:
+            let name = installment ?? "الدفعة"
+            return overdue ? "\(name) متأخرة \(late)" : "\(name) \(c)"
+        case .exam: return overdue ? "انتهى" : "الاختبار \(c)"
+        default: return c
+        }
+    }
+
+    /// Secondary line for cards: category plus the most useful detail.
+    var cardSubtitle: String {
+        var parts = [category.title]
+        if isMedicine {
+            if !dosage.isEmpty { parts.append(dosage) }
+            parts.append(doseTimesLabel)
+        } else {
+            if !location.isEmpty { parts.append(location) }
+            if let a = amount { parts.append(Fmt.money(a)) }
+            if location.isEmpty && amount == nil { parts.append(Fmt.dateText(date, hasTime: hasTime)) }
+        }
+        return parts.joined(separator: " · ")
     }
 
     // MARK: Derived

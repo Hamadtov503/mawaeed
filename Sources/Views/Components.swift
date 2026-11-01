@@ -301,3 +301,52 @@ struct PhotoThumb: View {
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 }
+
+/// A card like a native settings tile: icon tile, title, subtitle and a status pill.
+struct ItemCard: View {
+    @EnvironmentObject var store: Store
+    let item: Item
+
+    var body: some View {
+        NavigationLink(destination: ItemDetailView(itemID: item.id)) {
+            HStack(alignment: .center, spacing: 14) {
+                Tile(icon: item.displayIcon, color: item.category.color)
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 6) {
+                        Text(item.title.isEmpty ? "بدون عنوان" : item.title)
+                            .font(.headline)
+                            .foregroundColor(item.isDone ? Theme.muted : Theme.ink)
+                            .strikethrough(item.isDone)
+                            .lineLimit(1)
+                        if item.isRecurring { Image(systemName: "repeat").font(.caption2).foregroundColor(Theme.muted) }
+                        if !item.photos.isEmpty { Image(systemName: "paperclip").font(.caption2).foregroundColor(Theme.muted) }
+                    }
+                    Text(item.cardSubtitle)
+                        .font(.subheadline)
+                        .foregroundColor(Theme.muted)
+                        .lineLimit(1)
+                    StatusPill(text: item.pillText, urgency: item.isMedicine ? .later : item.urgency())
+                }
+                Spacer(minLength: 0)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .card()
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .contextMenu {
+            if item.isDone {
+                Button { store.reopen(item.id) } label: { Label("إرجاع", systemImage: "arrow.uturn.backward") }
+            } else if !item.isMedicine {
+                Button { withAnimation { store.complete(item.id) } } label: {
+                    Label(item.hasInstallments ? "دفعت القسط" : (item.isRecurring ? "تم — جدّد" : "تم"),
+                          systemImage: "checkmark.circle")
+                }
+            }
+            Button { _ = store.duplicate(item.id) } label: { Label("نسخة مكررة", systemImage: "plus.square.on.square") }
+            Button(role: .destructive) { withAnimation { store.delete(item.id) } } label: {
+                Label("حذف", systemImage: "trash")
+            }
+        }
+    }
+}

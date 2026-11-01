@@ -3,59 +3,64 @@ import SwiftUI
 struct HomeView: View {
     @EnvironmentObject var store: Store
     @EnvironmentObject var router: Router
-    @State private var showAdd = false
+    @EnvironmentObject var sync: SyncManager
 
-    private let laterLimit = 8
+    private let laterLimit = 6
 
     var body: some View {
         NavigationView {
-            List {
-                Section {
-                    SummaryCards(showAdd: $showAdd)
-                }
-                .listRowInsets(EdgeInsets())
-                .listRowBackground(Color.clear)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    Text(greeting)
+                        .font(.subheadline)
+                        .foregroundColor(Theme.muted)
 
-                if store.activeSorted.isEmpty && store.doses().isEmpty {
-                    Section {
+                    SummaryRow()
+
+                    let doses = store.doses()
+                    if !doses.isEmpty {
+                        SectionBlock(title: "أدوية اليوم", icon: "pills.fill", color: .red,
+                                     count: doses.filter { !$0.taken }.count) {
+                            VStack(spacing: 4) {
+                                ForEach(doses) { d in
+                                    DoseRow(dose: d)
+                                    if d.id != doses.last?.id { Divider() }
+                                }
+                            }
+                            .card(padding: 14)
+                        }
+                    }
+
+                    group(.overdue, "متأخرة", "exclamationmark.triangle.fill")
+                    group(.today, "اليوم", "sun.max.fill")
+                    group(.week, "خلال أسبوع", "calendar")
+                    group(.month, "خلال شهر", "calendar.circle")
+                    laterSection
+
+                    if store.activeSorted.isEmpty {
                         EmptyStateView(icon: "calendar.badge.plus",
                                        title: "ما عندك شي مسجّل",
-                                       message: "اضغط + وسجّل أول موعد، أو انتهاء استمارة، أو باقة، أو ضمان… وأنا أذكّرك قبلها.")
+                                       message: "اضغط ➕ تحت وسجّل موعد، دواء، اختبار، قسط، أو انتهاء استمارة… وأنا أذكّرك قبلها.")
+                            .card()
                     }
                 }
-
-                let doses = store.doses()
-                if !doses.isEmpty {
-                    Section(header: SectionTitle(title: "أدوية اليوم", icon: "pills.fill", color: .red,
-                                                 count: doses.filter { !$0.taken }.count)) {
-                        ForEach(doses) { DoseRow(dose: $0) }
-                    }
-                }
-
-                group(.overdue, "متأخرة", "exclamationmark.triangle.fill")
-                group(.today, "اليوم", "sun.max.fill")
-                group(.week, "خلال أسبوع", "calendar")
-                group(.month, "خلال شهر", "calendar.circle")
-                laterSection
+                .padding(.horizontal, 16)
+                .padding(.bottom, 16)
             }
-            .listStyle(.insetGrouped)
+            .background(Theme.background.ignoresSafeArea())
             .navigationTitle("مواعيدي")
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button { showAdd = true } label: {
-                        Image(systemName: "plus.circle.fill").font(.title2)
+                    if sync.isOn {
+                        Image(systemName: sync.isSyncing ? "arrow.triangle.2.circlepath.icloud" : "checkmark.icloud")
+                            .foregroundColor(sync.lastError == nil ? .brand : .orange)
                     }
-                    .accessibilityLabel("إضافة")
                 }
             }
-            .sheet(isPresented: $showAdd) {
-                AddFlowView(isPresented: $showAdd)
-                    .environmentObject(store)
-                    .environment(\.layoutDirection, .rightToLeft)
-                    .environment(\.locale, Fmt.locale)
-                    .environment(\.calendar, Fmt.greg)
+            .refreshable {
+                store.refresh()
+                SyncManager.shared.sync()
             }
-            .refreshable { store.refresh() }
         }
         .navigationViewStyle(.stack)
     }
@@ -64,8 +69,8 @@ struct HomeView: View {
     private func group(_ u: Urgency, _ title: String, _ icon: String) -> some View {
         let list = store.active(u)
         if !list.isEmpty {
-            Section(header: SectionTitle(title: title, icon: icon, color: u.color, count: list.count)) {
-                ForEach(list) { ItemLink(item: $0) }
+            SectionBlock(title: title, icon: icon, color: Theme.pill(u).fg, count: list.count) {
+                VStack(spacing: 10) { ForEach(list) { ItemCard(item: $0) } }
             }
         }
     }
@@ -74,86 +79,89 @@ struct HomeView: View {
     private var laterSection: some View {
         let list = store.active(.later)
         if !list.isEmpty {
-            Section(header: SectionTitle(title: "لاحقاً", icon: "clock", color: .secondary, count: list.count)) {
-                ForEach(list.prefix(laterLimit)) { ItemLink(item: $0) }
-                if list.count > laterLimit {
-                    Button("عرض الكل (\(list.count))") { router.tab = 1 }
+            SectionBlock(title: "لاحقاً", icon: "clock", color: Theme.muted, count: list.count) {
+                VStack(spacing: 10) {
+                    ForEach(list.prefix(laterLimit)) { ItemCard(item: $0) }
+                    if list.count > laterLimit {
+                        Button { router.tab = 1 } label: {
+                            Text("عرض الكل (\(list.count))")
+                                .font(.subheadline.weight(.semibold))
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
+                        }
+                        .card(padding: 0)
+                    }
                 }
             }
         }
     }
+
+    private var greeting: String {
+        let h = Fmt.greg.component(.hour, from: Date())
+        let g = h < 12 ? "صباح الخير ☀️" : "مساء الخير 🌙"
+        return "\(g)  ·  \(Fmt.dateText(Date(), hasTime: false, long: true))  ·  \(Fmt.hijriText(Date()))"
+    }
 }
 
-struct SectionTitle: View {
+struct SectionBlock<Content: View>: View {
     let title: String
     let icon: String
     let color: Color
     let count: Int
+    @ViewBuilder let content: () -> Content
 
     var body: some View {
-        HStack(spacing: 6) {
-            Image(systemName: icon).foregroundColor(color)
-            Text(title).foregroundColor(color)
-            Text("\(count)")
-                .font(.caption2.weight(.bold))
-                .padding(.horizontal, 6)
-                .padding(.vertical, 1)
-                .background(Capsule().fill(color.opacity(0.15)))
-                .foregroundColor(color)
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 6) {
+                Image(systemName: icon).foregroundColor(color)
+                Text(title).foregroundColor(Theme.ink)
+                Text("\(count)")
+                    .font(.caption.weight(.bold))
+                    .foregroundColor(color)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 2)
+                    .background(Capsule().fill(color.opacity(0.12)))
+            }
+            .font(.headline)
+            .padding(.horizontal, 4)
+            content()
         }
-        .font(.subheadline.weight(.bold))
-        .textCase(nil)
     }
 }
 
-struct SummaryCards: View {
+struct SummaryRow: View {
     @EnvironmentObject var store: Store
-    @Binding var showAdd: Bool
 
     var body: some View {
         let overdue = store.active(.overdue).count
         let today = store.active(.today).count
         let week = store.active(.week).count
         let monthly = store.monthlyTotal
-        VStack(alignment: .leading, spacing: 10) {
-            Text(greeting)
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-                .padding(.horizontal, 4)
+        VStack(spacing: 10) {
             HStack(spacing: 10) {
-                card("متأخرة", "\(overdue)", "exclamationmark.triangle.fill", overdue > 0 ? .red : .gray)
-                card("اليوم", "\(today)", "sun.max.fill", .orange)
-                card("هالأسبوع", "\(week)", "calendar", .blue)
+                stat("متأخرة", overdue, "exclamationmark.triangle.fill", overdue > 0 ? .red : Theme.muted)
+                stat("اليوم", today, "sun.max.fill", .orange)
+                stat("هالأسبوع", week, "calendar", .brand)
             }
             if monthly > 0 {
-                HStack {
-                    Image(systemName: "creditcard.fill").foregroundColor(.purple)
-                    Text("اشتراكاتك وفواتيرك تقريباً")
+                HStack(spacing: 10) {
+                    Tile(icon: "creditcard.fill", color: .purple, size: 34)
+                    Text("التزاماتك الشهرية تقريباً").font(.subheadline).foregroundColor(Theme.ink)
                     Spacer()
-                    Text(Fmt.money(monthly) + " / شهر").bold()
+                    Text(Fmt.money(monthly)).font(.subheadline.bold()).foregroundColor(Theme.ink)
                 }
-                .font(.subheadline)
-                .padding(12)
-                .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color(.secondarySystemGroupedBackground)))
+                .card(padding: 12)
             }
         }
-        .padding(.vertical, 6)
     }
 
-    private var greeting: String {
-        let h = Fmt.greg.component(.hour, from: Date())
-        let g = h < 12 ? "صباح الخير ☀️" : (h < 18 ? "مساء الخير 🌤️" : "مساء الخير 🌙")
-        return "\(g)  •  \(Fmt.dateText(Date(), hasTime: false, long: true))  •  \(Fmt.hijriText(Date()))"
-    }
-
-    private func card(_ title: String, _ value: String, _ icon: String, _ color: Color) -> some View {
+    private func stat(_ title: String, _ value: Int, _ icon: String, _ color: Color) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Image(systemName: icon).foregroundColor(color)
-            Text(value).font(.title2.bold()).monospacedDigit()
-            Text(title).font(.caption).foregroundColor(.secondary)
+            Text("\(value)").font(.title.bold()).monospacedDigit().foregroundColor(Theme.ink)
+            Text(title).font(.caption).foregroundColor(Theme.muted)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(12)
-        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color(.secondarySystemGroupedBackground)))
+        .card(padding: 14)
     }
 }

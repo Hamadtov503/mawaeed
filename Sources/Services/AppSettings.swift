@@ -13,6 +13,8 @@ final class AppSettings: ObservableObject {
     @Published var remindersSync: Bool { didSet { d.set(remindersSync, forKey: "remindersSync"); changed() } }
     @Published var lockEnabled: Bool { didSet { d.set(lockEnabled, forKey: "lockEnabled") } }
     @Published var overdueNag: Bool { didSet { d.set(overdueNag, forKey: "overdueNag"); changed() } }
+    @Published var currency: String { didSet { d.set(currency, forKey: "currency") } }
+    static let currencies = ["ر.س", "د.ك", "د.إ", "ر.ق", "د.ب", "ر.ع"]
 
     private init() {
         d.register(defaults: [
@@ -23,6 +25,7 @@ final class AppSettings: ObservableObject {
             "remindersSync": false,
             "lockEnabled": false,
             "overdueNag": true,
+            "currency": "ر.س",
         ])
         reminderMinutes = d.integer(forKey: "reminderMinutes")
         digestEnabled = d.bool(forKey: "digestEnabled")
@@ -31,6 +34,7 @@ final class AppSettings: ObservableObject {
         remindersSync = d.bool(forKey: "remindersSync")
         lockEnabled = d.bool(forKey: "lockEnabled")
         overdueNag = d.bool(forKey: "overdueNag")
+        currency = d.string(forKey: "currency") ?? "ر.س"
     }
 
     private func changed() {

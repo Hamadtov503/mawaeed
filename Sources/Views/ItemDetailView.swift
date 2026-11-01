@@ -9,6 +9,7 @@ struct ItemDetailView: View {
     @State private var confirmDelete = false
     @State private var viewer: PhotoRef? = nil
     @State private var shareItems: [Any]? = nil
+    @State private var editingLog: LogEntry? = nil
 
     var body: some View {
         if let item = store.item(itemID) {
@@ -135,7 +136,41 @@ struct ItemDetailView: View {
                 }
             }
 
-            if !item.history.isEmpty {
+            Section(header: Text("السجل والمصاريف"),
+                    footer: Text(item.logs.isEmpty ? "سجّل هنا الصيانة، التصليح، الدفعات أو التجديد مع تكلفتها — وتطلع في التقارير." : "")) {
+                ForEach(item.logs.sorted { $0.date > $1.date }) { e in
+                    Button { editingLog = e } label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: e.kind.icon).foregroundColor(item.category.color).frame(width: 24)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(e.kind.title + (e.note.isEmpty ? "" : " — \(e.note)")).foregroundColor(.primary).lineLimit(1)
+                                Text(Fmt.dateText(e.date, hasTime: false)).font(.caption).foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            if let c = e.cost { Text(Fmt.money(c)).bold().foregroundColor(.primary) }
+                        }
+                    }
+                }
+                .onDelete { idx in
+                    let sorted = item.logs.sorted { $0.date > $1.date }
+                    idx.forEach { store.removeLog(sorted[$0].id, from: item.id) }
+                }
+                Button {
+                    editingLog = LogEntry(date: Date(), kind: item.completionLogKind == .other ? .payment : item.completionLogKind,
+                                          cost: nil, note: "")
+                } label: {
+                    Label("أضف صيانة / دفعة / مصروف", systemImage: "plus.circle.fill")
+                }
+                if !item.logs.isEmpty {
+                    HStack {
+                        Text("المجموع").foregroundColor(.secondary)
+                        Spacer()
+                        Text(Fmt.money(item.logs.compactMap { $0.cost }.reduce(0, +))).bold()
+                    }
+                }
+            }
+
+            if !item.history.isEmpty && item.logs.isEmpty {
                 Section(header: Text(item.hasInstallments ? "الأقساط المدفوعة" : "سجل التجديد")) {
                     ForEach(Array(item.history.reversed()), id: \.self) { d in
                         Label(Fmt.dateText(d, hasTime: item.hasTime), systemImage: "checkmark.circle")
@@ -183,6 +218,7 @@ struct ItemDetailView: View {
             }
         }
         .listStyle(.insetGrouped)
+        .themedList()
         .navigationTitle(item.title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -212,6 +248,15 @@ struct ItemDetailView: View {
             ShareSheet(items: shareItems ?? [])
         }
         .fullScreenCover(item: $viewer) { PhotoViewer(name: $0.id) }
+        .sheet(item: $editingLog) { e in
+            LogSheet(entry: e, isNew: !item.logs.contains(where: { $0.id == e.id })) { saved in
+                store.addLog(saved, to: item.id)
+                editingLog = nil
+            } onCancel: { editingLog = nil }
+            .environment(\.layoutDirection, .rightToLeft)
+            .environment(\.locale, Fmt.locale)
+            .environment(\.calendar, Fmt.greg)
+        }
         .confirmationDialog("متأكد تبي تحذف «\(item.title)»؟", isPresented: $confirmDelete, titleVisibility: .visible) {
             Button("حذف", role: .destructive) {
                 presentationMode.wrappedValue.dismiss()
@@ -274,6 +319,56 @@ struct RenewSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("إلغاء", action: onCancel) }
                 ToolbarItem(placement: .confirmationAction) { Button("جدّد") { onRenew(date) } }
+            }
+        }
+    }
+}
+
+struct LogSheet: View {
+    @State private var entry: LogEntry
+    @State private var costText: String
+    let isNew: Bool
+    let onSave: (LogEntry) -> Void
+    let onCancel: () -> Void
+
+    init(entry: LogEntry, isNew: Bool, onSave: @escaping (LogEntry) -> Void, onCancel: @escaping () -> Void) {
+        _entry = State(initialValue: entry)
+        _costText = State(initialValue: entry.cost.map { $0.rounded() == $0 ? String(Int($0)) : String($0) } ?? "")
+        self.isNew = isNew
+        self.onSave = onSave
+        self.onCancel = onCancel
+    }
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section {
+                    Picker("النوع", selection: $entry.kind) {
+                        ForEach(LogKind.allCases) { Label($0.title, systemImage: $0.icon).tag($0) }
+                    }
+                    DatePicker("التاريخ", selection: $entry.date, displayedComponents: .date)
+                    HStack {
+                        Text("التكلفة")
+                        TextField("اختياري", text: $costText)
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing)
+                        Text(AppSettings.shared.currency).foregroundColor(.secondary)
+                    }
+                    TextField("ملاحظة (مثلاً: غيّرت الفلتر، اسم المحل…)", text: $entry.note)
+                }
+            }
+            .themedList()
+            .navigationTitle(isNew ? "إضافة للسجل" : "تعديل")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("إلغاء", action: onCancel) }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("حفظ") {
+                        var e = entry
+                        e.cost = Fmt.parseNumber(costText)
+                        onSave(e)
+                    }
+                }
             }
         }
     }

@@ -30,7 +30,7 @@ struct AddFlowView: View {
                 }
                 .padding()
             }
-            .background(Color(.systemGroupedBackground).ignoresSafeArea())
+            .background(Theme.background.ignoresSafeArea())
             .navigationTitle("وش تبي تسجّل؟")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -48,18 +48,16 @@ struct TemplateCard: View {
 
     var body: some View {
         VStack(spacing: 8) {
-            IconBadge(icon: template.icon, color: template.category.color, size: 44)
+            Tile(icon: template.icon, color: template.category.color, size: 46)
             Text(template.name)
                 .font(.caption.weight(.semibold))
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
                 .minimumScaleFactor(0.8)
                 .frame(height: 32)
-                .foregroundColor(.primary)
+                .foregroundColor(Theme.ink)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 12)
-        .padding(.horizontal, 4)
-        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color(.secondarySystemGroupedBackground)))
+        .card(padding: 10)
     }
 }

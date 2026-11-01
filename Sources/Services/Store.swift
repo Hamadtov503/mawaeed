@@ -16,6 +16,12 @@ final class Store: ObservableObject {
     }
 
     private var applyingLinks = false
+    /// Deleted item ids with the deletion time, so deletions also reach other devices.
+    private(set) var deleted: [String: Date] = [:]
+    private let deletedURL: URL = {
+        let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return dir.appendingPathComponent("deleted.json")
+    }()
     private let sideEffects = PassthroughSubject<Void, Never>()
     private var bag = Set<AnyCancellable>()
 
@@ -29,6 +35,10 @@ final class Store: ObservableObject {
         if let data = try? Data(contentsOf: fileURL),
            let decoded = try? Self.decoder.decode([Item].self, from: data) {
             items = decoded
+        }
+        if let data = try? Data(contentsOf: deletedURL),
+           let d = try? Self.decoder.decode([String: Date].self, from: data) {
+            deleted = d
         }
         sideEffects
             .debounce(for: .milliseconds(700), scheduler: DispatchQueue.main)
@@ -89,6 +99,7 @@ final class Store: ObservableObject {
     func toggleDose(_ id: UUID, day: Date, minutes: Int) {
         guard let i = items.firstIndex(where: { $0.id == id }) else { return }
         let key = Item.doseKey(day: Fmt.greg.startOfDay(for: day), minutes: minutes)
+        items[i].updatedAt = Date()
         if let k = items[i].takenDoses.firstIndex(of: key) {
             items[i].takenDoses.remove(at: k)
         } else {
@@ -120,6 +131,7 @@ final class Store: ObservableObject {
     func upsert(_ item: Item) {
         var it = item
         if !it.hasTime { it.date = Fmt.greg.startOfDay(for: it.date) }
+        it.updatedAt = Date()
         if let i = items.firstIndex(where: { $0.id == it.id }) { items[i] = it } else { items.append(it) }
     }
 
@@ -128,6 +140,11 @@ final class Store: ObservableObject {
         guard let i = items.firstIndex(where: { $0.id == id }) else { return }
         var it = items[i]
         it.snoozeUntil = nil
+        it.updatedAt = Date()
+        if it.completionLogKind != .other || it.amount != nil, !it.isMedicine {
+            it.logs.append(LogEntry(date: Date(), kind: it.completionLogKind, cost: it.amount,
+                                    note: it.isRecurring ? "عن \(Fmt.dateText(it.date, hasTime: false))" : ""))
+        }
         if it.isMedicine {
             it.isDone = true
             it.doneAt = Date()
@@ -156,6 +173,7 @@ final class Store: ObservableObject {
         guard let i = items.firstIndex(where: { $0.id == id }) else { return }
         items[i].isDone = false
         items[i].doneAt = nil
+        items[i].updatedAt = Date()
         if items[i].isMedicine, let e = items[i].endDate, e < Fmt.greg.startOfDay(for: Date()) {
             items[i].endDate = nil
         }
@@ -164,6 +182,7 @@ final class Store: ObservableObject {
     func snooze(_ id: UUID, until date: Date) {
         guard let i = items.firstIndex(where: { $0.id == id }) else { return }
         items[i].snoozeUntil = date
+        items[i].updatedAt = Date()
     }
 
     func delete(_ id: UUID) {
@@ -171,7 +190,86 @@ final class Store: ObservableObject {
         let it = items[i]
         it.photos.forEach(PhotoStore.delete)
         CalendarSync.shared.removeLinks(of: it)
+        deleted[it.id.uuidString] = Date()
+        saveDeleted()
         items.remove(at: i)
+    }
+
+    private func saveDeleted() {
+        // Tombstones older than 6 months are no longer needed.
+        let cutoff = Date().addingTimeInterval(-180 * 86400)
+        deleted = deleted.filter { $0.value > cutoff }
+        if let data = try? Self.encoder.encode(deleted) { try? data.write(to: deletedURL, options: .atomic) }
+    }
+
+    // MARK: Log entries
+
+    func addLog(_ entry: LogEntry, to id: UUID) {
+        guard let i = items.firstIndex(where: { $0.id == id }) else { return }
+        if let k = items[i].logs.firstIndex(where: { $0.id == entry.id }) { items[i].logs[k] = entry } else { items[i].logs.append(entry) }
+        items[i].updatedAt = Date()
+    }
+
+    func removeLog(_ entryID: UUID, from id: UUID) {
+        guard let i = items.firstIndex(where: { $0.id == id }) else { return }
+        items[i].logs.removeAll { $0.id == entryID }
+        items[i].updatedAt = Date()
+    }
+
+    /// Every log entry with its item, newest first.
+    var allLogs: [(item: Item, entry: LogEntry)] {
+        items.flatMap { it in it.logs.map { (item: it, entry: $0) } }.sorted { $0.entry.date > $1.entry.date }
+    }
+
+    // MARK: Sync merge
+
+    /// Merges another device's copy: per item the newest edit wins, and deletions win over older edits.
+    /// Returns the merged state, which is also applied locally when it differs.
+    func merge(remoteItems: [Item], remoteDeleted: [String: Date]) -> (items: [Item], deleted: [String: Date]) {
+        var allDeleted = deleted
+        for (k, v) in remoteDeleted { allDeleted[k] = max(v, allDeleted[k] ?? .distantPast) }
+
+        var byID: [UUID: Item] = [:]
+        for it in items { byID[it.id] = it }
+        for r in remoteItems {
+            if let l = byID[r.id] {
+                if r.updatedAt > l.updatedAt && !r.sameContent(as: l) {
+                    var copy = r
+                    copy.calendarEventID = l.calendarEventID
+                    copy.reminderItemID = l.reminderItemID
+                    byID[r.id] = copy
+                }
+            } else {
+                var copy = r
+                copy.calendarEventID = nil
+                copy.reminderItemID = nil
+                byID[r.id] = copy
+            }
+        }
+        for (k, when) in allDeleted {
+            if let id = UUID(uuidString: k), let it = byID[id], it.updatedAt <= when {
+                CalendarSync.shared.removeLinks(of: it)
+                byID[id] = nil
+            }
+        }
+
+        // Keep the current order, append new ones.
+        var merged: [Item] = items.compactMap { byID[$0.id] }
+        let known = Set(merged.map { $0.id })
+        merged += remoteItems.compactMap { byID[$0.id] }.filter { !known.contains($0.id) }
+
+        if allDeleted != deleted {
+            deleted = allDeleted
+            saveDeleted()
+        }
+        if merged != items {
+            applyingLinks = true      // a remote change: refresh notifications but don't loop back into a sync
+            items = merged
+            applyingLinks = false
+            NotificationManager.shared.reschedule(items: items, settings: AppSettings.shared)
+            updateBadge()
+        }
+        return (merged, allDeleted)
     }
 
     func duplicate(_ id: UUID) -> Item? {
@@ -202,8 +300,12 @@ final class Store: ObservableObject {
             incoming[i].calendarEventID = nil
             incoming[i].reminderItemID = nil
         }
+        let now = Date()
+        for i in incoming.indices { incoming[i].updatedAt = now }
         if replace {
             items.forEach { CalendarSync.shared.removeLinks(of: $0) }
+            for it in items where !incoming.contains(where: { $0.id == it.id }) { deleted[it.id.uuidString] = now }
+            saveDeleted()
             items = incoming
         } else {
             var merged = items
@@ -243,7 +345,7 @@ final class Store: ObservableObject {
             applyingLinks = false
         }
 
-        BackupManager.shared.autoBackup(items: items)
+        SyncManager.shared.sync()
     }
 
     /// Called when the app comes to the foreground.

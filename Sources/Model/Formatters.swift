@@ -59,7 +59,7 @@ enum Fmt {
         f.locale = Locale(identifier: "en_US")
         f.numberStyle = .decimal
         f.maximumFractionDigits = v.rounded() == v ? 0 : 2
-        return (f.string(from: NSNumber(value: v)) ?? "\(v)") + " ر.س"
+        return (f.string(from: NSNumber(value: v)) ?? "\(v)") + " " + AppSettings.shared.currency
     }
 
     /// Accepts Arabic-Indic digits and Arabic separators ("١٢٣٫٥").

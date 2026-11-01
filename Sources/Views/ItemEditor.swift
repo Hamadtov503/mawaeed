@@ -80,6 +80,7 @@ struct ItemEditor: View {
 
             photosSection
         }
+        .themedList()
         .navigationTitle(isNew ? "جديد" : "تعديل")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

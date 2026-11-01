@@ -8,6 +8,13 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         NotificationManager.shared.setUp()
         NotificationManager.shared.requestAuthorization()
         UIView.appearance().semanticContentAttribute = .forceRightToLeft
+        let bar = UINavigationBarAppearance()
+        bar.configureWithTransparentBackground()
+        bar.backgroundColor = Theme.uiBackground
+        UINavigationBar.appearance().standardAppearance = bar
+        UINavigationBar.appearance().scrollEdgeAppearance = bar
+        UINavigationBar.appearance().compactAppearance = bar
+        UITableView.appearance().backgroundColor = .clear
         _ = Store.shared
         return true
     }
@@ -20,7 +27,7 @@ struct MawaeedApp: App {
     @StateObject private var settings = AppSettings.shared
     @StateObject private var router = Router.shared
     @StateObject private var lock = AppLock.shared
-    @StateObject private var backup = BackupManager.shared
+    @StateObject private var backup = SyncManager.shared
 
     var body: some Scene {
         WindowGroup {
