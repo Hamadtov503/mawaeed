@@ -69,6 +69,10 @@ final class AssetStore: ObservableObject {
 
     @discardableResult
     func merge(_ remote: AssetState) -> Bool {
+        guard canWrite else {
+            errorMessage = "تعذّر قراءة ملف الممتلكات المحلي. استرجع نسخة سليمة قبل المزامنة."
+            return false
+        }
         let next = state.merging(remote)
         return next == state || persist(next)
     }

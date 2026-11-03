@@ -61,6 +61,7 @@ struct RootView: View {
             .environment(\.locale, Fmt.locale)
             .environment(\.calendar, Fmt.greg)
         }
+        .onAppear { NotificationManager.shared.requestAuthorization() }
         .onChange(of: phase) { p in
             switch p {
             case .active:
