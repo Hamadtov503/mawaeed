@@ -8,20 +8,21 @@ struct Backup: Codable {
     var exportedAt = Date()
     var items: [Item]
     var photos: [String: Data]
+    var assets: AssetState? = nil
 
     static func make(items: [Item]) -> Backup {
         var photos: [String: Data] = [:]
         for name in Set(items.flatMap { $0.photos }) {
             if let d = PhotoStore.data(name) { photos[name] = d }
         }
-        return Backup(items: items, photos: photos)
+        return Backup(items: items, photos: photos, assets: AssetStore.shared.state)
     }
 
     func encoded() throws -> Data { try Store.encoder.encode(self) }
 
     static func decode(_ data: Data) throws -> Backup {
         if let b = try? Store.decoder.decode(Backup.self, from: data) { return b }
-        if let f = try? Store.decoder.decode(SyncFile.self, from: data) { return Backup(items: f.items, photos: [:]) }
+        if let f = try? Store.decoder.decode(SyncFile.self, from: data) { return Backup(items: f.items, photos: [:], assets: f.assets) }
         // Also accept a bare items.json.
         return Backup(items: try Store.decoder.decode([Item].self, from: data), photos: [:])
     }
@@ -35,6 +36,7 @@ struct SyncFile: Codable {
     var deviceID: String? = SyncManager.deviceID
     var items: [Item]
     var deleted: [String: Date]
+    var assets: AssetState? = nil
 }
 
 /// Two-way sync through a folder in iCloud Drive that the user picks once on each phone.
@@ -148,10 +150,17 @@ final class SyncManager: ObservableObject {
                     return
                 }
                 let store = Store.shared
+                let assets = AssetStore.shared
+                if let incoming = remote?.assets, !assets.merge(incoming) {
+                    if ok { folder.stopAccessingSecurityScopedResource() }
+                    self.finish(success: false, error: "تعذّر حفظ الممتلكات؛ لم تتم كتابة ملف المزامنة.", done: done)
+                    return
+                }
                 let merged = store.merge(remoteItems: remote?.items ?? [], remoteDeleted: remote?.deleted ?? [:])
                 if let r = remote, let rid = r.deviceID, rid != Self.deviceID { self.otherDevice = "\(r.device) ثاني" }
                 let needsWrite: Bool = {
                     guard let r = remote else { return true }
+                    if r.assets != assets.state { return true }
                     if r.deleted != merged.deleted || r.items.count != merged.items.count { return true }
                     let remoteByID = Dictionary(r.items.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
                     return merged.items.contains { m in
@@ -160,7 +169,7 @@ final class SyncManager: ObservableObject {
                     }
                 }()
                 let photoNames = Set(merged.items.flatMap { $0.photos })
-                let snapshot = SyncFile(items: merged.items, deleted: merged.deleted)
+                let snapshot = SyncFile(items: merged.items, deleted: merged.deleted, assets: assets.state)
 
                 self.queue.async {
                     var writeError: Error?
@@ -260,3 +269,5 @@ struct BackupDocument: FileDocument {
         FileWrapper(regularFileWithContents: data)
     }
 }
+
+

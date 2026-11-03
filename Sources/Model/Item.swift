@@ -159,6 +159,7 @@ struct LogEntry: Identifiable, Codable, Equatable {
 struct Item: Identifiable, Codable, Equatable {
     var id = UUID()
     var title = ""
+    var assetID: UUID? = nil
     var category: Category = .other
     var icon: String? = nil
     var date = Date()
@@ -194,7 +195,7 @@ struct Item: Identifiable, Codable, Equatable {
     init() {}
 
     enum CodingKeys: String, CodingKey {
-        case id, title, category, icon, date, hasTime, reminders, repeatUnit, repeatEvery, notes, location, amount,
+        case id, title, assetID, category, icon, date, hasTime, reminders, repeatUnit, repeatEvery, notes, location, amount,
              purchaseDate, warrantyMonths, photos, isDone, doneAt, snoozeUntil, history, createdAt,
              calendarEventID, reminderItemID, doseTimes, dosage, endDate, takenDoses,
              installmentsTotal, installmentsPaidBefore, logs, updatedAt
@@ -205,6 +206,7 @@ struct Item: Identifiable, Codable, Equatable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         id = (try? c.decodeIfPresent(UUID.self, forKey: .id)) ?? UUID()
         title = (try? c.decodeIfPresent(String.self, forKey: .title)) ?? ""
+        assetID = try? c.decodeIfPresent(UUID.self, forKey: .assetID)
         category = (try? c.decodeIfPresent(Category.self, forKey: .category)) ?? .other
         icon = try? c.decodeIfPresent(String.self, forKey: .icon)
         date = (try? c.decodeIfPresent(Date.self, forKey: .date)) ?? Date()
@@ -450,3 +452,5 @@ struct Item: Identifiable, Codable, Equatable {
         return lines.joined(separator: "\n")
     }
 }
+
+

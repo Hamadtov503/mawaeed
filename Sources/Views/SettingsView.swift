@@ -28,6 +28,12 @@ struct SettingsView: View {
     var body: some View {
         NavigationView {
             Form {
+                Section(header: Text("الحساب")) { AccountSettingsView() }
+                Section(header: Text("متابعة المصاريف")) {
+                    NavigationLink(destination: ReportsView()) {
+                        Label("التقارير والإحصاءات", systemImage: "chart.bar.fill")
+                    }
+                }
                 notificationsSection
                 iCloudSection
                 backupSection
@@ -267,9 +273,15 @@ struct SettingsView: View {
 
     private func restore(replace: Bool) {
         guard let b = pendingRestore else { return }
-        store.restore(b, replace: replace)
+        guard store.restore(b, replace: replace) else {
+            pendingRestore = nil
+            alert = AlertInfo(title: "لم يتم الاسترجاع", message: AssetStore.shared.errorMessage ?? "تعذّر حفظ الممتلكات.")
+            return
+        }
         pendingRestore = nil
         alert = AlertInfo(title: "تم الاسترجاع ✅", message: "رجّعت \(b.items.count) عنصر.")
     }
 }
+
+
 

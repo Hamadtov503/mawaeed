@@ -291,7 +291,9 @@ final class Store: ObservableObject {
     }
 
     /// Restores a backup: `replace` wipes current data, otherwise items are merged by id.
-    func restore(_ backup: Backup, replace: Bool) {
+    @discardableResult
+    func restore(_ backup: Backup, replace: Bool) -> Bool {
+        guard AssetStore.shared.restore(backup.assets, replace: replace) else { return false }
         for (name, data) in backup.photos where PhotoStore.data(name) == nil {
             PhotoStore.write(data, name: name)
         }
@@ -321,6 +323,7 @@ final class Store: ObservableObject {
             }
             items = merged
         }
+        return true
     }
 
     // MARK: Side effects
@@ -372,3 +375,5 @@ final class Store: ObservableObject {
         }
     }
 }
+
+

@@ -31,7 +31,7 @@ struct MawaeedApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView()
+            AppEntryView()
                 .environmentObject(store)
                 .environmentObject(settings)
                 .environmentObject(router)
@@ -44,3 +44,5 @@ struct MawaeedApp: App {
         }
     }
 }
+
+

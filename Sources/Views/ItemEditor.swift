@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ItemEditor: View {
     @EnvironmentObject var store: Store
+    @ObservedObject private var assets = AssetStore.shared
     @State private var draft: Item
     @State private var amountText: String
     @State private var hijri = false
@@ -35,6 +36,17 @@ struct ItemEditor: View {
                     }
                 } label: {
                     Label("النوع", systemImage: draft.category.icon)
+                }
+            }
+
+            if !assets.records.isEmpty {
+                Section(header: Text("ربط بملف")) {
+                    Picker("السيارة أو الجهاز", selection: $draft.assetID) {
+                        Text("بدون ربط").tag(nil as UUID?)
+                        ForEach(assets.records) { asset in
+                            Label(asset.name, systemImage: asset.kind.icon).tag(Optional(asset.id))
+                        }
+                    }
                 }
             }
 
@@ -474,3 +486,5 @@ extension Binding {
         })
     }
 }
+
+

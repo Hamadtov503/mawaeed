@@ -19,6 +19,11 @@ targets:
         CFBundleLocalizations: [ar]
         CFBundleShortVersionString: "$(MARKETING_VERSION)"
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        MawaeedAuthURL: "$(MAWAEED_AUTH_URL)"
+        MawaeedAuthPublicKey: "$(MAWAEED_AUTH_PUBLIC_KEY)"
+        CFBundleURLTypes:
+          - CFBundleURLName: com.hamad.mawaeed.auth
+            CFBundleURLSchemes: [com.hamad.mawaeed]
         UILaunchScreen:
           UIColorName: LaunchBG
         UISupportedInterfaceOrientations:
@@ -42,4 +47,8 @@ targets:
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         TARGETED_DEVICE_FAMILY: "1"
         SWIFT_VERSION: "5.0"
+        MAWAEED_AUTH_URL: ""
+        MAWAEED_AUTH_PUBLIC_KEY: ""
     scheme: {}
+
+

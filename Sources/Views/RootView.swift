@@ -15,7 +15,7 @@ struct RootView: View {
             Group {
                 switch router.tab {
                 case 1: AllItemsView()
-                case 2: ReportsView()
+                case 2: AssetsView()
                 case 3: SettingsView()
                 default: HomeView()
                 }
@@ -140,7 +140,7 @@ struct FloatingTabBar: View {
             .buttonStyle(.plain)
             .frame(maxWidth: .infinity)
             .accessibilityLabel("إضافة")
-            tab(2, "التقارير", "chart.bar.fill")
+            tab(2, "ممتلكاتي", "car.fill")
             tab(3, "الإعدادات", "gearshape.fill")
         }
         .padding(6)
@@ -191,3 +191,5 @@ struct LockView: View {
         .onAppear { lock.unlock() }
     }
 }
+
+
