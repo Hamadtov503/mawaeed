@@ -6,7 +6,6 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         // The delegate must be in place before launch finishes so notification actions are handled.
         NotificationManager.shared.setUp()
-        NotificationManager.shared.requestAuthorization()
         UIView.appearance().semanticContentAttribute = .forceRightToLeft
         let bar = UINavigationBarAppearance()
         bar.configureWithTransparentBackground()
@@ -31,7 +30,7 @@ struct MawaeedApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView()
+            AppEntryView()
                 .environmentObject(store)
                 .environmentObject(settings)
                 .environmentObject(router)
@@ -44,3 +43,5 @@ struct MawaeedApp: App {
         }
     }
 }
+
+

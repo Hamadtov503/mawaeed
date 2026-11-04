@@ -3,6 +3,7 @@ import SwiftUI
 struct ItemDetailView: View {
     let itemID: UUID
     @EnvironmentObject var store: Store
+    @ObservedObject private var assets = AssetStore.shared
     @Environment(\.presentationMode) private var presentationMode
     @State private var showEdit = false
     @State private var showRenew = false
@@ -47,6 +48,14 @@ struct ItemDetailView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 8)
+            }
+
+            if let asset = assets.asset(item.assetID) {
+                Section(header: Text("الملف المرتبط")) {
+                    NavigationLink(destination: AssetDetailView(assetID: asset.id)) {
+                        Label(asset.name, systemImage: asset.kind.icon)
+                    }
+                }
             }
 
             if item.isMedicine {
@@ -373,3 +382,5 @@ struct LogSheet: View {
         }
     }
 }
+
+
