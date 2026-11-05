@@ -23,7 +23,7 @@ jobs:
           xcodebuild -project Mawaeed.xcodeproj -scheme Mawaeed -configuration Debug \
             -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
             -derivedDataPath build CODE_SIGNING_ALLOWED=NO build 2>&1 | tee build.log
-      - name: Capture welcome screen
+      - name: Capture the main dashboard
         run: |
           DEVICE=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; print(next(d["udid"] for ds in json.load(sys.stdin)["devices"].values() for d in ds if d["name"].startswith("iPhone")))')
           xcrun simctl boot "$DEVICE"
@@ -31,12 +31,12 @@ jobs:
           xcrun simctl install "$DEVICE" build/Build/Products/Debug-iphonesimulator/Mawaeed.app
           xcrun simctl launch "$DEVICE" com.hamad.mawaeed
           sleep 5
-          xcrun simctl io "$DEVICE" screenshot welcome.png
+          xcrun simctl io "$DEVICE" screenshot dashboard.png
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: verification
           path: |
             build.log
-            welcome.png
+            dashboard.png
 

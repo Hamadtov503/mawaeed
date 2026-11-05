@@ -28,7 +28,10 @@ struct ItemDetailView: View {
                     IconBadge(icon: item.displayIcon, color: item.category.color, size: 64)
                     Text(item.title).font(.title2.bold()).multilineTextAlignment(.center)
                     Text(item.category.title).font(.subheadline).foregroundColor(.secondary)
-                    if item.isDone {
+                    if item.isPurchaseInvoice {
+                        Label(item.amount.map { Fmt.money($0) } ?? "فاتورة شراء", systemImage: "doc.text.fill")
+                            .font(.headline).foregroundColor(Color.brand)
+                    } else if item.isDone {
                         Label(item.isMedicine ? "متوقف" : "منجز", systemImage: "checkmark.seal.fill")
                             .font(.headline).foregroundColor(.green)
                     } else if item.isMedicine {
@@ -58,7 +61,12 @@ struct ItemDetailView: View {
                 }
             }
 
-            if item.isMedicine {
+            if item.isPurchaseInvoice {
+                Section(header: Text("تاريخ الشراء")) {
+                    row("calendar", "ميلادي", Fmt.dateText(item.date, hasTime: false, long: true))
+                    row("moon.fill", "هجري", Fmt.hijriText(item.date))
+                }
+            } else if item.isMedicine {
                 Section(header: Text("الدواء")) {
                     if !item.dosage.isEmpty { row("pills", "الجرعة", item.dosage) }
                     row("clock", "الأوقات", item.doseTimesLabel)
@@ -189,7 +197,9 @@ struct ItemDetailView: View {
             }
 
             Section {
-                if item.isDone {
+                if item.isPurchaseInvoice {
+                    EmptyView()
+                } else if item.isDone {
                     Button { store.reopen(item.id) } label: {
                         Label(item.isMedicine ? "رجّع الدواء" : "إرجاعه كغير منجز", systemImage: "arrow.uturn.backward")
                     }
@@ -218,8 +228,10 @@ struct ItemDetailView: View {
                 Button { shareItems = [item.shareText] + item.photos.compactMap { PhotoStore.image($0) } } label: {
                     Label("مشاركة", systemImage: "square.and.arrow.up")
                 }
-                Button { _ = store.duplicate(item.id) } label: {
-                    Label("نسخة مكررة", systemImage: "plus.square.on.square")
+                if !item.isPurchaseInvoice {
+                    Button { _ = store.duplicate(item.id) } label: {
+                        Label("نسخة مكررة", systemImage: "plus.square.on.square")
+                    }
                 }
                 Button(role: .destructive) { confirmDelete = true } label: {
                     Label("حذف", systemImage: "trash").foregroundColor(.red)

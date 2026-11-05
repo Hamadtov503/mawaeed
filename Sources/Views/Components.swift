@@ -319,6 +319,7 @@ struct ItemCard: View {
                             .strikethrough(item.isDone)
                             .lineLimit(1)
                         if item.isRecurring { Image(systemName: "repeat").font(.caption2).foregroundColor(Theme.muted) }
+                        if item.category == .task, item.isHighPriority { Image(systemName: "flag.fill").font(.caption2).foregroundColor(.orange).accessibilityLabel("أولوية عالية") }
                         if !item.photos.isEmpty { Image(systemName: "paperclip").font(.caption2).foregroundColor(Theme.muted) }
                     }
                     Text(item.cardSubtitle)
@@ -335,18 +336,22 @@ struct ItemCard: View {
         }
         .buttonStyle(.plain)
         .contextMenu {
-            if item.isDone {
+            if item.isDone && !item.isPurchaseInvoice {
                 Button { store.reopen(item.id) } label: { Label("إرجاع", systemImage: "arrow.uturn.backward") }
-            } else if !item.isMedicine {
+            } else if !item.isDone && !item.isMedicine {
                 Button { withAnimation { store.complete(item.id) } } label: {
                     Label(item.hasInstallments ? "دفعت القسط" : (item.isRecurring ? "تم — جدّد" : "تم"),
                           systemImage: "checkmark.circle")
                 }
             }
-            Button { _ = store.duplicate(item.id) } label: { Label("نسخة مكررة", systemImage: "plus.square.on.square") }
+            if !item.isPurchaseInvoice {
+                Button { _ = store.duplicate(item.id) } label: { Label("نسخة مكررة", systemImage: "plus.square.on.square") }
+            }
             Button(role: .destructive) { withAnimation { store.delete(item.id) } } label: {
                 Label("حذف", systemImage: "trash")
             }
         }
     }
 }
+
+
