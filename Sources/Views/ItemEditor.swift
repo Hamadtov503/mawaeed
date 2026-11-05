@@ -28,14 +28,19 @@ struct ItemEditor: View {
     var body: some View {
         Form {
             Section {
-                TextField("العنوان (مثلاً: استمارة الكامري)", text: $draft.title)
+                TextField(draft.isPurchaseInvoice ? "اسم الفاتورة أو المشتريات" : "العنوان (مثلاً: استمارة الكامري)", text: $draft.title)
                     .font(.headline)
-                Picker(selection: $draft.category) {
-                    ForEach(Category.allCases) { c in
-                        Label(c.title, systemImage: c.icon).tag(c)
+                if !draft.isPurchaseInvoice {
+                    Picker(selection: $draft.category) {
+                        ForEach(Category.allCases) { c in
+                            Label(c.title, systemImage: c.icon).tag(c)
+                        }
+                    } label: {
+                        Label("النوع", systemImage: draft.category.icon)
                     }
-                } label: {
-                    Label("النوع", systemImage: draft.category.icon)
+                }
+                if draft.category == .task {
+                    Toggle(isOn: $draft.isHighPriority) { Label("أولوية عالية", systemImage: "flag.fill") }
                 }
             }
 
@@ -54,7 +59,11 @@ struct ItemEditor: View {
                 warrantySection
             }
 
-            if draft.isMedicine {
+            if draft.isPurchaseInvoice {
+                Section(header: Text("تفاصيل الشراء")) {
+                    DatePicker("تاريخ الشراء", selection: $draft.date, displayedComponents: .date)
+                }
+            } else if draft.isMedicine {
                 medicineSection
             } else {
                 dateSection
@@ -93,7 +102,7 @@ struct ItemEditor: View {
             photosSection
         }
         .themedList()
-        .navigationTitle(isNew ? "جديد" : "تعديل")
+        .navigationTitle(draft.isPurchaseInvoice ? (isNew ? "فاتورة شراء" : "تعديل الفاتورة") : (isNew ? "جديد" : "تعديل"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
@@ -426,6 +435,21 @@ struct ItemEditor: View {
     private func save() {
         draft.title = draft.title.trimmingCharacters(in: .whitespacesAndNewlines)
         draft.amount = Fmt.parseNumber(amountText)
+        if draft.isPurchaseInvoice {
+            draft.isDone = true
+            draft.doneAt = draft.date
+            let purchaseLog = draft.logs.firstIndex { $0.kind == .purchase }
+            if let amount = draft.amount {
+                if let index = purchaseLog {
+                    draft.logs[index].cost = amount
+                    draft.logs[index].date = draft.date
+                } else {
+                    draft.logs.append(LogEntry(date: draft.date, kind: .purchase, cost: amount))
+                }
+            } else if let index = purchaseLog {
+                draft.logs.remove(at: index)
+            }
+        }
         if draft.category != .warranty || !usePurchaseDate {
             if draft.category != .warranty { draft.purchaseDate = nil; draft.warrantyMonths = nil }
         }
@@ -440,6 +464,9 @@ struct ItemEditor: View {
         if draft.category != .bill && !draft.isRecurring { draft.installmentsTotal = nil }
         removedPhotos.forEach(PhotoStore.delete)
         store.upsert(draft)
+        if isNew, !draft.isPurchaseInvoice {
+            NotificationManager.shared.requestAuthorization()
+        }
         onFinish()
     }
 

@@ -14,7 +14,6 @@ struct AssetsView: View {
     }
 
     var body: some View {
-        NavigationView {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     PageHeader(title: "ممتلكاتي", subtitle: "لكل سيارة وجهاز ملف يجمع كل تفاصيله")
@@ -42,10 +41,9 @@ struct AssetsView: View {
                 }.padding(16)
             }
             .background(Theme.background.ignoresSafeArea())
+            .navigationTitle("الأجهزة والسيارات")
             .navigationBarTitleDisplayMode(.inline)
             .searchable(text: $search, prompt: "الاسم، الموديل، اللوحة أو الرقم التسلسلي")
-        }
-        .navigationViewStyle(.stack)
         .sheet(item: $editing) { AssetEditor(asset: $0) }
         .alert("تعذّر الحفظ", isPresented: Binding(get: { assets.errorMessage != nil }, set: { if !$0 { assets.errorMessage = nil } })) {
             Button("تمام") { assets.errorMessage = nil }
@@ -115,6 +113,13 @@ struct AssetDetailView: View {
 
                         Text("إضافة للملف").font(.headline).foregroundColor(Theme.ink)
                         LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
+                            Button {
+                                newItem = Item.purchaseInvoice(assetID: asset.id)
+                            } label: {
+                                Label("فاتورة شراء", systemImage: "doc.text.fill").font(.subheadline.bold())
+                                    .frame(maxWidth: .infinity).padding(.vertical, 16)
+                                    .foregroundColor(Color.brand).background(RoundedRectangle(cornerRadius: 18).fill(Theme.tile))
+                            }.buttonStyle(.plain)
                             quickAdd("صيانة", .maintenance, "wrench.and.screwdriver.fill", asset)
                             quickAdd("ضمان", .warranty, "checkmark.shield.fill", asset)
                             quickAdd(asset.kind == .vehicle ? "فحص دوري" : "وثيقة", .document, "doc.text.fill", asset)

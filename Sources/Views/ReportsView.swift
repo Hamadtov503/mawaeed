@@ -32,7 +32,6 @@ struct ReportsView: View {
     private var spent: Double { logs.compactMap { $0.entry.cost }.reduce(0, +) }
 
     var body: some View {
-        NavigationView {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
                     ScrollView(.horizontal, showsIndicators: false) {
@@ -58,8 +57,6 @@ struct ReportsView: View {
             }
             .background(Theme.background.ignoresSafeArea())
             .navigationTitle("التقارير")
-        }
-        .navigationViewStyle(.stack)
     }
 
     // MARK: Period
@@ -335,3 +332,5 @@ struct MonthlyChart: View {
         .card()
     }
 }
+
+

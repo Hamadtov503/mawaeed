@@ -171,6 +171,7 @@ final class Store: ObservableObject {
 
     func reopen(_ id: UUID) {
         guard let i = items.firstIndex(where: { $0.id == id }) else { return }
+        guard !items[i].isPurchaseInvoice else { return }
         items[i].isDone = false
         items[i].doneAt = nil
         items[i].updatedAt = Date()
@@ -273,7 +274,7 @@ final class Store: ObservableObject {
     }
 
     func duplicate(_ id: UUID) -> Item? {
-        guard var it = item(id) else { return nil }
+        guard var it = item(id), !it.isPurchaseInvoice else { return nil }
         it.id = UUID()
         it.title += " (نسخة)"
         it.calendarEventID = nil

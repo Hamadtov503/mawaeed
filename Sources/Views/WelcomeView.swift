@@ -6,7 +6,7 @@ struct AppEntryView: View {
 
     var body: some View {
         Group {
-            if welcomePassed || auth.signedIn { RootView() }
+            if welcomePassed || auth.signedIn || !auth.configured { RootView() }
             else { WelcomeView() }
         }.onAppear { auth.restoreSession() }
     }

@@ -160,6 +160,8 @@ struct Item: Identifiable, Codable, Equatable {
     var id = UUID()
     var title = ""
     var assetID: UUID? = nil
+    var isPurchaseInvoice = false
+    var isHighPriority = false
     var category: Category = .other
     var icon: String? = nil
     var date = Date()
@@ -194,8 +196,18 @@ struct Item: Identifiable, Codable, Equatable {
 
     init() {}
 
+    static func purchaseInvoice(assetID: UUID? = nil) -> Item {
+        var item = Item()
+        item.category = .bill
+        item.assetID = assetID
+        item.isPurchaseInvoice = true
+        item.isDone = true
+        item.reminders = []
+        return item
+    }
+
     enum CodingKeys: String, CodingKey {
-        case id, title, assetID, category, icon, date, hasTime, reminders, repeatUnit, repeatEvery, notes, location, amount,
+        case id, title, assetID, isPurchaseInvoice, isHighPriority, category, icon, date, hasTime, reminders, repeatUnit, repeatEvery, notes, location, amount,
              purchaseDate, warrantyMonths, photos, isDone, doneAt, snoozeUntil, history, createdAt,
              calendarEventID, reminderItemID, doseTimes, dosage, endDate, takenDoses,
              installmentsTotal, installmentsPaidBefore, logs, updatedAt
@@ -207,6 +219,8 @@ struct Item: Identifiable, Codable, Equatable {
         id = (try? c.decodeIfPresent(UUID.self, forKey: .id)) ?? UUID()
         title = (try? c.decodeIfPresent(String.self, forKey: .title)) ?? ""
         assetID = try? c.decodeIfPresent(UUID.self, forKey: .assetID)
+        isPurchaseInvoice = (try? c.decodeIfPresent(Bool.self, forKey: .isPurchaseInvoice)) ?? false
+        isHighPriority = (try? c.decodeIfPresent(Bool.self, forKey: .isHighPriority)) ?? false
         category = (try? c.decodeIfPresent(Category.self, forKey: .category)) ?? .other
         icon = try? c.decodeIfPresent(String.self, forKey: .icon)
         date = (try? c.decodeIfPresent(Date.self, forKey: .date)) ?? Date()
@@ -258,6 +272,7 @@ struct Item: Identifiable, Codable, Equatable {
 
     /// Short status for cards, e.g. "ينتهي بعد 3 أشهر", "الصيانة الجاية اليوم", "القسط 4/12 بكرة".
     var pillText: String {
+        if isPurchaseInvoice { return amount.map { Fmt.money($0) } ?? "فاتورة شراء" }
         if isDone { return isMedicine ? "متوقف" : "منجز ✓" }
         if isMedicine {
             let today = Fmt.greg.startOfDay(for: Date())

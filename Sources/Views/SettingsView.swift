@@ -7,6 +7,7 @@ struct SettingsView: View {
     @EnvironmentObject var store: Store
     @EnvironmentObject var settings: AppSettings
     @EnvironmentObject var backup: SyncManager
+    @Environment(\.dismiss) private var dismiss
 
     @State private var notifStatus: UNAuthorizationStatus = .notDetermined
     @State private var importMode: ImportMode = .folder
@@ -15,7 +16,6 @@ struct SettingsView: View {
     @State private var exportDoc = BackupDocument(data: Data())
     @State private var pendingRestore: Backup? = nil
     @State private var alert: AlertInfo? = nil
-    @State private var calendarAccount: String? = nil
 
     enum ImportMode { case folder, restore }
 
@@ -27,23 +27,34 @@ struct SettingsView: View {
 
     var body: some View {
         NavigationView {
-            Form {
-                Section(header: Text("الحساب")) { AccountSettingsView() }
-                Section(header: Text("متابعة المصاريف")) {
-                    NavigationLink(destination: ReportsView()) {
-                        Label("التقارير والإحصاءات", systemImage: "chart.bar.fill")
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    PageHeader(title: "الإعدادات", subtitle: "خلّ التطبيق يشتغل بالطريقة اللي تناسبك")
+                    NavigationLink(destination: preferencePage("التنبيهات") { notificationsSection }) {
+                        SettingsTile(title: "التنبيهات", subtitle: "الأوقات والملخص اليومي", icon: "bell.fill", tint: .orange)
+                    }.buttonStyle(.plain)
+                    NavigationLink(destination: preferencePage("المزامنة والنسخ") { backupSection; exportSection }) {
+                        SettingsTile(title: "المزامنة والنسخ الاحتياطي", subtitle: backup.isOn ? "مزامنة iCloud Drive مفعّلة" : "اربط أجهزتك أو احفظ نسخة من بياناتك", icon: "icloud.fill", tint: .blue)
+                    }.buttonStyle(.plain)
+                    NavigationLink(destination: preferencePage("الخصوصية") { privacySection }) {
+                        SettingsTile(title: "الخصوصية", subtitle: "قفل التطبيق", icon: "lock.shield.fill", tint: .teal)
+                    }.buttonStyle(.plain)
+                    NavigationLink(destination: preferencePage("تفضيلات إضافية") { generalSection; iCloudSection }) {
+                        SettingsTile(title: "تفضيلات إضافية", subtitle: "العملة والربط مع تطبيقات Apple", icon: "slider.horizontal.3", tint: .indigo)
+                    }.buttonStyle(.plain)
+                    if AuthManager.shared.configured {
+                        NavigationLink(destination: preferencePage("الحساب") { Section { AccountSettingsView() } }) {
+                            SettingsTile(title: "الحساب", subtitle: "إدارة تسجيل الدخول", icon: "person.crop.circle.fill", tint: .purple)
+                        }.buttonStyle(.plain)
                     }
-                }
-                notificationsSection
-                iCloudSection
-                backupSection
-                generalSection
-                exportSection
-                privacySection
-                aboutSection
+                    Text("مواعيدي · الإصدار \(version)")
+                        .font(.caption).foregroundColor(Theme.muted)
+                        .frame(maxWidth: .infinity).padding(.vertical, 12)
+                }.padding(18).frame(maxWidth: 650).frame(maxWidth: .infinity)
             }
-            .themedList()
-            .navigationTitle("الإعدادات")
+            .background(Theme.background.ignoresSafeArea())
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("إغلاق") { dismiss() } } }
             .onAppear(perform: refreshStatus)
             .fileImporter(isPresented: $showImporter,
                           allowedContentTypes: importMode == .folder ? [.folder] : [.json],
@@ -72,6 +83,12 @@ struct SettingsView: View {
 
     // MARK: Sections
 
+    private func preferencePage<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+        Form(content: content).themedList()
+            .navigationTitle(title).navigationBarTitleDisplayMode(.inline)
+            .onAppear(perform: refreshStatus)
+    }
+
     private var notificationsSection: some View {
         Section(header: Text("التنبيهات"),
                 footer: Text("ملخص الصباح يجيك كل يوم فيه شي مستحق أو متأخر.")) {
@@ -96,28 +113,17 @@ struct SettingsView: View {
                 DatePicker("وقت الملخص", selection: minutesBinding(\.digestMinutes), displayedComponents: .hourAndMinute)
             }
             Toggle(isOn: $settings.overdueNag) { Label("ألحّ علي إذا تأخرت (7 المساء)", systemImage: "exclamationmark.bubble.fill") }
-            Button { NotificationManager.shared.sendTest() } label: {
-                Label("جرّب تنبيه (بعد 5 ثواني)", systemImage: "paperplane.fill")
-            }
         }
     }
 
     private var iCloudSection: some View {
         Section(header: Text("الربط مع iCloud"),
-                footer: Text("يضيف مواعيدك في تقويم اسمه «مواعيدي» داخل حساب iCloud، والمهام في قائمة «مواعيدي» في تطبيق التذكيرات — فتشوفها في الماك والآيباد والساعة. لو علّمت مهمة منجزة في التذكيرات، تنعلّم هنا بعد.")) {
+                footer: Text("اعرض مواعيدك ومهامك في تطبيقَي التقويم والتذكيرات من Apple.")) {
             Toggle(isOn: Binding(get: { settings.calendarSync }, set: { on in enable(.event, on) })) {
                 Label("تقويم iCloud", systemImage: "calendar")
             }
             Toggle(isOn: Binding(get: { settings.remindersSync }, set: { on in enable(.reminder, on) })) {
                 Label("تطبيق التذكيرات (للمهام)", systemImage: "checklist")
-            }
-            if settings.calendarSync, let acc = calendarAccount {
-                HStack {
-                    Text("الحساب").foregroundColor(.secondary)
-                    Spacer()
-                    Text(acc)
-                }
-                .font(.footnote)
             }
         }
     }
@@ -125,8 +131,8 @@ struct SettingsView: View {
     private var backupSection: some View {
         Section(header: Text("المزامنة بين الأجهزة (iCloud Drive)"),
                 footer: Text(backup.isOn
-                             ? "أي تعديل ينحفظ في المجلد، والأجهزة الثانية تسحبه أول ما تفتح التطبيق وكل 30 ثانية وهو مفتوح."
-                             : "عشان تفتح نفس البيانات من جوال ثاني: اختر هنا مجلد في iCloud Drive (مثلاً سوّ مجلد اسمه «مواعيدي»)، وفي الجوال الثاني ثبّت التطبيق واختر نفس المجلد. لو الجوال الثاني بحساب Apple ثاني، شارك المجلد معه من تطبيق الملفات.")) {
+                             ? "التغييرات تتزامن بين الأجهزة المرتبطة بهذا المجلد."
+                             : "اختر نفس مجلد iCloud Drive على كل جهاز تبي تزامنه.")) {
             if backup.isOn {
                 HStack {
                     Label("المجلد", systemImage: "folder.fill")
@@ -138,13 +144,6 @@ struct SettingsView: View {
                     Spacer()
                     Text(backup.isSyncing ? "جاري…" : (backup.lastSync.map { Fmt.dateText($0, hasTime: true) } ?? "—"))
                         .foregroundColor(.secondary)
-                }
-                if let other = backup.otherDevice {
-                    HStack {
-                        Label("آخر تعديل من", systemImage: "iphone")
-                        Spacer()
-                        Text(other).foregroundColor(.secondary)
-                    }
                 }
                 Button { backup.sync() } label: { Label("زامن الحين", systemImage: "arrow.triangle.2.circlepath") }
                 Button { pick(.folder) } label: { Label("غيّر المجلد", systemImage: "folder.badge.gearshape") }
@@ -187,22 +186,6 @@ struct SettingsView: View {
         }
     }
 
-    private var aboutSection: some View {
-        Section {
-            HStack {
-                Text("العناصر")
-                Spacer()
-                Text("\(store.items.filter { !$0.isDone }.count) نشطة • \(store.items.filter { $0.isDone }.count) منجزة")
-                    .foregroundColor(.secondary)
-            }
-            HStack {
-                Text("الإصدار")
-                Spacer()
-                Text(version).foregroundColor(.secondary)
-            }
-        }
-    }
-
     // MARK: Actions
 
     private var version: String {
@@ -218,7 +201,6 @@ struct SettingsView: View {
 
     private func refreshStatus() {
         NotificationManager.shared.status { notifStatus = $0 }
-        calendarAccount = settings.calendarSync ? CalendarSync.shared.calendarAccountName : nil
     }
 
     private func enable(_ type: EKEntityType, _ on: Bool) {

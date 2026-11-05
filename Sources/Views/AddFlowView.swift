@@ -3,6 +3,7 @@ import SwiftUI
 /// Pick a ready-made template, then fill in the details.
 struct AddFlowView: View {
     @Binding var isPresented: Bool
+    var section: MainSection? = nil
     @EnvironmentObject var store: Store
 
     private let columns = [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)]
@@ -11,13 +12,19 @@ struct AddFlowView: View {
         NavigationView {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    ForEach(Template.groups) { group in
+                    if section == nil || section == .finance {
+                        NavigationLink(destination: ItemEditor(item: Item.purchaseInvoice(), isNew: true, isPushed: true,
+                                                               onFinish: { isPresented = false })) {
+                            SettingsTile(title: "فاتورة شراء", subtitle: "احفظ الفاتورة واربطها بجهاز أو سيارة", icon: "doc.text.fill", tint: MainSection.finance.color)
+                        }.buttonStyle(.plain)
+                    }
+                    ForEach(Template.groups.filter { !templates($0.templates).isEmpty }) { group in
                         VStack(alignment: .leading, spacing: 10) {
                             Text(group.title)
                                 .font(.headline)
                                 .padding(.horizontal, 4)
                             LazyVGrid(columns: columns, spacing: 10) {
-                                ForEach(group.templates) { t in
+                                ForEach(templates(group.templates)) { t in
                                     NavigationLink(destination: ItemEditor(item: t.makeItem(), isNew: true, isPushed: true,
                                                                            onFinish: { isPresented = false })) {
                                         TemplateCard(template: t)
@@ -41,6 +48,11 @@ struct AddFlowView: View {
         }
         .navigationViewStyle(.stack)
     }
+
+    private func templates(_ items: [Template]) -> [Template] {
+        guard let section = section else { return items }
+        return items.filter { section.includes($0.makeItem()) }
+    }
 }
 
 struct TemplateCard: View {
@@ -61,3 +73,5 @@ struct TemplateCard: View {
         .card(padding: 10)
     }
 }
+
+

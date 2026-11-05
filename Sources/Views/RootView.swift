@@ -6,32 +6,28 @@ struct RootView: View {
     @EnvironmentObject var lock: AppLock
     @Environment(\.scenePhase) private var phase
     @State private var showAdd = false
-    @State private var dismissedNext: UUID? = nil
+    @State private var showSettings = false
+    @State private var showInvoice = false
 
     var body: some View {
         ZStack {
             Theme.background.ignoresSafeArea()
 
             Group {
-                switch router.tab {
-                case 1: AllItemsView()
-                case 2: AssetsView()
-                case 3: SettingsView()
-                default: HomeView()
+                if let section = MainSection(rawValue: router.tab) {
+                    NavigationView {
+                        if section == .finance {
+                            FinanceSection { showInvoice = true }
+                        } else {
+                            ScheduleSection(section: section)
+                        }
+                    }.navigationViewStyle(.stack).id(section)
+                } else {
+                    StartDashboard(onAdd: { showAdd = true }, onSettings: { showSettings = true })
                 }
             }
             .safeAreaInset(edge: .bottom) {
-                VStack(spacing: 8) {
-                    if let next = nextItem, next.id != dismissedNext, router.tab != 3 {
-                        NextBanner(item: next) {
-                            router.openItem = ItemRef(id: next.id)
-                        } onClose: {
-                            withAnimation { dismissedNext = next.id }
-                        }
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                    }
-                    FloatingTabBar(selection: $router.tab) { showAdd = true }
-                }
+                FloatingTabBar(selection: $router.tab) { showAdd = true }
                 .padding(.horizontal, 14)
                 .padding(.bottom, 2)
             }
@@ -41,11 +37,17 @@ struct RootView: View {
             }
         }
         .sheet(isPresented: $showAdd) {
-            AddFlowView(isPresented: $showAdd)
+            AddFlowView(isPresented: $showAdd, section: MainSection(rawValue: router.tab))
                 .environmentObject(store)
                 .environment(\.layoutDirection, .rightToLeft)
                 .environment(\.locale, Fmt.locale)
                 .environment(\.calendar, Fmt.greg)
+        }
+        .sheet(isPresented: $showSettings) { SettingsView() }
+        .sheet(isPresented: $showInvoice) {
+            NavigationView {
+                ItemEditor(item: Item.purchaseInvoice(), isNew: true, isPushed: false) { showInvoice = false }
+            }.navigationViewStyle(.stack)
         }
         .sheet(item: $router.openItem) { ref in
             NavigationView {
@@ -61,7 +63,6 @@ struct RootView: View {
             .environment(\.locale, Fmt.locale)
             .environment(\.calendar, Fmt.greg)
         }
-        .onAppear { NotificationManager.shared.requestAuthorization() }
         .onChange(of: phase) { p in
             switch p {
             case .active:
@@ -78,11 +79,6 @@ struct RootView: View {
         }
     }
 
-    /// The nearest thing coming up (not medicines, not overdue).
-    private var nextItem: Item? {
-        let now = Date()
-        return store.activeSorted.first { !$0.isMedicine && $0.urgency(now: now) != .overdue }
-    }
 }
 
 struct NextBanner: View {
@@ -129,7 +125,7 @@ struct FloatingTabBar: View {
     var body: some View {
         HStack(spacing: 0) {
             tab(0, "الرئيسية", "house.fill")
-            tab(1, "أشيائي", "square.stack.fill")
+            tab(1, "مواعيدي", "calendar")
             Button(action: onAdd) {
                 Image(systemName: "plus")
                     .font(.system(size: 20, weight: .bold))
@@ -141,8 +137,8 @@ struct FloatingTabBar: View {
             .buttonStyle(.plain)
             .frame(maxWidth: .infinity)
             .accessibilityLabel("إضافة")
-            tab(2, "ممتلكاتي", "car.fill")
-            tab(3, "الإعدادات", "gearshape.fill")
+            tab(2, "مهامي", "checkmark.circle")
+            tab(3, "فواتيري", "doc.text.fill")
         }
         .padding(6)
         .background(Capsule().fill(.ultraThinMaterial))
