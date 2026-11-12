@@ -248,7 +248,7 @@ struct ItemDetailView: View {
             }
         }
         .sheet(isPresented: $showEdit) {
-            NavigationView {
+            AppNavigation {
                 ItemEditor(item: item, isNew: false, isPushed: false) { showEdit = false }
             }
             .environmentObject(store)
@@ -315,7 +315,7 @@ struct RenewSheet: View {
     }
 
     var body: some View {
-        NavigationView {
+        AppNavigation {
             Form {
                 Section(footer: Text("التاريخ الحالي: \(Fmt.dateText(item.date, hasTime: item.hasTime)) — بعد التجديد يصير الموعد الجديد ويرجع التنبيه تلقائي.")) {
                     Picker("التقويم", selection: $hijri) {
@@ -358,7 +358,7 @@ struct LogSheet: View {
     }
 
     var body: some View {
-        NavigationView {
+        AppNavigation {
             Form {
                 Section {
                     Picker("النوع", selection: $entry.kind) {

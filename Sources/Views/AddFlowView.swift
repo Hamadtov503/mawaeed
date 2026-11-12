@@ -9,7 +9,7 @@ struct AddFlowView: View {
     private let columns = [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)]
 
     var body: some View {
-        NavigationView {
+        AppNavigation {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     if section == nil || section == .finance {

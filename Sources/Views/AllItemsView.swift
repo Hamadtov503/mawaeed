@@ -18,7 +18,7 @@ struct AllItemsView: View {
     }
 
     var body: some View {
-        NavigationView {
+        AppNavigation {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
                     Text(subtitle).font(.subheadline).foregroundColor(Theme.muted)

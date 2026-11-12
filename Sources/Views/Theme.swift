@@ -127,3 +127,20 @@ struct PageHeader: View {
         .padding(.top, 8)
     }
 }
+
+/// NavigationStack on iOS 16+ (better right-to-left push/pop handling), NavigationView on iOS 15.
+struct AppNavigation<Content: View>: View {
+    let content: Content
+
+    init(@ViewBuilder content: () -> Content) {
+        self.content = content()
+    }
+
+    var body: some View {
+        if #available(iOS 16.0, *) {
+            NavigationStack { content }
+        } else {
+            NavigationView { content }.navigationViewStyle(.stack)
+        }
+    }
+}

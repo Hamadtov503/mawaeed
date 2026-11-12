@@ -8,7 +8,7 @@ struct HomeView: View {
     private let laterLimit = 6
 
     var body: some View {
-        NavigationView {
+        AppNavigation {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     dashboardHeader

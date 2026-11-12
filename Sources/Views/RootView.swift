@@ -15,7 +15,7 @@ struct RootView: View {
 
             Group {
                 if let section = MainSection(rawValue: router.tab) {
-                    NavigationView {
+                    AppNavigation {
                         if section == .finance {
                             FinanceSection { showInvoice = true }
                         } else {
@@ -44,12 +44,12 @@ struct RootView: View {
         }
         .sheet(isPresented: $showSettings) { SettingsView() }
         .sheet(isPresented: $showInvoice) {
-            NavigationView {
+            AppNavigation {
                 ItemEditor(item: Item.purchaseInvoice(), isNew: true, isPushed: false) { showInvoice = false }
             }.navigationViewStyle(.stack)
         }
         .sheet(item: $router.openItem) { ref in
-            NavigationView {
+            AppNavigation {
                 ItemDetailView(itemID: ref.id)
                     .toolbar {
                         ToolbarItem(placement: .cancellationAction) {

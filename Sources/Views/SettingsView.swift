@@ -26,7 +26,7 @@ struct SettingsView: View {
     }
 
     var body: some View {
-        NavigationView {
+        AppNavigation {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
                     PageHeader(title: "الإعدادات", subtitle: "خلّ التطبيق يشتغل بالطريقة اللي تناسبك")
@@ -43,7 +43,7 @@ struct SettingsView: View {
                         SettingsTile(title: "تفضيلات إضافية", subtitle: "العملة والربط مع تطبيقات Apple", icon: "slider.horizontal.3", tint: .indigo)
                     }.buttonStyle(.plain)
                     if AuthManager.shared.configured {
-                        NavigationLink(destination: preferencePage("الحساب") { Section { AccountSettingsView() } }) {
+                        NavigationLink(destination: preferencePage("الحساب") { PrefGroup("الحساب") { AccountSettingsView() } }) {
                             SettingsTile(title: "الحساب", subtitle: "إدارة تسجيل الدخول", icon: "person.crop.circle.fill", tint: .purple)
                         }.buttonStyle(.plain)
                     }
@@ -84,14 +84,19 @@ struct SettingsView: View {
     // MARK: Sections
 
     private func preferencePage<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
-        Form(content: content).themedList()
+        // A ScrollView of cards, not a Form: Form/List pages were drawn mirrored while the
+        // right-to-left push animation ran.
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) { content() }
+                .padding(16).frame(maxWidth: 650).frame(maxWidth: .infinity)
+        }
+        .background(Theme.background.ignoresSafeArea())
             .navigationTitle(title).navigationBarTitleDisplayMode(.inline)
             .onAppear(perform: refreshStatus)
     }
 
     private var notificationsSection: some View {
-        Section(header: Text("التنبيهات"),
-                footer: Text("ملخص الصباح يجيك كل يوم فيه شي مستحق أو متأخر.")) {
+        PrefGroup("التنبيهات", footer: "ملخص الصباح يجيك كل يوم فيه شي مستحق أو متأخر.") {
             HStack {
                 Label("حالة التنبيهات", systemImage: "bell.fill")
                 Spacer()
@@ -117,8 +122,7 @@ struct SettingsView: View {
     }
 
     private var iCloudSection: some View {
-        Section(header: Text("الربط مع iCloud"),
-                footer: Text("اعرض مواعيدك ومهامك في تطبيقَي التقويم والتذكيرات من Apple.")) {
+        PrefGroup("الربط مع iCloud", footer: "اعرض مواعيدك ومهامك في تطبيقَي التقويم والتذكيرات من Apple.") {
             Toggle(isOn: Binding(get: { settings.calendarSync }, set: { on in enable(.event, on) })) {
                 Label("تقويم iCloud", systemImage: "calendar")
             }
@@ -129,10 +133,10 @@ struct SettingsView: View {
     }
 
     private var backupSection: some View {
-        Section(header: Text("المزامنة بين الأجهزة (iCloud Drive)"),
-                footer: Text(backup.isOn
-                             ? "التغييرات تتزامن بين الأجهزة المرتبطة بهذا المجلد."
-                             : "اختر نفس مجلد iCloud Drive على كل جهاز تبي تزامنه.")) {
+        PrefGroup("المزامنة بين الأجهزة (iCloud Drive)",
+                  footer: backup.isOn
+                    ? "التغييرات تتزامن بين الأجهزة المرتبطة بهذا المجلد."
+                    : "اختر نفس مجلد iCloud Drive على كل جهاز تبي تزامنه.") {
             if backup.isOn {
                 HStack {
                     Label("المجلد", systemImage: "folder.fill")
@@ -162,24 +166,28 @@ struct SettingsView: View {
     }
 
     private var exportSection: some View {
-        Section(header: Text("نسخة احتياطية يدوية")) {
+        PrefGroup("نسخة احتياطية يدوية") {
             Button { export() } label: { Label("صدّر نسخة لأي مكان…", systemImage: "square.and.arrow.up") }
             Button { pick(.restore) } label: { Label("استرجع من نسخة…", systemImage: "arrow.down.doc.fill") }
         }
     }
 
     private var generalSection: some View {
-        Section(header: Text("عام")) {
-            Picker(selection: $settings.currency) {
-                ForEach(AppSettings.currencies, id: \.self) { Text($0).tag($0) }
-            } label: {
+        PrefGroup("عام") {
+            HStack {
                 Label("العملة", systemImage: "banknote")
+                Spacer()
+                Picker("العملة", selection: $settings.currency) {
+                    ForEach(AppSettings.currencies, id: \.self) { Text($0).tag($0) }
+                }
+                .pickerStyle(.menu)
+                .labelsHidden()
             }
         }
     }
 
     private var privacySection: some View {
-        Section(header: Text("الخصوصية")) {
+        PrefGroup("الخصوصية") {
             Toggle(isOn: $settings.lockEnabled) {
                 Label("قفل التطبيق بـ \(AppLock.biometryName)", systemImage: "lock.fill")
             }
@@ -267,3 +275,30 @@ struct SettingsView: View {
 
 
 
+
+/// A titled card of settings rows, used instead of Form sections.
+struct PrefGroup<Content: View>: View {
+    let title: String
+    var footer: String? = nil
+    let content: Content
+
+    init(_ title: String, footer: String? = nil, @ViewBuilder content: () -> Content) {
+        self.title = title
+        self.footer = footer
+        self.content = content()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title).font(.footnote.bold()).foregroundColor(Theme.muted).padding(.horizontal, 6)
+            VStack(alignment: .leading, spacing: 16) { content }
+                .buttonStyle(.borderless)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .card(padding: 16)
+            if let f = footer, !f.isEmpty {
+                Text(f).font(.caption).foregroundColor(Theme.muted).padding(.horizontal, 6)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+}

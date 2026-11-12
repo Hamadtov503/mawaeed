@@ -169,7 +169,7 @@ struct AssetDetailView: View {
         }
         .sheet(item: $editing) { AssetEditor(asset: $0) }
         .sheet(item: $newItem) { item in
-            NavigationView {
+            AppNavigation {
                 ItemEditor(item: item, isNew: true, isPushed: false) { newItem = nil }
             }.navigationViewStyle(.stack)
         }
@@ -202,7 +202,7 @@ struct AssetEditor: View {
     @State var asset: Asset
 
     var body: some View {
-        NavigationView {
+        AppNavigation {
             Form {
                 Section(header: Text("البيانات الأساسية")) {
                     TextField("الاسم (مثلاً: الكامري أو مكيف الصالة)", text: $asset.name)
