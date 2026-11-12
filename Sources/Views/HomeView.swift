@@ -20,12 +20,13 @@ struct HomeView: View {
                 CalendarCard(selection: $day)
 
                 SectionHeader(title: isToday ? "اليوم" : Fmt.dayTitle(day), detail: Fmt.hijriText(day))
-                    // Report this line's position so the menu tab can sit right beside it.
+                    // Record where this line sits (unscrolled) once; the menu tab stays at that height
+                    // on every page and does not move with scrolling.
                     .background(GeometryReader { g in
                         let y = g.frame(in: .global).midY
                         Color.clear
-                            .onAppear { router.dayLineY = y }
-                            .onChange(of: y) { router.dayLineY = $0 }
+                            .onAppear { if router.dayLineY == 0 && y > 150 { router.dayLineY = y } }
+                            .onChange(of: y) { v in if router.dayLineY == 0 && v > 150 { router.dayLineY = v } }
                     })
 
                 let allTasks = lateTasks + dayTasks + undated

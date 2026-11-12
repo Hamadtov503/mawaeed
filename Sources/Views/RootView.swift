@@ -103,8 +103,8 @@ struct MenuHandle: View {
     var body: some View {
         GeometryReader { g in
             let top = g.frame(in: .global).minY
-            // On the home page: level with the day line. Elsewhere: a little above the middle.
-            let wanted = router.page == .home && router.dayLineY > 0 ? router.dayLineY - top : g.size.height * 0.42
+            // One fixed height on every page: level with the home page's day line.
+            let wanted = router.dayLineY > 0 ? router.dayLineY - top : g.size.height * 0.55
             let y = min(max(wanted, size.height / 2 + 8), g.size.height - size.height / 2 - 8)
             Button(action: onOpen) {
                 ZStack(alignment: .leading) {
@@ -125,7 +125,6 @@ struct MenuHandle: View {
                 if abs(v.translation.width) > 40 { onOpen() }
             })
             .position(x: size.width / 2, y: y)
-            .animation(.easeOut(duration: 0.15), value: y)
         }
         .environment(\.layoutDirection, .leftToRight)   // always on the screen's left edge
     }
