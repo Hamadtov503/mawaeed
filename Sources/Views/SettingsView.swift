@@ -25,36 +25,55 @@ struct SettingsView: View {
         let message: String
     }
 
+    /// Settings sub-pages swap in place with a SwiftUI animation instead of a navigation push:
+    /// the system push animation drew these pages mirrored in right-to-left.
+    enum Page: String, Identifiable {
+        case notifications, sync, privacy, more, account
+        var id: String { rawValue }
+        var title: String {
+            switch self {
+            case .notifications: return "التنبيهات"
+            case .sync: return "المزامنة والنسخ"
+            case .privacy: return "الخصوصية"
+            case .more: return "تفضيلات إضافية"
+            case .account: return "الحساب"
+            }
+        }
+    }
+
+    @State private var page: Page? = nil
+
     var body: some View {
         AppNavigation {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
-                    PageHeader(title: "الإعدادات", subtitle: "خلّ التطبيق يشتغل بالطريقة اللي تناسبك")
-                    NavigationLink(destination: preferencePage("التنبيهات") { notificationsSection }) {
-                        SettingsTile(title: "التنبيهات", subtitle: "الأوقات والملخص اليومي", icon: "bell.fill", tint: .orange)
-                    }.buttonStyle(.plain)
-                    NavigationLink(destination: preferencePage("المزامنة والنسخ") { backupSection; exportSection }) {
-                        SettingsTile(title: "المزامنة والنسخ الاحتياطي", subtitle: backup.isOn ? "مزامنة iCloud Drive مفعّلة" : "اربط أجهزتك أو احفظ نسخة من بياناتك", icon: "icloud.fill", tint: .blue)
-                    }.buttonStyle(.plain)
-                    NavigationLink(destination: preferencePage("الخصوصية") { privacySection }) {
-                        SettingsTile(title: "الخصوصية", subtitle: "قفل التطبيق", icon: "lock.shield.fill", tint: .teal)
-                    }.buttonStyle(.plain)
-                    NavigationLink(destination: preferencePage("تفضيلات إضافية") { generalSection; iCloudSection }) {
-                        SettingsTile(title: "تفضيلات إضافية", subtitle: "العملة والربط مع تطبيقات Apple", icon: "slider.horizontal.3", tint: .indigo)
-                    }.buttonStyle(.plain)
-                    if AuthManager.shared.configured {
-                        NavigationLink(destination: preferencePage("الحساب") { PrefGroup("الحساب") { AccountSettingsView() } }) {
-                            SettingsTile(title: "الحساب", subtitle: "إدارة تسجيل الدخول", icon: "person.crop.circle.fill", tint: .purple)
-                        }.buttonStyle(.plain)
-                    }
-                    Text("مواعيدي · الإصدار \(version)")
-                        .font(.caption).foregroundColor(Theme.muted)
-                        .frame(maxWidth: .infinity).padding(.vertical, 12)
-                }.padding(18).frame(maxWidth: 650).frame(maxWidth: .infinity)
+            ZStack {
+                Theme.background.ignoresSafeArea()
+                if let p = page {
+                    pageContent(p)
+                        .transition(.asymmetric(insertion: .move(edge: .trailing), removal: .move(edge: .trailing)))
+                        .zIndex(1)
+                } else {
+                    rootPage
+                        .transition(.asymmetric(insertion: .move(edge: .leading).combined(with: .opacity),
+                                                removal: .move(edge: .leading).combined(with: .opacity)))
+                }
             }
-            .background(Theme.background.ignoresSafeArea())
+            .navigationTitle(page?.title ?? "")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("إغلاق") { dismiss() } } }
+            .navigationBarBackButtonHidden(true)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    if page != nil {
+                        Button { go(nil) } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "chevron.backward").font(.body.weight(.semibold))
+                                Text("رجوع")
+                            }
+                        }
+                    } else {
+                        Button("إغلاق") { dismiss() }
+                    }
+                }
+            }
             .onAppear(perform: refreshStatus)
             .fileImporter(isPresented: $showImporter,
                           allowedContentTypes: importMode == .folder ? [.folder] : [.json],
@@ -81,15 +100,57 @@ struct SettingsView: View {
         .navigationViewStyle(.stack)
     }
 
+    private func go(_ p: Page?) {
+        withAnimation(.easeInOut(duration: 0.28)) { page = p }
+        if p != nil { refreshStatus() }
+    }
+
+    private var rootPage: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                PageHeader(title: "الإعدادات", subtitle: "خلّ التطبيق يشتغل بالطريقة اللي تناسبك")
+                tile(.notifications, "التنبيهات", "الأوقات والملخص اليومي", "bell.fill", .orange)
+                tile(.sync, "المزامنة والنسخ الاحتياطي",
+                     backup.isOn ? "مزامنة iCloud Drive مفعّلة" : "اربط أجهزتك أو احفظ نسخة من بياناتك", "icloud.fill", .blue)
+                tile(.privacy, "الخصوصية", "قفل التطبيق", "lock.shield.fill", .teal)
+                tile(.more, "تفضيلات إضافية", "العملة والربط مع تطبيقات Apple", "slider.horizontal.3", .indigo)
+                if AuthManager.shared.configured {
+                    tile(.account, "الحساب", "إدارة تسجيل الدخول", "person.crop.circle.fill", .purple)
+                }
+                Text("مواعيدي · الإصدار \(version)")
+                    .font(.caption).foregroundColor(Theme.muted)
+                    .frame(maxWidth: .infinity).padding(.vertical, 12)
+            }.padding(18).frame(maxWidth: 650).frame(maxWidth: .infinity)
+        }
+    }
+
+    private func tile(_ p: Page, _ title: String, _ subtitle: String, _ icon: String, _ tint: Color) -> some View {
+        Button { go(p) } label: {
+            SettingsTile(title: title, subtitle: subtitle, icon: icon, tint: tint)
+        }
+        .buttonStyle(.plain)
+    }
+
+    @ViewBuilder
+    private func pageContent(_ p: Page) -> some View {
+        switch p {
+        case .notifications: preferencePage { notificationsSection }
+        case .sync: preferencePage { backupSection; exportSection }
+        case .privacy: preferencePage { privacySection }
+        case .more: preferencePage { generalSection; iCloudSection }
+        case .account: preferencePage { PrefGroup("الحساب") { AccountSettingsView() } }
+        }
+    }
+
     // MARK: Sections
 
-    private func preferencePage<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
-        // A ScrollView of cards, not a Form: Form/List pages were drawn mirrored while the
-        // right-to-left push animation ran.
+    private func preferencePage<Content: View>(@ViewBuilder content: () -> Content) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) { content() }
                 .padding(16).frame(maxWidth: 650).frame(maxWidth: .infinity)
         }
+        .background(Theme.background.ignoresSafeArea())
+    }
         .background(Theme.background.ignoresSafeArea())
             .navigationTitle(title).navigationBarTitleDisplayMode(.inline)
             .onAppear(perform: refreshStatus)
