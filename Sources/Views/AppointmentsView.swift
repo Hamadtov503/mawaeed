@@ -19,7 +19,7 @@ struct AppointmentsView: View {
             VStack(alignment: .leading, spacing: 14) {
                 Text("مواعيدي").font(.app(size: 26, .bold)).foregroundColor(Theme.ink).padding(.top, 2)
                 SearchField(prompt: "ابحث بالعنوان أو المكان", text: $query)
-                AddButton(label: "موعد جديد") { router.addingAppointment = true }
+                AddButton(label: "موعد جديد", hint: "اضغط على علامة + لإضافة مواعيدك") { router.addingAppointment = true }
 
                 if !upcoming.isEmpty {
                     BandHeader(title: "مواعيدك القادمة", count: upcoming.count, color: Theme.navy)
@@ -66,30 +66,39 @@ struct SearchField: View {
     }
 }
 
-/// The centred plus under the search bar.
+/// A box under the search bar: a green plus with a short hint beneath it. The whole box is tappable.
 struct AddButton: View {
     let label: String
+    let hint: String
     let action: () -> Void
 
     var body: some View {
-        HStack {
-            Spacer()
-            Button(action: {
-                UIImpactFeedbackGenerator(style: .soft).impactOccurred()
-                action()
-            }) {
+        Button(action: {
+            UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+            action()
+        }) {
+            VStack(spacing: 10) {
                 Image(systemName: "plus")
                     .font(.system(size: 22, weight: .bold))
                     .foregroundColor(.white)
-                    .frame(width: 56, height: 56)
-                    .background(Circle().fill(Theme.burgundy))
-                    .shadow(color: Theme.burgundy.opacity(0.3), radius: 8, y: 4)
+                    .frame(width: 54, height: 54)
+                    .background(Circle().fill(Theme.forest))
+                    .shadow(color: Theme.forest.opacity(0.3), radius: 8, y: 4)
+                Text(hint)
+                    .font(.app(.subheadline, .medium))
+                    .foregroundColor(Theme.muted)
+                    .multilineTextAlignment(.center)
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel(label)
-            Spacer()
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 18)
+            .padding(.horizontal, 12)
+            .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(Theme.card))
+            .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .stroke(Theme.forest.opacity(0.35), style: StrokeStyle(lineWidth: 1.2, dash: [6, 5])))
+            .contentShape(Rectangle())
         }
-        .padding(.vertical, 4)
+        .buttonStyle(.plain)
+        .accessibilityLabel(label)
     }
 }
 

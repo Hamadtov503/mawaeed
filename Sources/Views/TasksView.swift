@@ -18,7 +18,7 @@ struct TasksView: View {
             VStack(alignment: .leading, spacing: 14) {
                 Text("مهامي").font(.app(size: 26, .bold)).foregroundColor(Theme.ink).padding(.top, 2)
                 SearchField(prompt: "ابحث في مهامك", text: $query)
-                AddButton(label: "مهمة جديدة") { router.newTask() }
+                AddButton(label: "مهمة جديدة", hint: "اضغط على علامة + لإضافة مهمة لإنجازها") { router.newTask() }
 
                 if !open.isEmpty {
                     BandHeader(title: "مهامك الحالية", count: open.count, color: Theme.forest)
