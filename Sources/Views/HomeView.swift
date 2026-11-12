@@ -21,28 +21,20 @@ struct HomeView: View {
 
                 SectionHeader(title: isToday ? "اليوم" : Fmt.dayTitle(day), detail: Fmt.hijriText(day))
 
-                if appointments.isEmpty && dayTasks.isEmpty && lateTasks.isEmpty && undated.isEmpty {
-                    Text(isToday ? "ما عندك شي اليوم 🌿" : "ما فيه مواعيد أو مهام بهاليوم")
-                        .font(.app(.subheadline)).foregroundColor(Theme.muted)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 22)
-                        .card()
-                }
-                if !appointments.isEmpty {
-                    label("المواعيد", "calendar", appointments.count)
+                let allTasks = lateTasks + dayTasks + undated
+
+                label("مواعيدي", "calendar", appointments.count)
+                if appointments.isEmpty {
+                    emptyRow("ليس لديك مواعيد")
+                } else {
                     ForEach(appointments) { AppointmentCard(item: $0) }
                 }
-                if !lateTasks.isEmpty {
-                    label("مهام متأخرة", "exclamationmark.circle", lateTasks.count, color: Theme.burgundy)
-                    TaskList(tasks: lateTasks)
-                }
-                if !dayTasks.isEmpty {
-                    label("المهام", "checklist", dayTasks.filter { !$0.isDone }.count)
-                    TaskList(tasks: dayTasks)
-                }
-                if !undated.isEmpty {
-                    label("مهام بدون تاريخ", "tray", undated.count)
-                    TaskList(tasks: undated)
+
+                label("مهامي", "checklist", allTasks.filter { !$0.isDone }.count)
+                if allTasks.isEmpty {
+                    emptyRow("ليس لديك مهام")
+                } else {
+                    TaskList(tasks: allTasks)
                 }
             }
             .padding(.horizontal, 18)
@@ -57,9 +49,10 @@ struct HomeView: View {
 
     private var header: some View {
         HStack(spacing: 10) {
-            Text(greetingLine)
-                .font(.app(size: 21, .bold)).foregroundColor(Theme.ink)
-                .lineLimit(1).minimumScaleFactor(0.7)
+            // Re-evaluated every minute, so the greeting follows the time of day.
+            TimelineView(.periodic(from: Date(), by: 60)) { ctx in
+                greetingView(now: ctx.date)
+            }
             Spacer(minLength: 8)
             Button { router.present(notifications: true) } label: {
                 Image(systemName: router.deliveredCount > 0 ? "bell.badge" : "bell")
@@ -92,15 +85,33 @@ struct HomeView: View {
         }
     }
 
-    /// "مساء الخير 🌷 حمد" — the flower sits between the greeting and the name.
-    private var greetingLine: String {
+    /// "صباح الخير 🌹 حمد" — a rose lying on its side between the greeting and the name.
+    private func greetingView(now: Date) -> some View {
+        let h = Fmt.greg.component(.hour, from: now)
+        let greeting = h < 12 ? "صباح الخير" : "مساء الخير"
         let name = settings.userName.trimmingCharacters(in: .whitespaces)
-        return name.isEmpty ? "\(greeting) 🌷" : "\(greeting) 🌷 \(name)"
+        return HStack(spacing: 6) {
+            Text(greeting)
+            Text("🌹")
+                .font(.system(size: 17))
+                .rotationEffect(.degrees(-70))
+                .padding(.horizontal, 2)
+                .accessibilityHidden(true)
+            if !name.isEmpty { Text(name).lineLimit(1) }
+        }
+        .font(.app(size: 21, .bold))
+        .foregroundColor(Theme.ink)
+        .lineLimit(1)
+        .minimumScaleFactor(0.7)
     }
 
-    private var greeting: String {
-        let h = Fmt.greg.component(.hour, from: Date())
-        return (4..<12).contains(h) ? "صباح الخير" : "مساء الخير"
+    private func emptyRow(_ text: String) -> some View {
+        Text(text)
+            .font(.app(.subheadline)).foregroundColor(Theme.muted)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .card(padding: 0, radius: 18)
     }
 
     private func label(_ title: String, _ icon: String, _ count: Int, color: Color = Theme.navy) -> some View {

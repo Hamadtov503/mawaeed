@@ -155,14 +155,14 @@ struct CalendarCard: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, 3)
             .background(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                Circle()
                     .fill(isSelected ? Theme.sand : Color.clear)
-                    .padding(.horizontal, 4)
+                    .frame(width: 40, height: 40)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                Circle()
                     .stroke(isToday ? Theme.burgundy : (isSelected ? Theme.border : Color.clear), lineWidth: isToday ? 1.5 : 1)
-                    .padding(.horizontal, 4)
+                    .frame(width: 40, height: 40)
             )
             .contentShape(Rectangle())
         }

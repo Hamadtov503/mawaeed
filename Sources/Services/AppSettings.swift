@@ -80,7 +80,7 @@ final class Router: ObservableObject {
     static let soft = Animation.spring(response: 0.42, dampingFraction: 0.9)
 
     func go(_ p: Page) {
-        withAnimation(Self.soft) {
+        withAnimation(Self.glide) {
             page = p
             menuOpen = false
             showSettings = false
@@ -88,8 +88,11 @@ final class Router: ObservableObject {
         }
     }
 
+    /// A slower, fully damped spring so the menu glides in and out without a bounce.
+    static let glide = Animation.spring(response: 0.55, dampingFraction: 1.0)
+
     func toggleMenu(_ open: Bool? = nil) {
-        withAnimation(Self.soft) { menuOpen = open ?? !menuOpen }
+        withAnimation(Self.glide) { menuOpen = open ?? !menuOpen }
     }
 
     /// Slides the notifications or settings page in over the current page.

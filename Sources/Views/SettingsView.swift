@@ -30,7 +30,6 @@ struct SettingsView: View {
                 SettingsGroup(title: "اسمك", footer: "يطلع في الترحيب بالرئيسية بعد «صباح الخير / مساء الخير».") {
                     TextField("اكتب اسمك", text: $settings.userName).font(.app(.body))
                 }
-                notifications
                 syncGroup
                 calendarGroup
                 backupGroup
@@ -66,19 +65,6 @@ struct SettingsView: View {
     }
 
     // MARK: Groups
-
-    private var notifications: some View {
-        SettingsGroup(title: "التنبيهات", footer: "ملخص الصباح يجيك الأيام اللي فيها مواعيد.") {
-            Toggle(isOn: $settings.digestEnabled) { Label("ملخص الصباح", systemImage: "sun.max.fill") }
-            if settings.digestEnabled {
-                DatePicker("وقت الملخص", selection: minutes(\.digestMinutes), displayedComponents: .hourAndMinute)
-            }
-            DatePicker("تنبيه المواعيد اللي بدون وقت", selection: minutes(\.reminderMinutes), displayedComponents: .hourAndMinute)
-            Button { NotificationManager.shared.sendTest() } label: {
-                Label("جرّب تنبيه (بعد 5 ثواني)", systemImage: "paperplane.fill")
-            }
-        }
-    }
 
     private var syncGroup: some View {
         SettingsGroup(title: "المزامنة بين الأجهزة",

@@ -18,17 +18,17 @@ struct RootView: View {
                 page(.appointments) { AppointmentsView() }
                 page(.tasks) { TasksView() }
             }
-            .scaleEffect(pageOpen || router.menuOpen ? 0.95 : 1)
+            .scaleEffect(pageOpen ? 0.95 : (router.menuOpen ? 0.985 : 1))
             .opacity(pageOpen ? 0.6 : 1)
 
             if !router.menuOpen && !pageOpen {
                 MenuHandle { router.toggleMenu(true) }
-                    .transition(.opacity)
+                    .transition(.move(edge: .trailing).combined(with: .opacity))
                     .zIndex(1)
             }
 
             if pageOpen || router.menuOpen {
-                Color.black.opacity(router.menuOpen ? 0.25 : 0.18).ignoresSafeArea()
+                Color.black.opacity(router.menuOpen ? 0.12 : 0.18).ignoresSafeArea()
                     .onTapGesture {
                         if router.menuOpen { router.toggleMenu(false) } else { router.closePages() }
                     }
@@ -37,7 +37,7 @@ struct RootView: View {
             }
             if router.menuOpen {
                 SideMenu()
-                    .transition(.move(edge: .trailing))
+                    .transition(.move(edge: .trailing).combined(with: .opacity))
                     .zIndex(3)
             }
             if router.showNotifications {
@@ -118,7 +118,7 @@ struct MenuHandle: View {
         }
         .environment(\.layoutDirection, .leftToRight)   // always on the screen's left edge
         .frame(maxHeight: .infinity)
-        .offset(y: -40)
+        .offset(y: 70)   // beside the day's list, below the calendar
         .gesture(DragGesture(minimumDistance: 15).onEnded { v in
             if abs(v.translation.width) > 40 { onOpen() }
         })
@@ -162,45 +162,29 @@ struct UnevenCapsule: Shape {
     }
 }
 
-/// The side menu: a warm panel on the left edge with the three pages as light tiles.
+/// A slim side menu on the left edge: the three pages as icons with a small label.
 struct SideMenu: View {
     @EnvironmentObject var router: Router
     @EnvironmentObject var store: Store
 
     var body: some View {
         HStack(spacing: 0) {
-            VStack(spacing: 16) {
-                HStack {
-                    Spacer()
-                    Button { router.toggleMenu(false) } label: {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundColor(.white)
-                            .frame(width: 30, height: 30)
-                            .background(Circle().fill(Color.white.opacity(0.18)))
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("إغلاق")
-                }
+            VStack(spacing: 18) {
                 ForEach(Page.allCases) { p in item(p) }
-                Spacer(minLength: 0)
             }
             .environment(\.layoutDirection, .rightToLeft)
-            .padding(.top, 18)
-            .padding(.bottom, 22)
-            .padding(.horizontal, 14)
-            .frame(width: 118)
-            .frame(maxHeight: .infinity)
+            .padding(.vertical, 22)
+            .padding(.horizontal, 12)
             .background(
-                UnevenCapsule(radius: 30)
-                    .fill(LinearGradient(colors: [Theme.menuTop, Theme.menuBottom], startPoint: .top, endPoint: .bottom))
-                    .shadow(color: .black.opacity(0.2), radius: 18, x: 4)
+                UnevenCapsule(radius: 28)
+                    .fill(Theme.background)
+                    .shadow(color: .black.opacity(0.16), radius: 18, x: 4)
             )
-            .padding(.top, 12)
-            .padding(.bottom, 90)
+            .overlay(UnevenCapsule(radius: 28).stroke(Theme.border, lineWidth: 1))
             Spacer(minLength: 0)
         }
         .environment(\.layoutDirection, .leftToRight)   // pin the panel to the screen's left edge
+        .frame(maxHeight: .infinity)
         .gesture(DragGesture(minimumDistance: 20).onEnded { v in
             if abs(v.translation.width) > 50 { router.toggleMenu(false) }
         })
@@ -218,26 +202,24 @@ struct SideMenu: View {
         let selected = router.page == p
         let count = badge(for: p)
         return Button { router.go(p) } label: {
-            VStack(spacing: 6) {
+            VStack(spacing: 5) {
                 Image(systemName: p.icon)
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundColor(selected ? Theme.burgundy : .white)
-                    .frame(width: 56, height: 56)
-                    .background(RoundedRectangle(cornerRadius: 17, style: .continuous)
-                        .fill(selected ? Color.white : Color.white.opacity(0.16)))
-                    .overlay(RoundedRectangle(cornerRadius: 17, style: .continuous)
-                        .stroke(Color.white.opacity(selected ? 0 : 0.35), lineWidth: 1))
+                    .font(.system(size: 19, weight: .semibold))
+                    .foregroundColor(selected ? .white : Theme.burgundy)
+                    .frame(width: 50, height: 50)
+                    .background(RoundedRectangle(cornerRadius: 15, style: .continuous)
+                        .fill(selected ? Theme.burgundy : Theme.burgundy.opacity(0.1)))
                     .overlay(alignment: .topTrailing) {
                         if count > 0 {
-                            Text("\(count)").font(.app(size: 10, .bold)).foregroundColor(Theme.burgundy)
-                                .frame(minWidth: 18, minHeight: 18)
-                                .background(Circle().fill(Color.white))
-                                .offset(x: 6, y: -6)
+                            Text("\(count)").font(.app(size: 10, .bold)).foregroundColor(.white)
+                                .frame(minWidth: 17, minHeight: 17)
+                                .background(Circle().fill(Theme.navy))
+                                .offset(x: 5, y: -5)
                         }
                     }
-                Text(p.title).font(.app(.caption, selected ? .bold : .medium)).foregroundColor(.white)
+                Text(p.title).font(.app(.caption2, selected ? .bold : .medium)).foregroundColor(Theme.ink)
             }
-            .frame(maxWidth: .infinity)
+            .frame(width: 66)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
