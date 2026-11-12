@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import SwiftUI
 
 final class AppSettings: ObservableObject {
     static let shared = AppSettings()
@@ -10,6 +11,10 @@ final class AppSettings: ObservableObject {
     @Published var digestEnabled: Bool { didSet { d.set(digestEnabled, forKey: "digestEnabled"); changed() } }
     @Published var digestMinutes: Int { didSet { d.set(digestMinutes, forKey: "digestMinutes"); changed() } }
     @Published var calendarSync: Bool { didSet { d.set(calendarSync, forKey: "calendarSync"); changed() } }
+    /// The name the greeting uses ("صباح الخير يا …").
+    @Published var userName: String { didSet { d.set(userName, forKey: "userName") } }
+    /// Set once the intro has been completed.
+    @Published var onboarded: Bool { didSet { d.set(onboarded, forKey: "onboarded") } }
 
     private init() {
         d.register(defaults: [
@@ -22,6 +27,8 @@ final class AppSettings: ObservableObject {
         digestEnabled = d.bool(forKey: "digestEnabled")
         digestMinutes = d.integer(forKey: "digestMinutes")
         calendarSync = d.bool(forKey: "calendarSync")
+        userName = d.string(forKey: "userName") ?? ""
+        onboarded = d.bool(forKey: "onboarded")
     }
 
     private func changed() {
@@ -48,11 +55,23 @@ final class Router: ObservableObject {
     /// Notifications sitting in Notification Center, shown as the bell's badge.
     @Published var deliveredCount = 0
 
-    /// Opens an appointment from inside another sheet: close that sheet first, then open.
+    /// Slides the notifications or settings page in over the home screen.
+    func present(notifications: Bool) {
+        withAnimation(.spring(response: 0.38, dampingFraction: 0.9)) {
+            if notifications { showNotifications = true } else { showSettings = true }
+        }
+    }
+
+    func closePages() {
+        withAnimation(.spring(response: 0.34, dampingFraction: 0.95)) {
+            showNotifications = false
+            showSettings = false
+        }
+    }
+
+    /// Opens an appointment's sheet; a page that is slid in stays underneath.
     func open(_ id: UUID) {
-        showNotifications = false
-        showSettings = false
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) { self.openID = AppointmentRef(id: id) }
+        openID = AppointmentRef(id: id)
     }
 }
 

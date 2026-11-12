@@ -14,11 +14,11 @@ struct AppointmentCard: View {
                 Tile(icon: item.displayIcon, color: status == .past ? Theme.muted : .brand)
                 VStack(alignment: .leading, spacing: 6) {
                     Text(item.title.isEmpty ? "بدون عنوان" : item.title)
-                        .font(.headline)
+                        .font(.app(.headline))
                         .foregroundColor(status == .past ? Theme.muted : Theme.ink)
                         .lineLimit(1)
                     Text(showDate ? "\(Fmt.dateText(item.date, hasTime: false)) · \(item.subtitle)" : item.subtitle)
-                        .font(.subheadline).foregroundColor(Theme.muted).lineLimit(1)
+                        .font(.app(.subheadline)).foregroundColor(Theme.muted).lineLimit(1)
                     StatusPill(text: Fmt.countdown(to: item.date, hasTime: item.hasTime), status: status)
                 }
                 Spacer(minLength: 0)

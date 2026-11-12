@@ -1,30 +1,86 @@
 import SwiftUI
 import UIKit
 
-/// Warm, calm look: off-white background, white cards with a hairline border, gold accents.
+/// Beige base with four deep accents: burgundy, navy, forest green and slate.
 enum Theme {
     static func dyn(_ light: UInt32, _ dark: UInt32) -> Color {
         Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: dark) : UIColor(hex: light) })
     }
 
-    static let background = dyn(0xF6F3EC, 0x111312)
-    static let card = dyn(0xFFFFFF, 0x1C1F1E)
-    static let border = dyn(0xE6E0D2, 0x2C302E)
-    static let ink = dyn(0x1C2321, 0xF1F3F2)
-    static let muted = dyn(0x6F7673, 0x9AA29F)
-    static let gold = dyn(0xA8782E, 0xE2B66A)
-    static let goldSoft = dyn(0xF6EEDD, 0x2E2719)
-    static let barSelected = dyn(0xEFE6D2, 0x2E2A22)
+    // Base
+    static let background = dyn(0xF4EDE1, 0x15130F)
+    static let card = dyn(0xFBF7EF, 0x201D18)
+    static let sand = dyn(0xEDE2CF, 0x2A251E)
+    static let border = dyn(0xE2D5BF, 0x342E26)
+    static let ink = dyn(0x2B2522, 0xF2ECE3)
+    static let muted = dyn(0x7D7369, 0xA69D90)
 
-    static let uiBackground = UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: 0x111312) : UIColor(hex: 0xF6F3EC) }
+    // Accents
+    static let burgundy = dyn(0x7B1E2E, 0xC9576A)
+    static let navy = dyn(0x1E2C47, 0x8EA6D6)
+    static let forest = dyn(0x1F4D3A, 0x7CC4A2)
+    static let slate = dyn(0x3B3F45, 0xB5BAC2)
+
+    static let barSelected = dyn(0xEADCC6, 0x352D24)
+
+    static let uiBackground = UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: 0x15130F) : UIColor(hex: 0xF4EDE1) }
+    static let uiInk = UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: 0xF2ECE3) : UIColor(hex: 0x2B2522) }
 
     static func pill(_ s: Appointment.Status) -> (fg: Color, bg: Color) {
         switch s {
-        case .today: return (dyn(0x8A6514, 0xF2C766), dyn(0xF5EBD3, 0x3A3120))
-        case .tomorrow, .week: return (dyn(0x14627A, 0x80D3ED), dyn(0xE3F2F7, 0x14323C))
-        case .later: return (dyn(0x2E6B4C, 0x8FD3AE), dyn(0xE4F0E8, 0x1F3329))
-        case .past: return (dyn(0x5D6662, 0xA9B1AD), dyn(0xEDEFEE, 0x272B29))
+        case .today: return (burgundy, dyn(0xF3E1DF, 0x3A2024))
+        case .tomorrow, .week: return (navy, dyn(0xE2E7F0, 0x1D2536))
+        case .later: return (forest, dyn(0xE0EBE3, 0x1B2E25))
+        case .past: return (slate, dyn(0xE7E4DE, 0x2A2A2A))
         }
+    }
+}
+
+/// IBM Plex Sans Arabic for all text, Aref Ruqaa for the calligraphic weekday.
+enum AppFont {
+    static func name(_ w: Font.Weight) -> String {
+        switch w {
+        case .bold, .heavy, .black: return "IBMPlexSansArabic-Bold"
+        case .semibold: return "IBMPlexSansArabic-SemiBold"
+        case .medium: return "IBMPlexSansArabic-Medium"
+        default: return "IBMPlexSansArabic-Regular"
+        }
+    }
+
+    static func size(_ style: Font.TextStyle) -> CGFloat {
+        switch style {
+        case .largeTitle: return 34
+        case .title: return 28
+        case .title2: return 22
+        case .title3: return 20
+        case .headline, .body: return 17
+        case .callout: return 16
+        case .subheadline: return 15
+        case .footnote: return 13
+        case .caption: return 12
+        case .caption2: return 11
+        @unknown default: return 17
+        }
+    }
+
+    static func ui(_ size: CGFloat, _ w: Font.Weight = .regular) -> UIFont {
+        UIFont(name: name(w), size: size) ?? .systemFont(ofSize: size)
+    }
+}
+
+extension Font {
+    /// The app font for a text style (scales with Dynamic Type). Headlines default to semibold.
+    static func app(_ style: Font.TextStyle, _ weight: Font.Weight? = nil) -> Font {
+        let w = weight ?? (style == .headline ? .semibold : .regular)
+        return .custom(AppFont.name(w), size: AppFont.size(style), relativeTo: style)
+    }
+
+    static func app(size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
+        .custom(AppFont.name(weight), size: size)
+    }
+
+    static func ruqaa(size: CGFloat) -> Font {
+        .custom("ArefRuqaa-Bold", size: size)
     }
 }
 
@@ -49,6 +105,7 @@ extension View {
         self.environment(\.layoutDirection, .rightToLeft)
             .environment(\.locale, Fmt.locale)
             .environment(\.calendar, Fmt.greg)
+            .font(.app(.body))
     }
 }
 
@@ -72,7 +129,7 @@ struct StatusPill: View {
     var body: some View {
         let c = Theme.pill(status)
         Text(text)
-            .font(.footnote.weight(.semibold))
+            .font(.app(.footnote, .semibold))
             .foregroundColor(c.fg)
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
@@ -90,8 +147,8 @@ struct Chip: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 6) {
-                if let icon = icon { Image(systemName: icon).font(.caption) }
-                Text(title).font(.subheadline.weight(.semibold))
+                if let icon = icon { Image(systemName: icon).font(.app(.caption)) }
+                Text(title).font(.app(.subheadline, .semibold))
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
@@ -103,7 +160,7 @@ struct Chip: View {
     }
 }
 
-/// Section title with a gold side bar, like "موعدك الجاي".
+/// Section title with a burgundy side bar, like "موعدك الجاي".
 struct SectionHeader: View {
     let title: String
     var detail: String? = nil
@@ -112,12 +169,12 @@ struct SectionHeader: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            Capsule().fill(Theme.gold).frame(width: 5, height: 24)
-            Text(title).font(.title3.bold()).foregroundColor(Theme.ink)
-            if let d = detail { Text(d).font(.subheadline).foregroundColor(Theme.muted).lineLimit(1) }
+            Capsule().fill(Theme.burgundy).frame(width: 5, height: 24)
+            Text(title).font(.app(.title3, .bold)).foregroundColor(Theme.ink)
+            if let d = detail { Text(d).font(.app(.subheadline)).foregroundColor(Theme.muted).lineLimit(1) }
             Spacer()
             if let icon = actionIcon, let run = onAction {
-                Button(action: run) { Image(systemName: icon).font(.body).foregroundColor(Theme.muted) }
+                Button(action: run) { Image(systemName: icon).font(.app(.body)).foregroundColor(Theme.muted) }
                     .buttonStyle(.plain)
             }
         }
@@ -132,10 +189,10 @@ struct EmptyState: View {
 
     var body: some View {
         VStack(spacing: 10) {
-            Image(systemName: icon).font(.system(size: 40)).foregroundColor(Theme.gold)
-            Text(title).font(.headline).foregroundColor(Theme.ink)
+            Image(systemName: icon).font(.system(size: 40)).foregroundColor(Theme.burgundy)
+            Text(title).font(.app(.headline)).foregroundColor(Theme.ink)
             if !message.isEmpty {
-                Text(message).font(.subheadline).foregroundColor(Theme.muted).multilineTextAlignment(.center)
+                Text(message).font(.app(.subheadline)).foregroundColor(Theme.muted).multilineTextAlignment(.center)
             }
         }
         .frame(maxWidth: .infinity)

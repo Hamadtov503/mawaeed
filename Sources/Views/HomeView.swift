@@ -3,6 +3,7 @@ import SwiftUI
 struct HomeView: View {
     @EnvironmentObject var store: Store
     @EnvironmentObject var router: Router
+    @EnvironmentObject var settings: AppSettings
     let onAdd: () -> Void
     @State private var alertDismissed: UUID? = nil
     @State private var shareText: String? = nil
@@ -44,7 +45,7 @@ struct HomeView: View {
                     if soon.count > 5 {
                         Button { router.tab = 1 } label: {
                             Text("عرض كل المواعيد (\(upcoming.count))")
-                                .font(.subheadline.weight(.semibold)).foregroundColor(.brand)
+                                .font(.app(.subheadline, .semibold)).foregroundColor(.brand)
                                 .frame(maxWidth: .infinity).padding(.vertical, 12)
                         }
                         .buttonStyle(.plain)
@@ -67,11 +68,11 @@ struct HomeView: View {
     private func header(todayCount: Int) -> some View {
         HStack(spacing: 10) {
             HStack(spacing: 6) {
-                Text(greeting).font(.title2.bold()).foregroundColor(Theme.ink).lineLimit(1).minimumScaleFactor(0.8)
-                Image(systemName: "sparkles").foregroundColor(Theme.gold)
+                Text(greeting).font(.app(.title2, .bold)).foregroundColor(Theme.ink).lineLimit(1).minimumScaleFactor(0.7)
+                Image(systemName: "sparkles").foregroundColor(Theme.burgundy)
             }
             Spacer(minLength: 8)
-            Button { router.showNotifications = true } label: {
+            Button { router.present(notifications: true) } label: {
                 Image(systemName: router.deliveredCount > 0 ? "bell.badge" : "bell")
                     .font(.system(size: 20, weight: .medium))
                     .foregroundColor(Theme.ink)
@@ -81,7 +82,7 @@ struct HomeView: View {
                     .overlay(alignment: .topTrailing) {
                         if router.deliveredCount > 0 {
                             Text("\(router.deliveredCount)")
-                                .font(.caption2.bold()).foregroundColor(.white)
+                                .font(.app(.caption2, .bold)).foregroundColor(.white)
                                 .padding(.horizontal, 5).frame(minWidth: 18, minHeight: 18)
                                 .background(Capsule().fill(Color.red))
                         }
@@ -89,13 +90,13 @@ struct HomeView: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel("التنبيهات")
-            Button { router.showSettings = true } label: {
+            Button { router.present(notifications: false) } label: {
                 Image(systemName: "gearshape.fill")
                     .font(.system(size: 22))
                     .foregroundColor(.white)
                     .frame(width: 50, height: 50)
-                    .background(Circle().fill(Theme.gold))
-                    .shadow(color: Theme.gold.opacity(0.3), radius: 6, y: 3)
+                    .background(Circle().fill(Theme.burgundy))
+                    .shadow(color: Theme.burgundy.opacity(0.3), radius: 6, y: 3)
             }
             .buttonStyle(.plain)
             .accessibilityLabel("الإعدادات")
@@ -104,10 +105,9 @@ struct HomeView: View {
 
     private var greeting: String {
         let h = Fmt.greg.component(.hour, from: Date())
-        if h < 5 { return "تصبح على خير" }
-        if h < 12 { return "صباح الخير" }
-        if h < 18 { return "يومك سعيد" }
-        return "مساء الخير"
+        let g = (4..<12).contains(h) ? "صباح الخير" : "مساء الخير"
+        let name = settings.userName.trimmingCharacters(in: .whitespaces)
+        return name.isEmpty ? g : "\(g) يا \(name)"
     }
 
     private func summary(_ list: [Appointment]) -> String {
@@ -157,28 +157,28 @@ struct DateCard: View {
                 Button {
                     onShare("اليوم \(Fmt.weekday.string(from: now)) \(Fmt.hijriText(now)) — \(Fmt.dateText(now, hasTime: false, long: true))")
                 } label: {
-                    Image(systemName: "square.and.arrow.up").font(.subheadline).foregroundColor(Theme.muted)
+                    Image(systemName: "square.and.arrow.up").font(.app(.subheadline)).foregroundColor(Theme.muted)
                 }
                 .buttonStyle(.plain)
             }
             Text(Fmt.weekday.string(from: now))
-                .font(.system(size: 30, weight: .bold, design: .serif))
-                .foregroundColor(Theme.gold)
+                .font(.ruqaa(size: 38))
+                .foregroundColor(Theme.burgundy)
                 .lineLimit(1).minimumScaleFactor(0.7)
             Text("\(hc.component(.day, from: now))")
-                .font(.system(size: 46, weight: .bold, design: .rounded))
-                .foregroundColor(Theme.ink)
+                .font(.app(size: 44, .bold))
+                .foregroundColor(Theme.navy)
             Text("\(Fmt.hijriMonth.string(from: now)) (\(hc.component(.month, from: now)))")
-                .font(.headline).foregroundColor(Theme.ink).lineLimit(1).minimumScaleFactor(0.7)
-            Text("\(hc.component(.year, from: now)) هـ").font(.subheadline.bold()).foregroundColor(Theme.ink)
+                .font(.app(.headline)).foregroundColor(Theme.ink).lineLimit(1).minimumScaleFactor(0.7)
+            Text("\(hc.component(.year, from: now)) هـ").font(.app(.subheadline, .bold)).foregroundColor(Theme.ink)
             Text(Fmt.dateText(now, hasTime: false))
-                .font(.caption).foregroundColor(Theme.gold).padding(.top, 4)
-            Text("تقويم أم القرى").font(.caption2).foregroundColor(Theme.gold.opacity(0.8))
+                .font(.app(.caption)).foregroundColor(Theme.forest).padding(.top, 4)
+            Text("تقويم أم القرى").font(.app(.caption2)).foregroundColor(Theme.muted)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(14)
-        .background(RoundedRectangle(cornerRadius: 26, style: .continuous).fill(Theme.goldSoft))
-        .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous).stroke(Theme.gold.opacity(0.25), lineWidth: 1))
+        .background(RoundedRectangle(cornerRadius: 26, style: .continuous).fill(Theme.card))
+        .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous).stroke(Theme.border, lineWidth: 1))
     }
 }
 
@@ -192,31 +192,31 @@ struct StatsCard: View {
         VStack(spacing: 0) {
             Button(action: onToday) {
                 row(caption: "مواعيد اليوم", title: today == 0 ? "يومك فاضي" : Fmt.count(today, one: "موعد واحد", two: "موعدين", few: "مواعيد", many: "موعد"),
-                    icon: "sun.max.fill")
+                    icon: "sun.max.fill", color: Theme.burgundy)
             }
             .buttonStyle(.plain)
             Divider().padding(.vertical, 14)
             Button(action: onToday) {
                 row(caption: "خلال أسبوع", title: week == 0 ? "ما فيه شي" : Fmt.count(week, one: "موعد واحد", two: "موعدين", few: "مواعيد", many: "موعد"),
-                    icon: "calendar")
+                    icon: "calendar", color: Theme.forest)
             }
             .buttonStyle(.plain)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(16)
-        .background(RoundedRectangle(cornerRadius: 26, style: .continuous).fill(Theme.goldSoft))
-        .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous).stroke(Theme.gold.opacity(0.25), lineWidth: 1))
+        .background(RoundedRectangle(cornerRadius: 26, style: .continuous).fill(Theme.card))
+        .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous).stroke(Theme.border, lineWidth: 1))
     }
 
-    private func row(caption: String, title: String, icon: String) -> some View {
+    private func row(caption: String, title: String, icon: String, color: Color) -> some View {
         HStack(spacing: 10) {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(LinearGradient(colors: [Theme.gold, Theme.gold.opacity(0.75)], startPoint: .top, endPoint: .bottom))
+                .fill(LinearGradient(colors: [color, color.opacity(0.8)], startPoint: .top, endPoint: .bottom))
                 .frame(width: 50, height: 50)
                 .overlay(Image(systemName: icon).font(.system(size: 22, weight: .semibold)).foregroundColor(.white))
             VStack(alignment: .leading, spacing: 3) {
-                Text(caption).font(.caption).foregroundColor(Theme.gold)
-                Text(title).font(.subheadline.bold()).foregroundColor(Theme.ink).lineLimit(2).minimumScaleFactor(0.8)
+                Text(caption).font(.app(.caption)).foregroundColor(color)
+                Text(title).font(.app(.subheadline, .bold)).foregroundColor(Theme.ink).lineLimit(2).minimumScaleFactor(0.8)
             }
             Spacer(minLength: 0)
         }
@@ -230,11 +230,11 @@ struct CountdownHero: View {
     let onOpen: (UUID) -> Void
     let onAdd: () -> Void
 
-    private let gold = Color(red: 0.93, green: 0.78, blue: 0.48)
+    private let gold = Color(red: 0.91, green: 0.85, blue: 0.74)   // warm sand on navy
 
     var body: some View {
         ZStack(alignment: .top) {
-            LinearGradient(colors: [Color(red: 0.07, green: 0.12, blue: 0.20), Color(red: 0.10, green: 0.23, blue: 0.27)],
+            LinearGradient(colors: [Color(red: 0.09, green: 0.13, blue: 0.22), Color(red: 0.14, green: 0.21, blue: 0.34)],
                            startPoint: .top, endPoint: .bottom)
             stars
             if let item = items.first {
@@ -245,11 +245,11 @@ struct CountdownHero: View {
                 .onTapGesture { onOpen(item.id) }
             } else {
                 VStack(spacing: 12) {
-                    Text("ما عندك مواعيد جاية").font(.title3.bold()).foregroundColor(.white)
+                    Text("ما عندك مواعيد جاية").font(.app(.title3, .bold)).foregroundColor(.white)
                     Text("سجّل موعدك وأحسب لك الوقت المتبقي ثانية بثانية، وأذكّرك قبله.")
-                        .font(.subheadline).foregroundColor(.white.opacity(0.7)).multilineTextAlignment(.center)
+                        .font(.app(.subheadline)).foregroundColor(.white.opacity(0.7)).multilineTextAlignment(.center)
                     Button(action: onAdd) {
-                        Label("أضف موعد", systemImage: "plus").font(.headline).foregroundColor(.black)
+                        Label("أضف موعد", systemImage: "plus").font(.app(.headline)).foregroundColor(.black)
                             .padding(.horizontal, 22).padding(.vertical, 10)
                             .background(Capsule().fill(Color.white))
                     }
@@ -292,7 +292,7 @@ struct CountdownHero: View {
                     Image(systemName: item.displayIcon)
                     Text(Fmt.dayTitle(item.date)).lineLimit(1)
                 }
-                .font(.caption.bold()).foregroundColor(.white)
+                .font(.app(.caption, .bold)).foregroundColor(.white)
                 .padding(.horizontal, 10).padding(.vertical, 7)
                 .background(RoundedRectangle(cornerRadius: 12).fill(Color.white.opacity(0.12)))
                 .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.white.opacity(0.15)))
@@ -300,34 +300,34 @@ struct CountdownHero: View {
             }
             .padding(.top, 2)
             Text(left == 0 ? "حان وقت \(item.title)" : "باقي على \(item.title)")
-                .font(.title3.bold()).foregroundColor(.white)
+                .font(.app(.title3, .bold)).foregroundColor(.white)
                 .lineLimit(1).minimumScaleFactor(0.7)
             if days > 0 {
                 Text(Fmt.days(days))
-                    .font(.system(size: 40, weight: .bold, design: .rounded)).foregroundColor(gold)
+                    .font(.app(size: 40, .bold)).foregroundColor(gold)
                 Text("و \(clock)")
-                    .font(.system(size: 20, weight: .semibold, design: .rounded)).monospacedDigit()
+                    .font(.app(size: 20, .semibold)).monospacedDigit()
                     .foregroundColor(gold.opacity(0.85))
             } else {
                 Text(clock)
-                    .font(.system(size: 46, weight: .bold, design: .rounded)).monospacedDigit()
+                    .font(.app(size: 46, .bold)).monospacedDigit()
                     .foregroundColor(gold)
             }
             if items.count > 1 {
                 let second = items[1]
                 Text("بعده: \(second.title) \(Fmt.countdown(to: second.date, hasTime: second.hasTime, now: now))")
-                    .font(.subheadline).foregroundColor(.white.opacity(0.75)).lineLimit(1)
+                    .font(.app(.subheadline)).foregroundColor(.white.opacity(0.75)).lineLimit(1)
             }
             GeometryReader { g in
                 ZStack(alignment: .leading) {
                     Capsule().fill(Color.white.opacity(0.12)).frame(height: 10)
                     Capsule()
-                        .fill(LinearGradient(colors: [gold, Color(red: 0.80, green: 0.62, blue: 0.32)], startPoint: .leading, endPoint: .trailing))
+                        .fill(LinearGradient(colors: [gold, Color(red: 0.79, green: 0.43, blue: 0.47)], startPoint: .leading, endPoint: .trailing))
                         .frame(width: max(10, g.size.width * CGFloat(progress)), height: 10)
                     // An HStack (not .offset) so the knob follows the right-to-left direction like the fill.
                     HStack(spacing: 0) {
                         Color.clear.frame(width: max(0, min(g.size.width - 24, g.size.width * CGFloat(progress) - 12)))
-                        Circle().fill(Color(red: 0.12, green: 0.15, blue: 0.20))
+                        Circle().fill(Color(red: 0.09, green: 0.13, blue: 0.22))
                             .overlay(Circle().stroke(gold, lineWidth: 3))
                             .frame(width: 24, height: 24)
                         Spacer(minLength: 0)
@@ -339,14 +339,14 @@ struct CountdownHero: View {
             .padding(.top, 6)
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("سجّلته").font(.subheadline.bold())
-                    Text(Fmt.dateText(start, hasTime: false)).font(.caption)
+                    Text("سجّلته").font(.app(.subheadline, .bold))
+                    Text(Fmt.dateText(start, hasTime: false)).font(.app(.caption))
                 }
                 .foregroundColor(.white.opacity(0.75))
                 Spacer()
                 VStack(alignment: .trailing, spacing: 2) {
-                    Text("الموعد").font(.subheadline.bold())
-                    Text(Fmt.dateText(item.date, hasTime: item.hasTime)).font(.caption)
+                    Text("الموعد").font(.app(.subheadline, .bold))
+                    Text(Fmt.dateText(item.date, hasTime: item.hasTime)).font(.app(.caption))
                 }
                 .foregroundColor(gold)
             }
@@ -369,26 +369,26 @@ struct AlertCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 10) {
-                Image(systemName: icon).font(.title3)
-                Text(title).font(.headline).lineLimit(2)
+                Image(systemName: icon).font(.app(.title3))
+                Text(title).font(.app(.headline)).lineLimit(2)
                 Spacer()
-                Button(action: onClose) { Image(systemName: "xmark").font(.body.weight(.semibold)) }
+                Button(action: onClose) { Image(systemName: "xmark").font(.app(.body, .semibold)) }
                     .buttonStyle(.plain)
                     .accessibilityLabel("إغلاق")
             }
             .foregroundColor(.white)
             HStack(spacing: 6) {
-                Image(systemName: "clock.fill").font(.caption)
-                Text(pill).font(.subheadline.bold()).lineLimit(1)
+                Image(systemName: "clock.fill").font(.app(.caption))
+                Text(pill).font(.app(.subheadline, .bold)).lineLimit(1)
             }
             .foregroundColor(.white)
             .padding(.horizontal, 14).padding(.vertical, 8)
-            .background(Capsule().fill(Color(red: 0.16, green: 0.45, blue: 0.38)))
+            .background(Capsule().fill(Color(red: 0.12, green: 0.30, blue: 0.23)))
             .overlay(Capsule().stroke(Color.white.opacity(0.25)))
             Button(action: action) {
                 Text(button)
-                    .font(.headline)
-                    .foregroundColor(Color(red: 0.55, green: 0.38, blue: 0.13))
+                    .font(.app(.headline))
+                    .foregroundColor(Color(red: 0.48, green: 0.12, blue: 0.18))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
                     .background(Capsule().fill(Color.white))
@@ -398,7 +398,7 @@ struct AlertCard: View {
         .padding(20)
         .background(
             RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .fill(LinearGradient(colors: [Color(red: 0.78, green: 0.62, blue: 0.33), Color(red: 0.62, green: 0.44, blue: 0.20)],
+                .fill(LinearGradient(colors: [Color(red: 0.56, green: 0.16, blue: 0.23), Color(red: 0.40, green: 0.10, blue: 0.16)],
                                      startPoint: .topLeading, endPoint: .bottomTrailing))
         )
         .shadow(color: .black.opacity(0.15), radius: 12, y: 6)

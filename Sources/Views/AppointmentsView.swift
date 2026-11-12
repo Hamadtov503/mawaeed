@@ -20,7 +20,7 @@ struct AppointmentsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                Text("مواعيدي").font(.system(size: 32, weight: .bold)).foregroundColor(Theme.ink)
+                Text("مواعيدي").font(.app(size: 30, .bold)).foregroundColor(Theme.ink)
                     .padding(.top, 8)
 
                 HStack(spacing: 8) {

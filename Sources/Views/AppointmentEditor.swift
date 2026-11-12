@@ -57,7 +57,7 @@ struct AppointmentEditor: View {
                 ToolbarItem(placement: .cancellationAction) { Button("إلغاء", action: onFinish) }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("حفظ", action: save)
-                        .font(.headline)
+                        .font(.app(.headline))
                         .disabled(draft.title.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             }
@@ -72,7 +72,7 @@ struct AppointmentEditor: View {
 
     private var titleCard: some View {
         group(nil) {
-            TextField("عنوان الموعد", text: $draft.title).font(.headline)
+            TextField("عنوان الموعد", text: $draft.title).font(.app(.headline))
             if isNew {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
@@ -123,7 +123,7 @@ struct AppointmentEditor: View {
                 }
             }
             Text(hijri ? "يوافق: \(Fmt.dateText(draft.date, hasTime: false, long: true))" : "يوافق: \(Fmt.hijriText(draft.date))")
-                .font(.caption).foregroundColor(Theme.muted).padding(.horizontal, 6)
+                .font(.app(.caption)).foregroundColor(Theme.muted).padding(.horizontal, 6)
         }
     }
 
@@ -138,7 +138,7 @@ struct AppointmentEditor: View {
                         Text(ReminderOption.label(m, hasTime: draft.hasTime)).foregroundColor(Theme.ink)
                         Spacer()
                         Image(systemName: draft.reminders.contains(m) ? "checkmark.circle.fill" : "circle")
-                            .font(.title3)
+                            .font(.app(.title3))
                             .foregroundColor(draft.reminders.contains(m) ? .brand : Theme.muted.opacity(0.5))
                     }
                     .padding(.vertical, 10)
@@ -153,7 +153,7 @@ struct AppointmentEditor: View {
     private func group<C: View>(_ title: String?, @ViewBuilder _ content: () -> C) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             if let t = title {
-                Text(t).font(.footnote.bold()).foregroundColor(Theme.muted).padding(.horizontal, 6)
+                Text(t).font(.app(.footnote, .bold)).foregroundColor(Theme.muted).padding(.horizontal, 6)
             }
             VStack(alignment: .leading, spacing: 14) { content() }
                 .foregroundColor(Theme.ink)
@@ -165,11 +165,11 @@ struct AppointmentEditor: View {
     private func calendarOption(_ title: String, _ value: Bool) -> some View {
         Button { withAnimation(.easeInOut(duration: 0.15)) { hijri = value } } label: {
             Text(title)
-                .font(.subheadline.weight(.semibold))
+                .font(.app(.subheadline, .semibold))
                 .foregroundColor(hijri == value ? .white : Theme.ink)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 8)
-                .background(Capsule().fill(hijri == value ? Theme.gold : Color.clear))
+                .background(Capsule().fill(hijri == value ? Theme.burgundy : Color.clear))
         }
         .buttonStyle(.plain)
     }
@@ -182,10 +182,10 @@ struct AppointmentEditor: View {
             draft.date = cal.date(bySettingHour: c.hour ?? 10, minute: c.minute ?? 0, second: 0, of: base) ?? base
         } label: {
             Text(title)
-                .font(.caption.weight(.semibold))
+                .font(.app(.caption, .semibold))
                 .padding(.horizontal, 12).padding(.vertical, 7)
-                .background(Capsule().fill(Theme.gold.opacity(0.15)))
-                .foregroundColor(Theme.gold)
+                .background(Capsule().fill(Theme.burgundy.opacity(0.15)))
+                .foregroundColor(Theme.burgundy)
         }
         .buttonStyle(.plain)
     }

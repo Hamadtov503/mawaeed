@@ -46,15 +46,15 @@ jobs:
           name: Mawaeed-ipa
           path: Mawaeed.ipa
 
-      # A direct .ipa link that opens on the iPhone ("Open in TrollStore").
-      # The file name carries the build number so a browser can never hand back an older cached build.
-      - name: Publish as the "latest" release
+      # A direct .ipa link that opens on the iPhone ("Open in TrollStore"). Beta builds until 1.0:
+      # the release is a pre-release and the file name carries the build number.
+      - name: Publish as the "latest" beta release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          IPA="Mawaeed-${{ github.run_number }}.ipa"
+          IPA="Mawaeed-beta-${{ github.run_number }}.ipa"
           cp Mawaeed.ipa "$IPA"
           gh release delete latest --yes --cleanup-tag || true
-          gh release create latest "$IPA" --target ${{ github.sha }} \
-            --title "مواعيدي — build ${{ github.run_number }}" \
-            --notes "افتح $IPA من الجوال واختر Open in TrollStore. رقم البناء يطلع تحت في الإعدادات: الإصدار 1.0 (${{ github.run_number }})."
+          gh release create latest "$IPA" --target ${{ github.sha }} --prerelease \
+            --title "مواعيدي 0.1 Beta — build ${{ github.run_number }}" \
+            --notes "نسخة تجريبية (Beta). افتح $IPA من الجوال واختر Open in TrollStore. رقم النسخة يطلع تحت في الإعدادات: الإصدار 0.1 Beta (${{ github.run_number }})."

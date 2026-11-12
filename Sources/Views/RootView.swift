@@ -8,6 +8,7 @@ struct RootView: View {
     @State private var adding = false
 
     var body: some View {
+        let pageOpen = router.showSettings || router.showNotifications
         ZStack {
             Theme.background.ignoresSafeArea()
             Group {
@@ -22,6 +23,30 @@ struct RootView: View {
                     .padding(.horizontal, 14)
                     .padding(.bottom, 2)
             }
+            // The home screen eases back and dims while a page slides in over it.
+            .scaleEffect(pageOpen ? 0.94 : 1)
+            .opacity(pageOpen ? 0.6 : 1)
+
+            if pageOpen {
+                Color.black.opacity(0.18).ignoresSafeArea()
+                    .onTapGesture { router.closePages() }
+                    .transition(.opacity)
+                    .zIndex(1)
+            }
+            if router.showNotifications {
+                SlidePage(title: "التنبيهات", onBack: router.closePages) {
+                    NotificationsView()
+                }
+                .transition(.move(edge: .trailing))
+                .zIndex(2)
+            }
+            if router.showSettings {
+                SlidePage(title: "الإعدادات", onBack: router.closePages) {
+                    SettingsView()
+                }
+                .transition(.move(edge: .trailing))
+                .zIndex(2)
+            }
         }
         .sheet(isPresented: $adding) {
             AppointmentEditor(appointment: AppointmentEditor.blank(), isNew: true) { adding = false }
@@ -32,26 +57,6 @@ struct RootView: View {
             AppointmentDetail(id: ref.id) { router.openID = nil }
                 .environmentObject(store)
                 .environmentObject(router)
-                .appEnvironment()
-        }
-        .sheet(isPresented: $router.showSettings) {
-            AppNavigation {
-                SettingsView()
-                    .navigationBarTitleDisplayMode(.inline)
-                    .toolbar {
-                        ToolbarItem(placement: .cancellationAction) { Button("إغلاق") { router.showSettings = false } }
-                    }
-            }
-            .environmentObject(store)
-            .environmentObject(AppSettings.shared)
-            .environmentObject(SyncManager.shared)
-            .appEnvironment()
-        }
-        .sheet(isPresented: $router.showNotifications) {
-            NotificationsView { router.showNotifications = false }
-                .environmentObject(store)
-                .environmentObject(router)
-                .environmentObject(AppSettings.shared)
                 .appEnvironment()
         }
         .onChange(of: phase) { p in
@@ -69,6 +74,53 @@ struct RootView: View {
     }
 }
 
+/// A full-screen page that slides in from the side over the home screen, with its own header
+/// and back button. Drawn by SwiftUI (not a navigation push, which rendered mirrored).
+struct SlidePage<Content: View>: View {
+    let title: String
+    let onBack: () -> Void
+    let content: Content
+
+    init(title: String, onBack: @escaping () -> Void, @ViewBuilder content: () -> Content) {
+        self.title = title
+        self.onBack = onBack
+        self.content = content()
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ZStack {
+                Text(title).font(.app(.headline, .bold)).foregroundColor(Theme.ink)
+                HStack {
+                    Button(action: onBack) {
+                        Image(systemName: "chevron.backward")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(Theme.ink)
+                            .frame(width: 44, height: 44)
+                            .background(Circle().fill(Theme.card))
+                            .overlay(Circle().stroke(Theme.border, lineWidth: 1))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("رجوع")
+                    Spacer()
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            content
+        }
+        .background(Theme.background.ignoresSafeArea())
+        .shadow(color: .black.opacity(0.18), radius: 20)
+        // Swipe sideways to go back.
+        .gesture(
+            DragGesture(minimumDistance: 30)
+                .onEnded { v in
+                    if abs(v.translation.width) > 90 && abs(v.translation.height) < 80 { onBack() }
+                }
+        )
+    }
+}
+
 struct FloatingTabBar: View {
     @Binding var selection: Int
     let onAdd: () -> Void
@@ -81,8 +133,8 @@ struct FloatingTabBar: View {
                     .font(.system(size: 20, weight: .bold))
                     .foregroundColor(.white)
                     .frame(width: 50, height: 50)
-                    .background(Circle().fill(Theme.gold))
-                    .shadow(color: Theme.gold.opacity(0.35), radius: 8, y: 3)
+                    .background(Circle().fill(Theme.burgundy))
+                    .shadow(color: Theme.burgundy.opacity(0.35), radius: 8, y: 3)
             }
             .buttonStyle(.plain)
             .frame(maxWidth: .infinity)
@@ -102,9 +154,9 @@ struct FloatingTabBar: View {
         } label: {
             VStack(spacing: 3) {
                 Image(systemName: icon).font(.system(size: 18, weight: .semibold))
-                Text(title).font(.system(size: 11, weight: .semibold))
+                Text(title).font(.app(size: 11, .semibold))
             }
-            .foregroundColor(on ? Theme.gold : Theme.ink.opacity(0.75))
+            .foregroundColor(on ? Theme.burgundy : Theme.ink.opacity(0.75))
             .frame(maxWidth: .infinity)
             .padding(.vertical, 8)
             .background(Capsule().fill(on ? Theme.barSelected : Color.clear))

@@ -6,7 +6,6 @@ struct NotificationsView: View {
     @EnvironmentObject var store: Store
     @EnvironmentObject var router: Router
     @EnvironmentObject var settings: AppSettings
-    let onClose: () -> Void
     @State private var delivered: [UNNotification] = []
 
     private struct Upcoming: Identifiable {
@@ -31,7 +30,6 @@ struct NotificationsView: View {
     }
 
     var body: some View {
-        AppNavigation {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
                     if !delivered.isEmpty {
@@ -41,8 +39,8 @@ struct NotificationsView: View {
                                 NotificationManager.shared.clearDelivered()
                                 withAnimation { delivered = [] }
                             }
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundColor(Theme.gold)
+                            .font(.app(.subheadline, .semibold))
+                            .foregroundColor(Theme.burgundy)
                         }
                         VStack(spacing: 0) {
                             ForEach(delivered, id: \.request.identifier) { n in
@@ -73,26 +71,21 @@ struct NotificationsView: View {
                 .frame(maxWidth: 650)
                 .frame(maxWidth: .infinity)
             }
-            .background(Theme.background.ignoresSafeArea())
-            .navigationTitle("التنبيهات")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("إغلاق", action: onClose) } }
             .onAppear { NotificationManager.shared.delivered { delivered = $0 } }
-        }
     }
 
     private func upcomingRow(_ u: Upcoming) -> some View {
         Button { router.open(u.appointment.id) } label: {
             HStack(spacing: 12) {
-                Tile(icon: "bell.fill", color: Theme.gold, size: 40)
+                Tile(icon: "bell.fill", color: Theme.burgundy, size: 40)
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(u.appointment.title).font(.subheadline.bold()).foregroundColor(Theme.ink).lineLimit(1)
+                    Text(u.appointment.title).font(.app(.subheadline, .bold)).foregroundColor(Theme.ink).lineLimit(1)
                     Text("\(ReminderOption.label(u.offset, hasTime: u.appointment.hasTime)) · يوصلك \(Fmt.dateText(u.fire, hasTime: true))")
-                        .font(.caption).foregroundColor(Theme.muted).lineLimit(1)
+                        .font(.app(.caption)).foregroundColor(Theme.muted).lineLimit(1)
                 }
                 Spacer(minLength: 6)
                 Text(Fmt.countdown(to: u.fire, hasTime: true))
-                    .font(.caption.weight(.bold)).foregroundColor(Theme.gold).lineLimit(1).fixedSize()
+                    .font(.app(.caption, .bold)).foregroundColor(Theme.burgundy).lineLimit(1).fixedSize()
             }
             .contentShape(Rectangle())
         }
@@ -107,12 +100,12 @@ struct NotificationsView: View {
             HStack(alignment: .top, spacing: 12) {
                 Tile(icon: "bell.badge.fill", color: .brand, size: 40)
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(n.request.content.title).font(.subheadline.bold()).foregroundColor(Theme.ink).lineLimit(1)
-                    Text(n.request.content.body).font(.caption).foregroundColor(Theme.muted).lineLimit(3)
+                    Text(n.request.content.title).font(.app(.subheadline, .bold)).foregroundColor(Theme.ink).lineLimit(1)
+                    Text(n.request.content.body).font(.app(.caption)).foregroundColor(Theme.muted).lineLimit(3)
                 }
                 Spacer(minLength: 6)
                 Text(Fmt.countdown(to: n.date, hasTime: true))
-                    .font(.caption2).foregroundColor(Theme.muted).lineLimit(1).fixedSize()
+                    .font(.app(.caption2)).foregroundColor(Theme.muted).lineLimit(1).fixedSize()
             }
             .contentShape(Rectangle())
         }

@@ -37,7 +37,7 @@ struct AppointmentDetail: View {
             VStack(spacing: 16) {
                 VStack(spacing: 10) {
                     Tile(icon: a.displayIcon, color: .brand, size: 68)
-                    Text(a.title).font(.title2.bold()).foregroundColor(Theme.ink).multilineTextAlignment(.center)
+                    Text(a.title).font(.app(.title2, .bold)).foregroundColor(Theme.ink).multilineTextAlignment(.center)
                     StatusPill(text: Fmt.countdown(to: a.date, hasTime: a.hasTime), status: status)
                 }
                 .frame(maxWidth: .infinity)
@@ -63,7 +63,7 @@ struct AppointmentDetail: View {
 
                 if !a.notes.isEmpty {
                     VStack(alignment: .leading, spacing: 8) {
-                        Label("ملاحظات", systemImage: "note.text").font(.subheadline.bold()).foregroundColor(Theme.muted)
+                        Label("ملاحظات", systemImage: "note.text").font(.app(.subheadline, .bold)).foregroundColor(Theme.muted)
                         Text(a.notes).foregroundColor(Theme.ink).frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .card()
@@ -103,7 +103,7 @@ struct AppointmentDetail: View {
             Spacer(minLength: 12)
             Text(value).foregroundColor(link ? .brand : Theme.ink).multilineTextAlignment(.trailing)
         }
-        .font(.subheadline)
+        .font(.app(.subheadline))
     }
 
     private func action(_ title: String, _ icon: String, color: Color = .brand, run: @escaping () -> Void) -> some View {

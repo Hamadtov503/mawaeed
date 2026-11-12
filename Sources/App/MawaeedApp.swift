@@ -6,12 +6,19 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         // The delegate must be in place before launch finishes so a notification tap opens its appointment.
         NotificationManager.shared.setUp()
-        NotificationManager.shared.requestAuthorization()
+        // The intro asks for notifications the first time; after that, keep the authorization fresh.
+        if AppSettings.shared.onboarded { NotificationManager.shared.requestAuthorization() }
         // Right-to-left is set for SwiftUI with .appEnvironment() at the root and in every sheet.
         // UIKit views are not forced (UIView.appearance) — that drew pages mirrored while animating.
         let bar = UINavigationBarAppearance()
         bar.configureWithTransparentBackground()
         bar.backgroundColor = Theme.uiBackground
+        bar.titleTextAttributes = [.font: AppFont.ui(17, .bold), .foregroundColor: Theme.uiInk]
+        bar.largeTitleTextAttributes = [.font: AppFont.ui(32, .bold), .foregroundColor: Theme.uiInk]
+        let button = UIBarButtonItemAppearance()
+        button.normal.titleTextAttributes = [.font: AppFont.ui(17, .medium)]
+        bar.buttonAppearance = button
+        bar.doneButtonAppearance = button
         UINavigationBar.appearance().standardAppearance = bar
         UINavigationBar.appearance().scrollEdgeAppearance = bar
         UINavigationBar.appearance().compactAppearance = bar
@@ -31,12 +38,13 @@ struct MawaeedApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView()
+            AppEntry()
                 .environmentObject(store)
                 .environmentObject(settings)
                 .environmentObject(router)
                 .environmentObject(sync)
                 .appEnvironment()
+                .font(.app(.body))
                 .accentColor(.brand)
         }
     }

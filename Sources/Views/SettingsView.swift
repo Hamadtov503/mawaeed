@@ -8,7 +8,6 @@ struct SettingsView: View {
     @EnvironmentObject var settings: AppSettings
     @EnvironmentObject var sync: SyncManager
 
-    @State private var notifStatus: UNAuthorizationStatus = .notDetermined
     @State private var importMode: ImportMode = .folder
     @State private var showImporter = false
     @State private var showExporter = false
@@ -28,16 +27,20 @@ struct SettingsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                Text("الإعدادات").font(.system(size: 32, weight: .bold)).foregroundColor(Theme.ink).padding(.top, 8)
+                SettingsGroup(title: "اسمك", footer: "يطلع في الترحيب بالرئيسية.") {
+                    TextField("اكتب اسمك", text: $settings.userName)
+                        .font(.app(.body))
+                }
                 notifications
                 syncGroup
                 calendarGroup
                 backupGroup
                 Text("مواعيدي · الإصدار \(version)")
-                    .font(.caption).foregroundColor(Theme.muted)
+                    .font(.app(.caption)).foregroundColor(Theme.muted)
                     .frame(maxWidth: .infinity).padding(.vertical, 8)
             }
             .padding(.horizontal, 18)
+            .padding(.top, 6)
             .padding(.bottom, 18)
             .frame(maxWidth: 650)
             .frame(maxWidth: .infinity)
@@ -67,21 +70,6 @@ struct SettingsView: View {
 
     private var notifications: some View {
         SettingsGroup(title: "التنبيهات", footer: "ملخص الصباح يجيك الأيام اللي فيها مواعيد.") {
-            HStack {
-                Label("حالة التنبيهات", systemImage: "bell.fill")
-                Spacer()
-                switch notifStatus {
-                case .authorized, .provisional, .ephemeral:
-                    Text("شغّالة ✅").foregroundColor(.green)
-                case .denied:
-                    Button("مقفلة — افتح الإعدادات") {
-                        if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
-                    }
-                    .foregroundColor(.red)
-                default:
-                    Button("فعّلها") { NotificationManager.shared.requestAuthorization { _ in refresh() } }
-                }
-            }
             Toggle(isOn: $settings.digestEnabled) { Label("ملخص الصباح", systemImage: "sun.max.fill") }
             if settings.digestEnabled {
                 DatePicker("وقت الملخص", selection: minutes(\.digestMinutes), displayedComponents: .hourAndMinute)
@@ -110,7 +98,7 @@ struct SettingsView: View {
             } else {
                 Button { pick(.folder) } label: { Label("فعّل المزامنة — اختر مجلد في iCloud Drive", systemImage: "icloud.fill") }
             }
-            if let e = sync.lastError { Text(e).font(.footnote).foregroundColor(.orange) }
+            if let e = sync.lastError { Text(e).font(.app(.footnote)).foregroundColor(.orange) }
         }
     }
 
@@ -143,9 +131,11 @@ struct SettingsView: View {
     // MARK: Actions
 
     private var version: String {
-        let v = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
-        let b = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
-        return "\(v) (\(b))"
+        let info = Bundle.main.infoDictionary
+        let v = info?["CFBundleShortVersionString"] as? String ?? "0.1"
+        let b = info?["CFBundleVersion"] as? String ?? "1"
+        let channel = (info?["MawaeedChannel"] as? String).map { $0.isEmpty ? "" : " \($0)" } ?? ""
+        return "\(v)\(channel) (\(b))"
     }
 
     private func minutes(_ key: ReferenceWritableKeyPath<AppSettings, Int>) -> Binding<Date> {
@@ -154,7 +144,6 @@ struct SettingsView: View {
     }
 
     private func refresh() {
-        NotificationManager.shared.status { notifStatus = $0 }
         calendarAccount = settings.calendarSync ? CalendarSync.shared.accountName : nil
     }
 
@@ -225,14 +214,14 @@ private struct SettingsGroup<Content: View>: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(title).font(.footnote.bold()).foregroundColor(Theme.muted).padding(.horizontal, 6)
+            Text(title).font(.app(.footnote, .bold)).foregroundColor(Theme.muted).padding(.horizontal, 6)
             VStack(alignment: .leading, spacing: 16) { content }
                 .buttonStyle(.borderless)
                 .foregroundColor(Theme.ink)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .card(padding: 16)
             if let f = footer {
-                Text(f).font(.caption).foregroundColor(Theme.muted).padding(.horizontal, 6)
+                Text(f).font(.app(.caption)).foregroundColor(Theme.muted).padding(.horizontal, 6)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
