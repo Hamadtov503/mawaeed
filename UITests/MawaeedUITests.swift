@@ -171,10 +171,19 @@ final class MawaeedUITests: XCTestCase {
         app.buttons["row.date"].tap()
         XCTAssertTrue(app.buttons[dayID(3)].waitForExistence(timeout: 4))
         shot("20-calendar-open")
-        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.04)).tap()
+        // Tap the dimmed area below the card (inside the form sheet), as a person would.
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.93)).tap()
         sleep(1)
         XCTAssertFalse(app.buttons[dayID(3)].exists, "calendar did not close on an outside tap")
         shot("21-calendar-closed")
+
+        app.buttons["row.time"].tap()
+        XCTAssertTrue(app.buttons["popup.done"].waitForExistence(timeout: 4))
+        shot("22-time-open")
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.97)).tap()
+        sleep(1)
+        XCTAssertFalse(app.buttons["popup.done"].exists, "time popup did not close on an outside tap")
+        shot("23-time-closed")
     }
 
     /// The same screens in English.
