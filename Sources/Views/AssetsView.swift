@@ -228,7 +228,6 @@ struct AssetEditor: View {
                 Button("تمام") { assets.errorMessage = nil }
             } message: { Text(assets.errorMessage ?? "") }
         }.navigationViewStyle(.stack)
-        .environment(\.layoutDirection, .rightToLeft)
     }
 }
 

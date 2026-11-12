@@ -39,7 +39,6 @@ struct RootView: View {
         .sheet(isPresented: $showAdd) {
             AddFlowView(isPresented: $showAdd, section: MainSection(rawValue: router.tab))
                 .environmentObject(store)
-                .environment(\.layoutDirection, .rightToLeft)
                 .environment(\.locale, Fmt.locale)
                 .environment(\.calendar, Fmt.greg)
         }
@@ -59,7 +58,6 @@ struct RootView: View {
                     }
             }
             .environmentObject(store)
-            .environment(\.layoutDirection, .rightToLeft)
             .environment(\.locale, Fmt.locale)
             .environment(\.calendar, Fmt.greg)
         }

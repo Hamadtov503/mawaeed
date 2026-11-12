@@ -37,7 +37,6 @@ struct MawaeedApp: App {
                 .environmentObject(router)
                 .environmentObject(lock)
                 .environmentObject(backup)
-                .environment(\.layoutDirection, .rightToLeft)
                 .environment(\.locale, Fmt.locale)
                 .environment(\.calendar, Fmt.greg)
                 .accentColor(.brand)

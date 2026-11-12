@@ -64,7 +64,6 @@ struct WelcomeView: View {
                 .frame(maxWidth: .infinity)
         }
         .background(Theme.background.ignoresSafeArea())
-        .environment(\.layoutDirection, .rightToLeft)
         .alert("تسجيل الدخول", isPresented: Binding(get: { auth.errorMessage != nil }, set: { if !$0 { auth.errorMessage = nil } })) {
             Button("تمام") { auth.errorMessage = nil }
         } message: { Text(auth.errorMessage ?? "") }

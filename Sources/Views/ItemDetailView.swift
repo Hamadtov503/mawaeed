@@ -252,7 +252,6 @@ struct ItemDetailView: View {
                 ItemEditor(item: item, isNew: false, isPushed: false) { showEdit = false }
             }
             .environmentObject(store)
-            .environment(\.layoutDirection, .rightToLeft)
             .environment(\.locale, Fmt.locale)
             .environment(\.calendar, Fmt.greg)
         }
@@ -261,7 +260,6 @@ struct ItemDetailView: View {
                 store.complete(item.id, newDate: date)
                 showRenew = false
             } onCancel: { showRenew = false }
-            .environment(\.layoutDirection, .rightToLeft)
             .environment(\.locale, Fmt.locale)
             .environment(\.calendar, Fmt.greg)
         }
@@ -274,7 +272,6 @@ struct ItemDetailView: View {
                 store.addLog(saved, to: item.id)
                 editingLog = nil
             } onCancel: { editingLog = nil }
-            .environment(\.layoutDirection, .rightToLeft)
             .environment(\.locale, Fmt.locale)
             .environment(\.calendar, Fmt.greg)
         }
