@@ -69,6 +69,7 @@ struct AppointmentEditor: View {
                     Button(L("حفظ", "Save"), action: save)
                         .font(.app(.headline))
                         .disabled(draft.title.trimmingCharacters(in: .whitespaces).isEmpty)
+                        .accessibilityIdentifier("button.save")
                 }
             }
             .popup(isPresented: $pickingDay) {
@@ -85,10 +86,12 @@ struct AppointmentEditor: View {
     private var titleCard: some View {
         group(nil) {
             TextField(L("عنوان الموعد", "Appointment title"), text: $draft.title).font(.app(.headline))
+                .accessibilityIdentifier("field.title")
             Divider()
             HStack(spacing: 8) {
                 Image(systemName: "mappin.and.ellipse").foregroundColor(Theme.burgundy)
                 TextField(L("المكان (مثلاً: مستشفى الملك فهد)", "Place (e.g. King Fahad Hospital)"), text: $draft.location)
+                    .accessibilityIdentifier("field.place")
             }
             if isNew {
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -120,8 +123,10 @@ struct AppointmentEditor: View {
                 PickerRow(title: L("التاريخ", "Date"),
                           value: hijri ? Fmt.hijriText(draft.date) : Fmt.dateText(draft.date, hasTime: false),
                           icon: "calendar") { open(day: true) }
+                    .accessibilityIdentifier("row.date")
                 Divider()
                 PickerRow(title: L("الوقت", "Time"), value: Fmt.timeText(draft.date), icon: "clock") { open(day: false) }
+                    .accessibilityIdentifier("row.time")
             }
             Text(hijri ? L("يوافق: \(Fmt.dateText(draft.date, hasTime: false, long: true))", "Same as: \(Fmt.dateText(draft.date, hasTime: false, long: true))")
                        : L("يوافق: \(Fmt.hijriText(draft.date))", "Same as: \(Fmt.hijriText(draft.date))"))

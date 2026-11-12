@@ -43,7 +43,7 @@ struct SettingsView: View {
                 syncGroup
                 calendarGroup
                 backupGroup
-                Text(L("مواعيدي · الإصدار \(version)", "Mawaeed · Version \(version)"))
+                Text(L("مواعيدي — الإصدار \(version)", "Mawaeed · Version \(version)"))
                     .font(.app(.caption)).foregroundColor(Theme.muted)
                     .frame(maxWidth: .infinity).padding(.vertical, 8)
             }

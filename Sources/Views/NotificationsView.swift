@@ -80,7 +80,7 @@ struct NotificationsView: View {
                 Tile(icon: "bell.fill", color: Theme.burgundy, size: 40)
                 VStack(alignment: .leading, spacing: 3) {
                     Text(u.appointment.title).font(.app(.subheadline, .bold)).foregroundColor(Theme.ink).lineLimit(1)
-                    Text(L("\(ReminderOption.label(u.offset, hasTime: u.appointment.hasTime)) · يوصلك \(Fmt.dateText(u.fire, hasTime: true))", "\(ReminderOption.label(u.offset, hasTime: u.appointment.hasTime)) · arrives \(Fmt.dateText(u.fire, hasTime: true))"))
+                    Text(L("\(ReminderOption.label(u.offset, hasTime: u.appointment.hasTime))، يوصلك \(Fmt.dateText(u.fire, hasTime: true))", "\(ReminderOption.label(u.offset, hasTime: u.appointment.hasTime)) · arrives \(Fmt.dateText(u.fire, hasTime: true))"))
                         .font(.app(.caption)).foregroundColor(Theme.muted).lineLimit(1)
                 }
                 Spacer(minLength: 6)

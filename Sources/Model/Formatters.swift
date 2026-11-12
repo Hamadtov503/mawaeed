@@ -77,7 +77,13 @@ enum Fmt {
     static func dateText(_ d: Date, hasTime: Bool, long: Bool = false) -> String {
         let sameYear = greg.component(.year, from: d) == greg.component(.year, from: Date())
         let day = long ? longDay.string(from: d) : (sameYear ? shortDay.string(from: d) : shortDayYear.string(from: d))
-        return hasTime ? "\(day) • \(time.string(from: d))" : day
+        return hasTime ? joined([day, time.string(from: d)]) : day
+    }
+
+    /// Joins parts with a separator that can't be mistaken for a digit: «، » in Arabic (a dot or
+    /// bullet looks like the Arabic zero «٠»), " · " in English.
+    static func joined(_ parts: [String]) -> String {
+        parts.filter { !$0.isEmpty }.joined(separator: isArabic ? "، " : " · ")
     }
 
     static func hijriText(_ d: Date) -> String { hijri.string(from: d) + L(" هـ", " AH") }

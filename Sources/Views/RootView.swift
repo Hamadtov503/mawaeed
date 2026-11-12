@@ -121,11 +121,15 @@ struct MenuHandle: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel(L("القائمة", "Menu"))
+            .accessibilityIdentifier("menuHandle")
             .gesture(DragGesture(minimumDistance: 15).onEnded { v in
                 if abs(v.translation.width) > 40 { onOpen() }
             })
             .position(x: size.width / 2, y: y)
         }
+        // Measured against the whole screen, ignoring safe areas and the keyboard, so nothing
+        // (a sheet, the keyboard, adding an item) can shift it.
+        .ignoresSafeArea()
         .environment(\.layoutDirection, .leftToRight)   // always on the screen's left edge
     }
 }
@@ -232,6 +236,7 @@ struct SideMenu: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier("menu.\(p)")
     }
 }
 

@@ -19,7 +19,7 @@ struct AppointmentsView: View {
             VStack(alignment: .leading, spacing: 14) {
                 Text(L("مواعيدي", "Appointments")).font(.app(size: 26, .bold)).foregroundColor(Theme.ink).padding(.top, 2)
                 SearchField(prompt: L("ابحث بالعنوان أو المكان", "Search by title or place"), text: $query)
-                AddButton(label: L("موعد جديد", "New appointment"), hint: L("اضغط على علامة + لإضافة مواعيدك", "Tap + to add your appointments")) { router.addingAppointment = true }
+                AddButton(label: L("موعد جديد", "New appointment"), hint: L("اضغط على علامة + لإضافة مواعيدك", "Tap + to add your appointments"), id: "addAppointment") { router.addingAppointment = true }
 
                 if !upcoming.isEmpty {
                     BandHeader(title: L("مواعيدك القادمة", "Your upcoming appointments"), count: upcoming.count, color: Theme.navy)
@@ -70,6 +70,7 @@ struct SearchField: View {
 struct AddButton: View {
     let label: String
     let hint: String
+    var id = "add"
     let action: () -> Void
 
     var body: some View {
@@ -99,6 +100,7 @@ struct AddButton: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(label)
+        .accessibilityIdentifier(id)
     }
 }
 

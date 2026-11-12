@@ -74,7 +74,7 @@ struct Appointment: Identifiable, Codable, Equatable {
     var subtitle: String {
         var parts = [hasTime ? Fmt.timeText(date) : L("طوال اليوم", "All day")]
         if !location.isEmpty { parts.append(location) }
-        return parts.joined(separator: " · ")
+        return Fmt.joined(parts)
     }
 
     func sameContent(as o: Appointment) -> Bool {

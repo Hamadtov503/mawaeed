@@ -7,7 +7,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         // The delegate must be in place before launch finishes so a notification tap opens its appointment.
         NotificationManager.shared.setUp()
         // The intro asks for notifications the first time; after that, keep the authorization fresh.
-        if AppSettings.shared.onboarded { NotificationManager.shared.requestAuthorization() }
+        if AppSettings.shared.onboarded && !UITestSupport.isActive { NotificationManager.shared.requestAuthorization() }
         // Right-to-left is set for SwiftUI with .appEnvironment() at the root and in every sheet.
         // UIKit views are not forced (UIView.appearance) — that drew pages mirrored while animating.
         let bar = UINavigationBarAppearance()
@@ -35,6 +35,10 @@ struct MawaeedApp: App {
     @StateObject private var settings = AppSettings.shared
     @StateObject private var router = Router.shared
     @StateObject private var sync = SyncManager.shared
+
+    init() {
+        UITestSupport.prepare()   // no-op outside automated UI tests
+    }
 
     var body: some Scene {
         WindowGroup {

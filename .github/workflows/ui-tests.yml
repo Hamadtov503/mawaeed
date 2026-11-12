@@ -1,0 +1,61 @@
+name: UI tests
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  ui-tests:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tools
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Pick a simulator
+        run: |
+          SIM=$(xcrun simctl list devices available | grep -oE "iPhone 1[5-7] Pro \(" | head -1 | sed 's/ ($//')
+          echo "SIM=${SIM:-iPhone 16 Pro}" >> $GITHUB_ENV
+          echo "::notice::Simulator: ${SIM:-iPhone 16 Pro}"
+
+      - name: Run UI tests
+        run: |
+          set -o pipefail
+          xcodebuild test -project Mawaeed.xcodeproj -scheme Mawaeed \
+            -destination "platform=iOS Simulator,name=$SIM" \
+            -resultBundlePath TestResults.xcresult \
+            CODE_SIGNING_ALLOWED=NO 2>&1 | tee test.log | grep -E "Test Case|error:|failed|passed|XCTAssert" || true
+          if grep -q "TEST SUCCEEDED" test.log; then echo "RESULT=passed" >> $GITHUB_ENV; else echo "RESULT=failed" >> $GITHUB_ENV; fi
+
+      - name: Export screenshots
+        if: always()
+        run: |
+          mkdir -p shots
+          xcrun xcresulttool export attachments --path TestResults.xcresult --output-path shots || true
+          ls -la shots | head -60
+          (cd shots && zip -qr ../ui-shots.zip .) || true
+          grep -E "error:|failed|Test Case .* (passed|failed)" test.log > failures.txt || true
+          tail -150 test.log > test-tail.log
+
+      - name: Publish results as the "ui-tests" pre-release
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete ui-tests --yes --cleanup-tag || true
+          gh release create ui-tests ui-shots.zip failures.txt test-tail.log --prerelease --target ${{ github.sha }} \
+            --title "UI tests — run ${{ github.run_number }} (${{ env.RESULT }})" \
+            --notes "Automated simulator run: screenshots of each step and test results."
+
+      - name: Fail if tests failed
+        if: env.RESULT != 'passed'
+        run: exit 1

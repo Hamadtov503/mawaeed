@@ -18,7 +18,7 @@ struct TasksView: View {
             VStack(alignment: .leading, spacing: 14) {
                 Text(L("مهامي", "Tasks")).font(.app(size: 26, .bold)).foregroundColor(Theme.ink).padding(.top, 2)
                 SearchField(prompt: L("ابحث في مهامك", "Search your tasks"), text: $query)
-                AddButton(label: L("مهمة جديدة", "New task"), hint: L("اضغط على علامة + لإضافة مهمة لإنجازها", "Tap + to add a task to get done")) { router.newTask() }
+                AddButton(label: L("مهمة جديدة", "New task"), hint: L("اضغط على علامة + لإضافة مهمة لإنجازها", "Tap + to add a task to get done"), id: "addTask") { router.newTask() }
 
                 if !open.isEmpty {
                     BandHeader(title: L("مهامك الحالية", "Your current tasks"), count: open.count, color: Theme.forest)
@@ -137,13 +137,16 @@ struct TaskEditor: View {
                 VStack(alignment: .leading, spacing: 18) {
                     card {
                         TextField(L("وش المهمة؟", "What's the task?"), text: $draft.title).font(.app(.headline))
+                            .accessibilityIdentifier("field.taskTitle")
                     }
                     card {
                         Toggle(L("لها تاريخ", "Has a date"), isOn: $hasDate.animation(Router.soft))
+                            .accessibilityIdentifier("toggle.hasDate")
                         if hasDate {
                             Toggle(L("وقت محدد", "Specific time"), isOn: $draft.hasTime.animation(Router.soft))
                             PickerRow(title: L("التاريخ", "Date"), value: Fmt.dateText(dueBinding.wrappedValue, hasTime: false),
                                       icon: "calendar") { open(day: true) }
+                                .accessibilityIdentifier("row.date")
                             if draft.hasTime {
                                 PickerRow(title: L("الوقت", "Time"), value: Fmt.timeText(dueBinding.wrappedValue),
                                           icon: "clock") { open(day: false) }
@@ -183,6 +186,7 @@ struct TaskEditor: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button(L("حفظ", "Save"), action: save)
                         .disabled(draft.title.trimmingCharacters(in: .whitespaces).isEmpty)
+                        .accessibilityIdentifier("button.save")
                 }
             }
             .popup(isPresented: $pickingDay) {
