@@ -9,7 +9,9 @@ struct AppointmentCard: View {
 
     var body: some View {
         let status = item.status()
-        Button { router.openID = AppointmentRef(id: item.id) } label: {
+        // A tap gesture, not a Button: a Button also fired at the end of a sideways swipe that started
+        // on the card, opening it instead of going back home.
+        Group {
             HStack(spacing: 12) {
                 Tile(icon: item.displayIcon, color: status == .past ? Theme.muted : .brand, size: 42)
                 VStack(alignment: .leading, spacing: 4) {
@@ -31,7 +33,10 @@ struct AppointmentCard: View {
             .card(padding: 12)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .onTapGesture { router.openID = AppointmentRef(id: item.id) }
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityIdentifier("card.\(item.title)")
         .contextMenu {
             Button { store.duplicate(item.id) } label: { Label(L("نسخة مكررة", "Duplicate"), systemImage: "plus.square.on.square") }
             Button(role: .destructive) { withAnimation { store.delete(item.id) } } label: {

@@ -72,8 +72,7 @@ final class MawaeedUITests: XCTestCase {
         place.typeText("Hospital \(n)")
 
         app.buttons["row.date"].tap()
-        XCTAssertTrue(app.otherElements["popup.calendar"].waitForExistence(timeout: 4) || app.buttons[dayID(dayOffset)].waitForExistence(timeout: 4),
-                      "calendar popup did not open")
+        XCTAssertTrue(app.buttons[dayID(dayOffset)].waitForExistence(timeout: 4), "calendar popup did not open")
         sleep(1)
         shot("appt\(n)-calendar")
         let day = app.buttons[dayID(dayOffset)]
@@ -115,10 +114,11 @@ final class MawaeedUITests: XCTestCase {
         sleep(2)
         shot("04-home-with-appointments")
         assertHandle(at: base, "home after swipe")
-        XCTAssertTrue(element(containing: "Clinic 1").exists, "home does not show the new appointment")
+        XCTAssertTrue(app.buttons["card.Clinic 1"].exists || element(containing: "Clinic 1").exists,
+                      "home does not show the new appointment")
 
         // Open an appointment's details and close them.
-        element(containing: "Clinic 1").tap()
+        (app.buttons["card.Clinic 1"].exists ? app.buttons["card.Clinic 1"] : element(containing: "Clinic 1")).tap()
         sleep(2)
         shot("05-appointment-detail")
         app.swipeDown(velocity: .fast)
@@ -155,8 +155,9 @@ final class MawaeedUITests: XCTestCase {
         let circle = app.buttons["تم"].firstMatch
         if circle.exists { circle.tap(); sleep(2) }
         shot("12-tasks-one-done")
-        app.swipeLeft()
+        app.swipeLeft()   // starts over the task rows: must go home, not open a task
         sleep(2)
+        XCTAssertFalse(app.textFields["field.taskTitle"].exists, "a sideways swipe over a task opened it")
         shot("13-home-with-tasks")
         assertHandle(at: base, "home after tasks")
     }

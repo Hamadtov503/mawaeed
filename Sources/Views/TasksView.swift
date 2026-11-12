@@ -81,8 +81,7 @@ struct TaskRow: View {
             .buttonStyle(.plain)
             .accessibilityLabel(task.isDone ? L("إلغاء الإنجاز", "Mark not done") : L("تم", "Done"))
 
-            Button { router.editingTask = task } label: {
-                VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 2) {
                     Text(task.title.isEmpty ? L("بدون عنوان", "Untitled") : task.title)
                         .font(.app(.body, .medium))
                         .foregroundColor(task.isDone ? Theme.muted : Theme.ink)
@@ -100,8 +99,9 @@ struct TaskRow: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
+                // A tap gesture rather than a Button, so a sideways swipe over the row doesn't open it.
+                .onTapGesture { router.editingTask = task }
+                .accessibilityAddTraits(.isButton)
         }
         .padding(.vertical, 8)
         .contextMenu {

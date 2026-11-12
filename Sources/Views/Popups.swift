@@ -140,7 +140,6 @@ struct DayPickerPopup: View {
             .id("\(year)-\(month)")
             .transition(.opacity)
         }
-        .accessibilityIdentifier("popup.calendar")
     }
 
     private func dayButton(_ cell: Cell) -> some View {
