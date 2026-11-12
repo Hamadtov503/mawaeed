@@ -42,7 +42,9 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         center.getNotificationSettings { s in DispatchQueue.main.async { done(s.authorizationStatus) } }
     }
 
-    func reschedule(items: [Appointment], settings: AppSettings) {
+    func reschedule(store: Store, settings: AppSettings) {
+        let items = store.items
+        let tasks = store.tasks
         let now = Date()
         var reminders: [(Date, UNNotificationRequest)] = []
         for a in items where !a.isPast(now: now) {
@@ -54,12 +56,24 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
             }
         }
 
+        for t in tasks where !t.isDone && t.remind {
+            guard let fire = t.reminderMoment(reminderMinutes: settings.reminderMinutes), fire > now else { continue }
+            let c = UNMutableNotificationContent()
+            c.title = "✅ \(t.title)"
+            c.body = t.hasTime ? "موعد المهمة الحين" : "مهمة اليوم — لا تنساها"
+            if !t.notes.isEmpty { c.body += "\n\(t.notes)" }
+            c.sound = .default
+            c.threadIdentifier = t.id.uuidString
+            c.userInfo = ["task": t.id.uuidString]
+            reminders.append((fire, UNNotificationRequest(identifier: "task|\(t.id.uuidString)", content: c, trigger: trigger(fire))))
+        }
+
         var digests: [UNNotificationRequest] = []
         if settings.digestEnabled {
             for day in 0..<7 {
                 guard let start = Fmt.greg.date(byAdding: .day, value: day, to: Fmt.greg.startOfDay(for: now)) else { continue }
                 let fire = start.addingTimeInterval(TimeInterval(settings.digestMinutes * 60))
-                guard fire > now, let r = digest(items: items, day: start, fire: fire) else { continue }
+                guard fire > now, let r = digest(items: items, tasks: tasks, day: start, fire: fire) else { continue }
                 digests.append(r)
             }
         }
@@ -91,13 +105,17 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         return UNNotificationRequest(identifier: id, content: c, trigger: trigger(fire))
     }
 
-    private func digest(items: [Appointment], day: Date, fire: Date) -> UNNotificationRequest? {
+    private func digest(items: [Appointment], tasks: [TaskItem], day: Date, fire: Date) -> UNNotificationRequest? {
         let today = items.filter { Fmt.greg.isDate($0.date, inSameDayAs: day) }.sorted { $0.date < $1.date }
-        guard !today.isEmpty else { return nil }
+        let todayTasks = tasks.filter { !$0.isDone && $0.isDue(on: day) }
+        guard !today.isEmpty || !todayTasks.isEmpty else { return nil }
         let c = UNMutableNotificationContent()
-        c.title = "☀️ صباح الخير — عندك اليوم \(Fmt.count(today.count, one: "موعد واحد", two: "موعدين", few: "مواعيد", many: "موعد"))"
+        var parts: [String] = []
+        if !today.isEmpty { parts.append(Fmt.count(today.count, one: "موعد واحد", two: "موعدين", few: "مواعيد", many: "موعد")) }
+        if !todayTasks.isEmpty { parts.append(Fmt.count(todayTasks.count, one: "مهمة وحدة", two: "مهمتين", few: "مهام", many: "مهمة")) }
+        c.title = "☀️ صباح الخير — عندك اليوم " + parts.joined(separator: " و")
         var lines = today.prefix(4).map { $0.hasTime ? "• \($0.title) \(Fmt.timeText($0.date))" : "• \($0.title)" }
-        if today.count > 4 { lines.append("• و\(today.count - 4) غيرها") }
+        lines += todayTasks.prefix(3).map { "✓ \($0.title)" }
         c.body = lines.joined(separator: "\n")
         c.sound = .default
         c.threadIdentifier = "digest"
@@ -123,12 +141,14 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
 
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse,
                                 withCompletionHandler completionHandler: @escaping () -> Void) {
-        let id = (response.notification.request.content.userInfo["id"] as? String).flatMap(UUID.init(uuidString:))
+        let info = response.notification.request.content.userInfo
+        let id = (info["id"] as? String).flatMap(UUID.init(uuidString:))
+        let isTask = info["task"] != nil
         DispatchQueue.main.async {
             if let id = id, Store.shared.item(id) != nil {
                 Router.shared.open(id)
             } else {
-                Router.shared.tab = 0
+                Router.shared.go(isTask ? .tasks : .home)
             }
             NotificationManager.shared.refreshDeliveredCount()
             completionHandler()

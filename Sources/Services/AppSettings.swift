@@ -45,33 +45,76 @@ final class AppSettings: ObservableObject {
     }
 }
 
-/// Tabs, plus which appointment is open (a notification tap opens one too).
+enum Page: Int, CaseIterable, Identifiable {
+    case home, appointments, tasks
+    var id: Int { rawValue }
+    var title: String {
+        switch self {
+        case .home: return "الرئيسية"
+        case .appointments: return "مواعيدي"
+        case .tasks: return "مهامي"
+        }
+    }
+    var icon: String {
+        switch self {
+        case .home: return "house.fill"
+        case .appointments: return "calendar"
+        case .tasks: return "checklist"
+        }
+    }
+}
+
+/// Which page shows, the side menu, the slide-in pages and the sheets.
 final class Router: ObservableObject {
     static let shared = Router()
-    @Published var tab = 0
+    @Published var page: Page = .home
+    @Published var menuOpen = false
     @Published var openID: AppointmentRef? = nil
+    @Published var addingAppointment = false
+    @Published var editingTask: TaskItem? = nil
     @Published var showSettings = false
     @Published var showNotifications = false
     /// Notifications sitting in Notification Center, shown as the bell's badge.
     @Published var deliveredCount = 0
 
-    /// Slides the notifications or settings page in over the home screen.
+    static let soft = Animation.spring(response: 0.42, dampingFraction: 0.9)
+
+    func go(_ p: Page) {
+        withAnimation(Self.soft) {
+            page = p
+            menuOpen = false
+            showSettings = false
+            showNotifications = false
+        }
+    }
+
+    func toggleMenu(_ open: Bool? = nil) {
+        withAnimation(Self.soft) { menuOpen = open ?? !menuOpen }
+    }
+
+    /// Slides the notifications or settings page in over the current page.
     func present(notifications: Bool) {
-        withAnimation(.spring(response: 0.38, dampingFraction: 0.9)) {
+        withAnimation(Self.soft) {
+            menuOpen = false
             if notifications { showNotifications = true } else { showSettings = true }
         }
     }
 
     func closePages() {
-        withAnimation(.spring(response: 0.34, dampingFraction: 0.95)) {
+        withAnimation(Self.soft) {
             showNotifications = false
             showSettings = false
         }
     }
 
-    /// Opens an appointment's sheet; a page that is slid in stays underneath.
     func open(_ id: UUID) {
         openID = AppointmentRef(id: id)
+    }
+
+    func newTask(due: Date? = nil) {
+        var t = TaskItem()
+        t.due = due
+        editingTask = t
     }
 }
 

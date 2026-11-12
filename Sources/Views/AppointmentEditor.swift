@@ -199,7 +199,7 @@ struct AppointmentEditor: View {
 }
 
 /// TextEditor has an opaque background on iOS 15; hide it where possible.
-private struct ClearTextEditorBackground: ViewModifier {
+struct ClearTextEditorBackground: ViewModifier {
     func body(content: Content) -> some View {
         if #available(iOS 16.0, *) {
             content.scrollContentBackground(.hidden)

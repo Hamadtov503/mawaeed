@@ -96,13 +96,11 @@ struct EightPointStar: Shape {
     }
 }
 
-/// Three steps: welcome, your name, notifications.
+/// Two steps: welcome, then notifications.
 struct OnboardingView: View {
     @EnvironmentObject var settings: AppSettings
     let onDone: () -> Void
     @State private var step = 0
-    @State private var name = ""
-    @FocusState private var nameFocused: Bool
 
     var body: some View {
         ZStack {
@@ -111,11 +109,7 @@ struct OnboardingView: View {
             VStack(spacing: 0) {
                 Spacer(minLength: 20)
                 Group {
-                    switch step {
-                    case 0: welcome
-                    case 1: nameStep
-                    default: notificationsStep
-                    }
+                    if step == 0 { welcome } else { notificationsStep }
                 }
                 .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity),
                                         removal: .move(edge: .leading).combined(with: .opacity)))
@@ -129,7 +123,6 @@ struct OnboardingView: View {
             .padding(.bottom, 16)
             .frame(maxWidth: 560)
         }
-        .onAppear { name = settings.userName }
     }
 
     // MARK: Steps
@@ -144,7 +137,7 @@ struct OnboardingView: View {
             VStack(alignment: .leading, spacing: 14) {
                 feature("bell.badge.fill", Theme.burgundy, "تنبيهات قبل الموعد", "من وقت الموعد إلى قبل أسبوع، وملخص كل صباح.")
                 feature("moon.stars.fill", Theme.forest, "هجري وميلادي", "كل موعد بالتاريخين، وتقدر تدخله بالهجري.")
-                feature("icloud.fill", Theme.navy, "على كل أجهزتك", "مزامنة بين جوالاتك وتقويم iCloud.")
+                feature("checklist", Theme.navy, "مواعيدك ومهامك", "تقويم هجري وميلادي يجمعها، ومزامنة بين أجهزتك.")
             }
             .padding(18)
             .background(RoundedRectangle(cornerRadius: 24, style: .continuous).fill(Theme.card))
@@ -152,29 +145,10 @@ struct OnboardingView: View {
         }
     }
 
-    private var nameStep: some View {
-        VStack(spacing: 18) {
-            Tile(icon: "person.fill", color: Theme.navy, size: 84)
-            Text("وش نناديك؟").font(.app(.title, .bold)).foregroundColor(Theme.ink)
-            Text("اسمك يطلع في الترحيب كل يوم.")
-                .font(.app(.subheadline)).foregroundColor(Theme.muted)
-            TextField("اسمك", text: $name)
-                .font(.app(.title3, .semibold))
-                .multilineTextAlignment(.center)
-                .focused($nameFocused)
-                .submitLabel(.next)
-                .onSubmit(next)
-                .padding(.vertical, 16)
-                .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(Theme.card))
-                .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(Theme.border, lineWidth: 1))
-        }
-        .onAppear { DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { nameFocused = true } }
-    }
-
     private var notificationsStep: some View {
         VStack(spacing: 18) {
             Tile(icon: "bell.and.waves.left.and.right.fill", color: Theme.burgundy, size: 84)
-            Text(name.isEmpty ? "خلّني أذكّرك" : "خلّني أذكّرك يا \(name)")
+            Text("خلّني أذكّرك")
                 .font(.app(.title, .bold)).foregroundColor(Theme.ink).multilineTextAlignment(.center)
             Text("فعّل التنبيهات عشان يوصلك تذكير قبل كل موعد، وملخص الصباح.")
                 .font(.app(.body)).foregroundColor(Theme.muted).multilineTextAlignment(.center)
@@ -196,7 +170,7 @@ struct OnboardingView: View {
 
     private var dots: some View {
         HStack(spacing: 8) {
-            ForEach(0..<3, id: \.self) { i in
+            ForEach(0..<2, id: \.self) { i in
                 Capsule().fill(i == step ? Theme.burgundy : Theme.border)
                     .frame(width: i == step ? 22 : 8, height: 8)
             }
@@ -206,7 +180,7 @@ struct OnboardingView: View {
 
     private var primaryButton: some View {
         Button(action: next) {
-            Text(step == 0 ? "يلا نبدأ" : (step == 1 ? "التالي" : "فعّل التنبيهات"))
+            Text(step == 0 ? "يلا نبدأ" : "فعّل التنبيهات")
                 .font(.app(.headline, .bold))
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
@@ -218,8 +192,8 @@ struct OnboardingView: View {
     }
 
     private var secondaryButton: some View {
-        Button(step == 2 ? "لاحقاً" : (step == 1 ? "تخطي" : " ")) {
-            if step == 1 { advance() } else if step == 2 { finish() }
+        Button(step == 1 ? "لاحقاً" : " ") {
+            if step == 1 { finish() }
         }
         .font(.app(.subheadline, .semibold))
         .foregroundColor(Theme.muted)
@@ -229,24 +203,18 @@ struct OnboardingView: View {
     }
 
     private func next() {
-        switch step {
-        case 1:
-            settings.userName = name.trimmingCharacters(in: .whitespacesAndNewlines)
-            advance()
-        case 2:
+        if step == 1 {
             NotificationManager.shared.requestAuthorization { _ in finish() }
-        default:
+        } else {
             advance()
         }
     }
 
     private func advance() {
-        nameFocused = false
         withAnimation(.spring(response: 0.45, dampingFraction: 0.9)) { step += 1 }
     }
 
     private func finish() {
-        if settings.userName.isEmpty { settings.userName = name.trimmingCharacters(in: .whitespacesAndNewlines) }
         onDone()
     }
 }

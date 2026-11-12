@@ -3,6 +3,7 @@ import SwiftUI
 /// All appointments: upcoming grouped by day, past ones, or a calendar to pick a day.
 struct AppointmentsView: View {
     @EnvironmentObject var store: Store
+    @EnvironmentObject var router: Router
     @State private var mode: Mode = .upcoming
     @State private var day = Date()
     @State private var query = ""
@@ -20,8 +21,7 @@ struct AppointmentsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                Text("مواعيدي").font(.app(size: 30, .bold)).foregroundColor(Theme.ink)
-                    .padding(.top, 8)
+                PageTitle(title: "مواعيدي") { router.addingAppointment = true }
 
                 HStack(spacing: 8) {
                     Image(systemName: "magnifyingglass").foregroundColor(Theme.muted)
@@ -35,7 +35,7 @@ struct AppointmentsView: View {
 
                 HStack(spacing: 8) {
                     ForEach(Mode.allCases) { m in
-                        Chip(title: m.rawValue, selected: mode == m) { withAnimation { mode = m } }
+                        Chip(title: m.rawValue, selected: mode == m) { withAnimation(Router.soft) { mode = m } }
                     }
                 }
 

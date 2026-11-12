@@ -10,6 +10,7 @@ struct SyncFile: Codable {
     var device = UIDevice.current.name
     var deviceID: String? = SyncManager.deviceID
     var items: [Appointment]
+    var tasks: [TaskItem]? = nil
     var deleted: [String: Date]? = nil
 }
 
@@ -119,16 +120,21 @@ final class SyncManager: ObservableObject {
                     self.finish(nil, error: "الملف لسا ينزل من iCloud — بحاول مرة ثانية.")
                     return
                 }
-                let merged = Store.shared.merge(remote: remote?.items ?? [], remoteDeleted: remote?.deleted ?? [:])
+                let merged = Store.shared.merge(remote: remote?.items ?? [], remoteTasks: remote?.tasks ?? [],
+                                                remoteDeleted: remote?.deleted ?? [:])
                 let needsWrite: Bool = {
                     guard let r = remote else { return true }
                     let remoteItems = r.items.filter { $0.isAppointment && $0.legacyCategory == nil }
                     if (r.deleted ?? [:]) != merged.deleted || remoteItems.count != merged.items.count || r.items.count != remoteItems.count { return true }
+                    let remoteTasks = r.tasks ?? []
+                    if remoteTasks.count != merged.tasks.count { return true }
+                    let tasksByID = Dictionary(remoteTasks.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+                    if merged.tasks.contains(where: { m in tasksByID[m.id].map { !$0.sameContent(as: m) } ?? true }) { return true }
                     let byID = Dictionary(remoteItems.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
                     return merged.items.contains { m in byID[m.id].map { !$0.sameContent(as: m) } ?? true }
                 }()
                 let snapshot = SyncFile(items: merged.items.map { var a = $0; a.calendarEventID = nil; return a },
-                                        deleted: merged.deleted)
+                                        tasks: merged.tasks, deleted: merged.deleted)
                 self.queue.async {
                     var writeError: Error?
                     if needsWrite {
@@ -167,7 +173,7 @@ final class SyncManager: ObservableObject {
     }
 
     /// Reads a backup file (or the sync file, or an older items.json).
-    func readBackup(at url: URL) throws -> [Appointment] {
+    func readBackup(at url: URL) throws -> (items: [Appointment], tasks: [TaskItem]) {
         let ok = url.startAccessingSecurityScopedResource()
         defer { if ok { url.stopAccessingSecurityScopedResource() } }
         var data = Data()
@@ -177,8 +183,8 @@ final class SyncManager: ObservableObject {
             do { data = try Data(contentsOf: u) } catch { readError = error }
         }
         if let e = coordError ?? readError { throw e }
-        if let f = try? Store.decoder.decode(SyncFile.self, from: data) { return f.items }
-        return try Store.decoder.decode([Appointment].self, from: data)
+        if let f = try? Store.decoder.decode(SyncFile.self, from: data) { return (f.items, f.tasks ?? []) }
+        return (try Store.decoder.decode([Appointment].self, from: data), [])
     }
 }
 

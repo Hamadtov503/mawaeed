@@ -12,7 +12,7 @@ struct SettingsView: View {
     @State private var showImporter = false
     @State private var showExporter = false
     @State private var exportDoc = BackupDocument(data: Data())
-    @State private var pendingRestore: [Appointment]? = nil
+    @State private var pendingRestore: (items: [Appointment], tasks: [TaskItem])? = nil
     @State private var alert: AlertInfo? = nil
     @State private var calendarAccount: String? = nil
 
@@ -27,10 +27,6 @@ struct SettingsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                SettingsGroup(title: "اسمك", footer: "يطلع في الترحيب بالرئيسية.") {
-                    TextField("اكتب اسمك", text: $settings.userName)
-                        .font(.app(.body))
-                }
                 notifications
                 syncGroup
                 calendarGroup
@@ -54,7 +50,7 @@ struct SettingsView: View {
                       defaultFilename: "مواعيدي-\(Fmt.fileStamp.string(from: Date()))") { result in
             if case .failure(let e) = result { alert = AlertInfo(title: "ما انحفظ الملف", message: e.localizedDescription) }
         }
-        .confirmationDialog("استرجاع \(pendingRestore?.count ?? 0) موعد من النسخة",
+        .confirmationDialog("استرجاع \(pendingRestore?.items.count ?? 0) موعد و\(pendingRestore?.tasks.count ?? 0) مهمة من النسخة",
                             isPresented: Binding(get: { pendingRestore != nil }, set: { if !$0 { pendingRestore = nil } }),
                             titleVisibility: .visible) {
             Button("دمج مع الموجود") { restore(replace: false) }
@@ -166,7 +162,7 @@ struct SettingsView: View {
 
     private func export() {
         do {
-            let file = SyncFile(items: store.items.map { var a = $0; a.calendarEventID = nil; return a }, deleted: nil)
+            let file = SyncFile(items: store.items.map { var a = $0; a.calendarEventID = nil; return a }, tasks: store.tasks, deleted: nil)
             exportDoc = BackupDocument(data: try Store.encoder.encode(file))
             showExporter = true
         } catch {
@@ -184,7 +180,8 @@ struct SettingsView: View {
                 sync.setFolder(url)
             } else {
                 do {
-                    pendingRestore = try sync.readBackup(at: url).filter { $0.isAppointment }
+                    let b = try sync.readBackup(at: url)
+                    pendingRestore = (b.items.filter { $0.isAppointment }, b.tasks)
                 } catch {
                     alert = AlertInfo(title: "الملف ما ينقرأ", message: "تأكد إنه نسخة من مواعيدي.\n\(error.localizedDescription)")
                 }
@@ -193,10 +190,10 @@ struct SettingsView: View {
     }
 
     private func restore(replace: Bool) {
-        guard let list = pendingRestore else { return }
-        store.restore(list, replace: replace)
+        guard let b = pendingRestore else { return }
+        store.restore(b.items, tasks: b.tasks, replace: replace)
         pendingRestore = nil
-        alert = AlertInfo(title: "تم الاسترجاع ✅", message: "رجّعت \(list.count) موعد.")
+        alert = AlertInfo(title: "تم الاسترجاع ✅", message: "رجّعت \(b.items.count) موعد و\(b.tasks.count) مهمة.")
     }
 }
 
