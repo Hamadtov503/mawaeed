@@ -100,16 +100,17 @@ struct MenuHandle: View {
     var body: some View {
         HStack {
             Button(action: onOpen) {
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundColor(.white)
-                    .frame(width: 26, height: 64)
-                    .background(
-                        UnevenCapsule()
-                            .fill(LinearGradient(colors: [Theme.burgundy, Theme.burgundy.opacity(0.85)],
-                                                 startPoint: .top, endPoint: .bottom))
-                    )
-                    .shadow(color: Theme.burgundy.opacity(0.3), radius: 6, x: 2)
+                ZStack(alignment: .leading) {
+                    WaveTab()
+                        .fill(LinearGradient(colors: [Theme.menuTop, Theme.menuBottom], startPoint: .top, endPoint: .bottom))
+                        .shadow(color: Theme.burgundy.opacity(0.28), radius: 6, x: 2)
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(.white)
+                        .padding(.leading, 9)
+                }
+                .frame(width: 34, height: 118)
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityLabel("القائمة")
@@ -117,10 +118,28 @@ struct MenuHandle: View {
         }
         .environment(\.layoutDirection, .leftToRight)   // always on the screen's left edge
         .frame(maxHeight: .infinity)
-        .offset(y: -60)
+        .offset(y: -40)
         .gesture(DragGesture(minimumDistance: 15).onEnded { v in
             if abs(v.translation.width) > 40 { onOpen() }
         })
+    }
+}
+
+/// A smooth bump out of the screen's left edge, like a leaf tab: flat against the edge,
+/// swelling to full width in the middle and tapering back at both ends.
+struct WaveTab: Shape {
+    func path(in r: CGRect) -> Path {
+        var p = Path()
+        let w = r.width, h = r.height
+        p.move(to: CGPoint(x: r.minX, y: r.minY))
+        p.addCurve(to: CGPoint(x: r.minX + w, y: r.minY + h / 2),
+                   control1: CGPoint(x: r.minX, y: r.minY + h * 0.28),
+                   control2: CGPoint(x: r.minX + w, y: r.minY + h * 0.22))
+        p.addCurve(to: CGPoint(x: r.minX, y: r.maxY),
+                   control1: CGPoint(x: r.minX + w, y: r.minY + h * 0.78),
+                   control2: CGPoint(x: r.minX, y: r.minY + h * 0.72))
+        p.closeSubpath()
+        return p
     }
 }
 
@@ -143,29 +162,45 @@ struct UnevenCapsule: Shape {
     }
 }
 
-/// A slim side menu on the left edge: the three pages as icons with a small label.
+/// The side menu: a warm panel on the left edge with the three pages as light tiles.
 struct SideMenu: View {
     @EnvironmentObject var router: Router
     @EnvironmentObject var store: Store
 
     var body: some View {
         HStack(spacing: 0) {
-            VStack(spacing: 18) {
+            VStack(spacing: 16) {
+                HStack {
+                    Spacer()
+                    Button { router.toggleMenu(false) } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundColor(.white)
+                            .frame(width: 30, height: 30)
+                            .background(Circle().fill(Color.white.opacity(0.18)))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("إغلاق")
+                }
                 ForEach(Page.allCases) { p in item(p) }
+                Spacer(minLength: 0)
             }
             .environment(\.layoutDirection, .rightToLeft)
-            .padding(.vertical, 22)
-            .padding(.horizontal, 12)
+            .padding(.top, 18)
+            .padding(.bottom, 22)
+            .padding(.horizontal, 14)
+            .frame(width: 118)
+            .frame(maxHeight: .infinity)
             .background(
-                UnevenCapsule(radius: 28)
-                    .fill(Theme.background)
-                    .shadow(color: .black.opacity(0.16), radius: 18, x: 4)
+                UnevenCapsule(radius: 30)
+                    .fill(LinearGradient(colors: [Theme.menuTop, Theme.menuBottom], startPoint: .top, endPoint: .bottom))
+                    .shadow(color: .black.opacity(0.2), radius: 18, x: 4)
             )
-            .overlay(UnevenCapsule(radius: 28).stroke(Theme.border, lineWidth: 1))
+            .padding(.top, 12)
+            .padding(.bottom, 90)
             Spacer(minLength: 0)
         }
         .environment(\.layoutDirection, .leftToRight)   // pin the panel to the screen's left edge
-        .frame(maxHeight: .infinity)
         .gesture(DragGesture(minimumDistance: 20).onEnded { v in
             if abs(v.translation.width) > 50 { router.toggleMenu(false) }
         })
@@ -183,24 +218,26 @@ struct SideMenu: View {
         let selected = router.page == p
         let count = badge(for: p)
         return Button { router.go(p) } label: {
-            VStack(spacing: 5) {
+            VStack(spacing: 6) {
                 Image(systemName: p.icon)
-                    .font(.system(size: 19, weight: .semibold))
-                    .foregroundColor(selected ? .white : Theme.burgundy)
-                    .frame(width: 50, height: 50)
-                    .background(RoundedRectangle(cornerRadius: 15, style: .continuous)
-                        .fill(selected ? Theme.burgundy : Theme.burgundy.opacity(0.1)))
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundColor(selected ? Theme.burgundy : .white)
+                    .frame(width: 56, height: 56)
+                    .background(RoundedRectangle(cornerRadius: 17, style: .continuous)
+                        .fill(selected ? Color.white : Color.white.opacity(0.16)))
+                    .overlay(RoundedRectangle(cornerRadius: 17, style: .continuous)
+                        .stroke(Color.white.opacity(selected ? 0 : 0.35), lineWidth: 1))
                     .overlay(alignment: .topTrailing) {
                         if count > 0 {
-                            Text("\(count)").font(.app(size: 10, .bold)).foregroundColor(.white)
-                                .frame(minWidth: 17, minHeight: 17)
-                                .background(Circle().fill(Theme.navy))
-                                .offset(x: 5, y: -5)
+                            Text("\(count)").font(.app(size: 10, .bold)).foregroundColor(Theme.burgundy)
+                                .frame(minWidth: 18, minHeight: 18)
+                                .background(Circle().fill(Color.white))
+                                .offset(x: 6, y: -6)
                         }
                     }
-                Text(p.title).font(.app(.caption2, selected ? .bold : .medium)).foregroundColor(Theme.ink)
+                Text(p.title).font(.app(.caption, selected ? .bold : .medium)).foregroundColor(.white)
             }
-            .frame(width: 66)
+            .frame(maxWidth: .infinity)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

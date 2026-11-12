@@ -21,6 +21,10 @@ enum Theme {
     static let forest = dyn(0x1F4D3A, 0x7CC4A2)
     static let slate = dyn(0x3B3F45, 0xB5BAC2)
 
+    /// The side menu and its edge tab: deep burgundy fading to a warm brown.
+    static let menuTop = Color(red: 0.43, green: 0.11, blue: 0.17)
+    static let menuBottom = Color(red: 0.66, green: 0.42, blue: 0.27)
+
     static let barSelected = dyn(0xEADCC6, 0x352D24)
 
     static let uiBackground = UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: 0x15130F) : UIColor(hex: 0xF4EDE1) }
@@ -38,6 +42,9 @@ enum Theme {
 
 /// IBM Plex Sans Arabic for all text, Aref Ruqaa for the calligraphic weekday.
 enum AppFont {
+    /// Plex Arabic looks larger than SF at the same point size; every size is scaled by this.
+    static let scale: CGFloat = 0.92
+
     static func name(_ w: Font.Weight) -> String {
         switch w {
         case .bold, .heavy, .black: return "IBMPlexSansArabic-Bold"
@@ -64,7 +71,7 @@ enum AppFont {
     }
 
     static func ui(_ size: CGFloat, _ w: Font.Weight = .regular) -> UIFont {
-        UIFont(name: name(w), size: size) ?? .systemFont(ofSize: size)
+        UIFont(name: name(w), size: size * scale) ?? .systemFont(ofSize: size)
     }
 }
 
@@ -72,11 +79,11 @@ extension Font {
     /// The app font for a text style (scales with Dynamic Type). Headlines default to semibold.
     static func app(_ style: Font.TextStyle, _ weight: Font.Weight? = nil) -> Font {
         let w = weight ?? (style == .headline ? .semibold : .regular)
-        return .custom(AppFont.name(w), size: AppFont.size(style), relativeTo: style)
+        return .custom(AppFont.name(w), size: AppFont.size(style) * AppFont.scale, relativeTo: style)
     }
 
     static func app(size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
-        .custom(AppFont.name(weight), size: size)
+        .custom(AppFont.name(weight), size: size * AppFont.scale)
     }
 
     static func ruqaa(size: CGFloat) -> Font {

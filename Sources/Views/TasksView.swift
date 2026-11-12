@@ -38,7 +38,7 @@ struct TasksView: View {
                 }
             }
             .padding(.horizontal, 18)
-            .padding(.top, 8)
+            .padding(.top, 2)
             .padding(.bottom, 28)
             .frame(maxWidth: 650)
             .frame(maxWidth: .infinity)
@@ -72,7 +72,7 @@ struct PageTitle: View {
 
     var body: some View {
         HStack {
-            Text(title).font(.app(size: 30, .bold)).foregroundColor(Theme.ink)
+            Text(title).font(.app(size: 26, .bold)).foregroundColor(Theme.ink)
             Spacer()
             Button(action: onAdd) {
                 Image(systemName: "plus")
@@ -85,7 +85,7 @@ struct PageTitle: View {
             .buttonStyle(.plain)
             .accessibilityLabel("إضافة")
         }
-        .padding(.top, 8)
+        .padding(.top, 2)
     }
 }
 

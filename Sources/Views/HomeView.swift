@@ -46,7 +46,7 @@ struct HomeView: View {
                 }
             }
             .padding(.horizontal, 18)
-            .padding(.top, 8)
+            .padding(.top, 2)
             .padding(.bottom, 28)
             .frame(maxWidth: 650)
             .frame(maxWidth: .infinity)
@@ -58,14 +58,14 @@ struct HomeView: View {
     private var header: some View {
         HStack(spacing: 10) {
             Text(greetingLine)
-                .font(.app(.title2, .bold)).foregroundColor(Theme.ink)
+                .font(.app(size: 21, .bold)).foregroundColor(Theme.ink)
                 .lineLimit(1).minimumScaleFactor(0.7)
             Spacer(minLength: 8)
             Button { router.present(notifications: true) } label: {
                 Image(systemName: router.deliveredCount > 0 ? "bell.badge" : "bell")
                     .font(.system(size: 19, weight: .medium))
                     .foregroundColor(Theme.ink)
-                    .frame(width: 46, height: 46)
+                    .frame(width: 42, height: 42)
                     .background(Circle().fill(Theme.card))
                     .overlay(Circle().stroke(Theme.border, lineWidth: 1))
                     .overlay(alignment: .topTrailing) {
@@ -83,7 +83,7 @@ struct HomeView: View {
                 Image(systemName: "gearshape.fill")
                     .font(.system(size: 20))
                     .foregroundColor(.white)
-                    .frame(width: 46, height: 46)
+                    .frame(width: 42, height: 42)
                     .background(Circle().fill(Theme.burgundy))
                     .shadow(color: Theme.burgundy.opacity(0.3), radius: 6, y: 3)
             }
