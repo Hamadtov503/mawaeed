@@ -1,8 +1,8 @@
 import Foundation
 import SwiftUI
 
-/// Dates are always shown in Arabic with Western digits; the Gregorian calendar is primary
-/// and the Umm al-Qura Hijri date is shown next to it.
+/// Dates are shown in Arabic with Western digits; Gregorian is primary and the
+/// Umm al-Qura Hijri date is shown next to it.
 enum Fmt {
     static let locale = Locale(identifier: "ar_SA@calendar=gregorian;numbers=latn")
     static let hijriLocale = Locale(identifier: "ar_SA@calendar=islamic-umalqura;numbers=latn")
@@ -22,7 +22,7 @@ enum Fmt {
         return c
     }()
 
-    private static func formatter(_ format: String, hijri: Bool = false) -> DateFormatter {
+    static func formatter(_ format: String, hijri: Bool = false) -> DateFormatter {
         let f = DateFormatter()
         f.calendar = hijri ? hijriCalendar : greg
         f.locale = hijri ? hijriLocale : locale
@@ -34,8 +34,10 @@ enum Fmt {
     static let longDay = formatter("EEEE d MMMM y")
     static let shortDay = formatter("EEE d MMM")
     static let shortDayYear = formatter("d MMM y")
+    static let weekday = formatter("EEEE")
     static let time = formatter("h:mm a")
     static let hijri = formatter("d MMMM y", hijri: true)
+    static let hijriMonth = formatter("MMMM", hijri: true)
     static let fileStamp: DateFormatter = {
         let f = DateFormatter()
         f.calendar = Calendar(identifier: .gregorian)
@@ -51,29 +53,14 @@ enum Fmt {
     }
 
     static func hijriText(_ d: Date) -> String { hijri.string(from: d) + " هـ" }
-
     static func timeText(_ d: Date) -> String { time.string(from: d) }
 
-    static func money(_ v: Double) -> String {
-        let f = NumberFormatter()
-        f.locale = Locale(identifier: "en_US")
-        f.numberStyle = .decimal
-        f.maximumFractionDigits = v.rounded() == v ? 0 : 2
-        return (f.string(from: NSNumber(value: v)) ?? "\(v)") + " " + AppSettings.shared.currency
-    }
-
-    /// Accepts Arabic-Indic digits and Arabic separators ("١٢٣٫٥").
-    static func parseNumber(_ s: String) -> Double? {
-        let arabic = Array("٠١٢٣٤٥٦٧٨٩"), persian = Array("۰۱۲۳۴۵۶۷۸۹")
-        var out = ""
-        for ch in s.trimmingCharacters(in: .whitespaces) {
-            if let i = arabic.firstIndex(of: ch) { out.append(String(i)) }
-            else if let i = persian.firstIndex(of: ch) { out.append(String(i)) }
-            else if ch == "٫" || ch == "," { out.append(".") }
-            else if ch == "٬" { continue }
-            else { out.append(ch) }
-        }
-        return Double(out)
+    /// "اليوم", "بكرة", "الأحد 15 نوفمبر" — used as day headers in lists.
+    static func dayTitle(_ d: Date) -> String {
+        if greg.isDateInToday(d) { return "اليوم" }
+        if greg.isDateInTomorrow(d) { return "بكرة" }
+        if greg.isDateInYesterday(d) { return "أمس" }
+        return longDay.string(from: d)
     }
 
     // MARK: Arabic counting ("يوم / يومين / 3 أيام / 11 يوم")
@@ -93,32 +80,32 @@ enum Fmt {
     static func hours(_ n: Int) -> String { count(n, one: "ساعة", two: "ساعتين", few: "ساعات", many: "ساعة") }
     static func minutes(_ n: Int) -> String { count(n, one: "دقيقة", two: "دقيقتين", few: "دقائق", many: "دقيقة") }
 
-    /// A human span such as "3 أيام", "شهرين و 5 أيام", "سنة و 3 أشهر".
+    /// A human span such as "3 أيام", "شهرين", "سنة و 3 أشهر".
     static func span(from a: Date, to b: Date) -> String {
         let c = greg.dateComponents([.year, .month, .day], from: greg.startOfDay(for: a), to: greg.startOfDay(for: b))
-        let y = abs(c.year ?? 0), m = abs(c.month ?? 0), d = abs(c.day ?? 0)
+        let y = abs(c.year ?? 0), m = abs(c.month ?? 0)
         if y > 0 { return m > 0 ? "\(years(y)) و \(months(m))" : years(y) }
-        if m >= 2 || (m == 1 && d == 0) { return d > 0 && m < 3 ? "\(months(m)) و \(days(d))" : months(m) }
+        if m >= 2 { return months(m) }
         let total = abs(greg.dateComponents([.day], from: greg.startOfDay(for: a), to: greg.startOfDay(for: b)).day ?? 0)
         return days(total)
     }
 
-    /// "اليوم", "بكرة", "بعد 3 أيام", "متأخر يومين", "اليوم 4:30 م"…
+    /// "الحين", "بعد 20 دقيقة", "اليوم 4:30 م", "بكرة", "بعد 3 أيام", "قبل يومين".
     static func countdown(to date: Date, hasTime: Bool, now: Date = Date()) -> String {
         let dayDiff = greg.dateComponents([.day], from: greg.startOfDay(for: now), to: greg.startOfDay(for: date)).day ?? 0
         switch dayDiff {
         case 0:
             if hasTime {
-                if date < now { return "فات اليوم \(timeText(date))" }
+                if date < now { return "فات \(timeText(date))" }
                 let mins = Int(date.timeIntervalSince(now) / 60)
                 if mins < 60 { return mins <= 1 ? "الحين" : "بعد \(minutes(mins))" }
                 return "اليوم \(timeText(date))"
             }
             return "اليوم"
         case 1: return hasTime ? "بكرة \(timeText(date))" : "بكرة"
-        case -1: return "متأخر من أمس"
+        case -1: return "أمس"
         case 2...: return "بعد \(span(from: now, to: date))"
-        default: return "متأخر \(span(from: date, to: now))"
+        default: return "قبل \(span(from: date, to: now))"
         }
     }
 }

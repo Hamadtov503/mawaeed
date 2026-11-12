@@ -2,188 +2,112 @@ import Foundation
 import EventKit
 import UIKit
 
-/// Mirrors items into a «مواعيدي» calendar and tasks into a «مواعيدي» Reminders list,
-/// created in the iCloud account when there is one — so they show on every Apple device.
+/// Mirrors appointments into a «مواعيدي» calendar in the iCloud account, so they show in the
+/// Calendar app on the iPhone, iPad, Mac and Watch.
 final class CalendarSync {
     static let shared = CalendarSync()
     let store = EKEventStore()
-    static let listName = "مواعيدي"
+    static let calendarName = "مواعيدي"
 
-    struct Link {
-        let id: UUID
-        let eventID: String?
-        let reminderID: String?
+    /// What was last written this session, to skip unchanged appointments.
+    private var written: [UUID: Int] = [:]
+
+    var hasAccess: Bool {
+        EKEventStore.authorizationStatus(for: .event).rawValue == 3   // .authorized / .fullAccess
     }
 
-    /// Signatures of what was last written this session, to skip unchanged items.
-    private var eventSig: [UUID: Int] = [:]
-    private var reminderSig: [UUID: Int] = [:]
-
-    // MARK: Access
-
-    func hasAccess(_ type: EKEntityType) -> Bool {
-        let s = EKEventStore.authorizationStatus(for: type)
-        if #available(iOS 17.0, *) {
-            return s == .fullAccess || s.rawValue == 3
-        }
-        return s.rawValue == 3   // .authorized
-    }
-
-    func requestAccess(_ type: EKEntityType, _ done: @escaping (Bool) -> Void) {
+    func requestAccess(_ done: @escaping (Bool) -> Void) {
         let finish: (Bool, Error?) -> Void = { ok, _ in DispatchQueue.main.async { done(ok) } }
         if #available(iOS 17.0, *) {
-            if type == .event { store.requestFullAccessToEvents(completion: finish) }
-            else { store.requestFullAccessToReminders(completion: finish) }
+            store.requestFullAccessToEvents(completion: finish)
         } else {
-            store.requestAccess(to: type, completion: finish)
+            store.requestAccess(to: .event, completion: finish)
         }
     }
 
-    // MARK: Calendars
-
-    private func appCalendar(_ type: EKEntityType) -> EKCalendar? {
-        let key = type == .event ? "appCalendarID" : "appReminderListID"
-        if let id = UserDefaults.standard.string(forKey: key), let cal = store.calendar(withIdentifier: id) {
-            return cal
-        }
-        if let existing = store.calendars(for: type).first(where: { $0.title == Self.listName && $0.allowsContentModifications }) {
+    private func appCalendar() -> EKCalendar? {
+        let key = "appCalendarID"
+        if let id = UserDefaults.standard.string(forKey: key), let cal = store.calendar(withIdentifier: id) { return cal }
+        if let existing = store.calendars(for: .event).first(where: { $0.title == Self.calendarName && $0.allowsContentModifications }) {
             UserDefaults.standard.set(existing.calendarIdentifier, forKey: key)
             return existing
         }
-        let cal = EKCalendar(for: type, eventStore: store)
-        cal.title = Self.listName
+        let cal = EKCalendar(for: .event, eventStore: store)
+        cal.title = Self.calendarName
         cal.cgColor = UIColor(red: 0.05, green: 0.49, blue: 0.48, alpha: 1).cgColor
         let iCloud = store.sources.first { $0.sourceType == .calDAV && $0.title.lowercased().contains("icloud") }
-        let fallback = type == .event ? store.defaultCalendarForNewEvents?.source : store.defaultCalendarForNewReminders()?.source
-        guard let source = iCloud ?? fallback ?? store.sources.first(where: { $0.sourceType == .local }) else { return nil }
+        guard let source = iCloud ?? store.defaultCalendarForNewEvents?.source else { return nil }
         cal.source = source
         do {
             try store.saveCalendar(cal, commit: true)
             UserDefaults.standard.set(cal.calendarIdentifier, forKey: key)
             return cal
         } catch {
-            // iCloud may refuse a new list in rare setups; fall back to the default calendar.
-            return type == .event ? store.defaultCalendarForNewEvents : store.defaultCalendarForNewReminders()
+            return store.defaultCalendarForNewEvents
         }
     }
 
-    var calendarAccountName: String? {
-        guard hasAccess(.event) else { return nil }
-        return appCalendar(.event)?.source.title
-    }
+    var accountName: String? { hasAccess ? appCalendar()?.source.title : nil }
 
-    // MARK: Sync
-
-    func sync(items: [Item], calendar: Bool, reminders: Bool) -> [Link] {
-        var links: [UUID: (String?, String?)] = [:]
-        func link(_ it: Item) -> (String?, String?) { links[it.id] ?? (it.calendarEventID, it.reminderItemID) }
-
-        if hasAccess(.event) {
-            let cal = calendar ? appCalendar(.event) : nil
-            for it in items {
-                if calendar, let cal = cal, !it.isMedicine {
-                    if let newID = upsertEvent(it, in: cal), newID != it.calendarEventID {
-                        links[it.id] = (newID, link(it).1)
-                    }
-                } else if let eid = it.calendarEventID {
-                    if let ev = store.event(withIdentifier: eid) { try? store.remove(ev, span: .thisEvent, commit: false) }
-                    links[it.id] = (nil, link(it).1)
-                    eventSig[it.id] = nil
-                }
+    /// Returns new event ids to store (id → event id, or nil when an event was removed).
+    func sync(items: [Appointment], enabled: Bool) -> [UUID: String?] {
+        guard hasAccess else { return [:] }
+        var changes: [UUID: String?] = [:]
+        let cal = enabled ? appCalendar() : nil
+        for a in items {
+            if let cal = cal {
+                let id = upsert(a, in: cal)
+                if id != a.calendarEventID { changes[a.id] = .some(id) }
+            } else if let eid = a.calendarEventID {
+                if let ev = store.event(withIdentifier: eid) { try? store.remove(ev, span: .thisEvent, commit: true) }
+                written[a.id] = nil
+                changes[a.id] = .some(nil)
             }
-            try? store.commit()
         }
-
-        if hasAccess(.reminder) {
-            let list = reminders ? appCalendar(.reminder) : nil
-            for it in items {
-                if reminders, let list = list, it.category == .task {
-                    if let newID = upsertReminder(it, in: list), newID != it.reminderItemID {
-                        links[it.id] = (link(it).0, newID)
-                    }
-                } else if let rid = it.reminderItemID {
-                    if let r = store.calendarItem(withIdentifier: rid) as? EKReminder { try? store.remove(r, commit: false) }
-                    links[it.id] = (link(it).0, nil)
-                    reminderSig[it.id] = nil
-                }
-            }
-            try? store.commit()
-        }
-
-        return links.map { Link(id: $0.key, eventID: $0.value.0, reminderID: $0.value.1) }
+        return changes
     }
 
-    private func signature(_ it: Item) -> Int {
+    private func signature(_ a: Appointment) -> Int {
         var h = Hasher()
-        h.combine(it.title); h.combine(it.date); h.combine(it.hasTime); h.combine(it.notes)
-        h.combine(it.location); h.combine(it.isDone); h.combine(it.category.rawValue)
+        h.combine(a.title); h.combine(a.date); h.combine(a.hasTime); h.combine(a.location); h.combine(a.notes)
         return h.finalize()
     }
 
-    private func upsertEvent(_ it: Item, in cal: EKCalendar) -> String? {
-        let sig = signature(it)
-        let existing = it.calendarEventID.flatMap { store.event(withIdentifier: $0) }
-        if existing != nil, eventSig[it.id] == sig { return it.calendarEventID }
-
-        let ev = existing ?? EKEvent(eventStore: store)
-        if existing == nil { ev.calendar = cal }
-        ev.title = it.isDone ? "✓ \(it.title)" : it.title
-        ev.isAllDay = !it.hasTime
-        ev.startDate = it.date
-        ev.endDate = it.hasTime ? it.date.addingTimeInterval(3600) : it.date
-        ev.location = it.location.isEmpty ? nil : it.location
-        ev.notes = [it.category.title, it.notes].filter { !$0.isEmpty }.joined(separator: "\n")
+    private func upsert(_ a: Appointment, in cal: EKCalendar) -> String? {
+        let sig = signature(a)
+        let existing = a.calendarEventID.flatMap { store.event(withIdentifier: $0) }
+        if existing != nil, written[a.id] == sig { return a.calendarEventID }
+        // Another phone on the same iCloud account may already have added this appointment.
+        let ev = existing ?? findEvent(for: a, in: cal) ?? EKEvent(eventStore: store)
+        if ev.calendar == nil { ev.calendar = cal }
+        ev.title = a.title
+        ev.isAllDay = !a.hasTime
+        ev.startDate = a.date
+        ev.endDate = a.hasTime ? a.date.addingTimeInterval(3600) : a.date
+        ev.location = a.location.isEmpty ? nil : a.location
+        ev.notes = a.notes.isEmpty ? nil : a.notes
+        ev.url = URL(string: "mawaeed://appointment/\(a.id.uuidString)")
         do {
             try store.save(ev, span: .thisEvent, commit: true)
-            eventSig[it.id] = sig
+            written[a.id] = sig
             return ev.eventIdentifier
         } catch {
-            return it.calendarEventID
+            return a.calendarEventID
         }
     }
 
-    private func upsertReminder(_ it: Item, in list: EKCalendar) -> String? {
-        let sig = signature(it)
-        let existing = it.reminderItemID.flatMap { store.calendarItem(withIdentifier: $0) as? EKReminder }
-        if existing != nil, reminderSig[it.id] == sig { return it.reminderItemID }
-
-        let r = existing ?? EKReminder(eventStore: store)
-        if existing == nil { r.calendar = list }
-        r.title = it.title
-        r.notes = it.notes.isEmpty ? nil : it.notes
-        var comps = Fmt.greg.dateComponents(it.hasTime ? [.year, .month, .day, .hour, .minute] : [.year, .month, .day], from: it.date)
-        comps.calendar = Fmt.greg
-        r.dueDateComponents = comps
-        r.isCompleted = it.isDone
-        do {
-            try store.save(r, commit: true)
-            reminderSig[it.id] = sig
-            return r.calendarItemIdentifier
-        } catch {
-            return it.reminderItemID
-        }
+    private func findEvent(for a: Appointment, in cal: EKCalendar) -> EKEvent? {
+        let url = URL(string: "mawaeed://appointment/\(a.id.uuidString)")
+        let start = a.date.addingTimeInterval(-40 * 86400), end = a.date.addingTimeInterval(40 * 86400)
+        let pred = store.predicateForEvents(withStart: start, end: end, calendars: [cal])
+        return store.events(matching: pred).first { $0.url == url }
     }
 
-    /// Tasks the user ticked off in Apple's Reminders app.
-    func completedInReminders(items: [Item]) -> [UUID] {
-        guard hasAccess(.reminder) else { return [] }
-        store.refreshSourcesIfNecessary()
-        return items.compactMap { it in
-            guard !it.isDone, let rid = it.reminderItemID,
-                  let r = store.calendarItem(withIdentifier: rid) as? EKReminder, r.isCompleted else { return nil }
-            reminderSig[it.id] = nil
-            return it.id
-        }
-    }
-
-    func removeLinks(of it: Item) {
-        if let eid = it.calendarEventID, hasAccess(.event), let ev = store.event(withIdentifier: eid) {
+    func removeEvent(of a: Appointment) {
+        guard hasAccess else { return }
+        if let eid = a.calendarEventID, let ev = store.event(withIdentifier: eid) {
             try? store.remove(ev, span: .thisEvent, commit: true)
         }
-        if let rid = it.reminderItemID, hasAccess(.reminder), let r = store.calendarItem(withIdentifier: rid) as? EKReminder {
-            try? store.remove(r, commit: true)
-        }
-        eventSig[it.id] = nil
-        reminderSig[it.id] = nil
+        written[a.id] = nil
     }
 }

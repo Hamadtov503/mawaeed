@@ -19,11 +19,6 @@ targets:
         CFBundleLocalizations: [ar]
         CFBundleShortVersionString: "$(MARKETING_VERSION)"
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
-        MawaeedAuthURL: "$(MAWAEED_AUTH_URL)"
-        MawaeedAuthPublicKey: "$(MAWAEED_AUTH_PUBLIC_KEY)"
-        CFBundleURLTypes:
-          - CFBundleURLName: com.hamad.mawaeed.auth
-            CFBundleURLSchemes: [com.hamad.mawaeed]
         UILaunchScreen:
           UIColorName: LaunchBG
         UISupportedInterfaceOrientations:
@@ -32,11 +27,6 @@ targets:
         ITSAppUsesNonExemptEncryption: false
         NSCalendarsUsageDescription: "عشان أضيف مواعيدك في تقويم iCloud وتشوفها على كل أجهزتك."
         NSCalendarsFullAccessUsageDescription: "عشان أضيف مواعيدك في تقويم iCloud وتشوفها على كل أجهزتك."
-        NSRemindersUsageDescription: "عشان أرسل مهامك لقائمة «مواعيدي» في تطبيق التذكيرات وأعرف لو خلّصتها."
-        NSRemindersFullAccessUsageDescription: "عشان أرسل مهامك لقائمة «مواعيدي» في تطبيق التذكيرات وأعرف لو خلّصتها."
-        NSCameraUsageDescription: "عشان تصوّر الاستمارة أو الفاتورة أو كرت الضمان وترفقها."
-        NSPhotoLibraryUsageDescription: "عشان ترفق صور من ألبومك."
-        NSFaceIDUsageDescription: "عشان تقفل التطبيق وما يفتحه غيرك."
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.hamad.mawaeed
@@ -47,8 +37,6 @@ targets:
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         TARGETED_DEVICE_FAMILY: "1"
         SWIFT_VERSION: "5.0"
-        MAWAEED_AUTH_URL: ""
-        MAWAEED_AUTH_PUBLIC_KEY: ""
     scheme: {}
 
 
