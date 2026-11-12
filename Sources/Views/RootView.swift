@@ -175,18 +175,22 @@ struct SideMenu: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            VStack(spacing: 18) {
+            VStack(spacing: 14) {
                 ForEach(Page.allCases) { p in item(p) }
             }
             .environment(\.layoutDirection, .rightToLeft)
-            .padding(.vertical, 22)
-            .padding(.horizontal, 12)
+            .padding(.vertical, 18)
+            .padding(.leading, 4)
+            .padding(.trailing, 8)
             .background(
-                UnevenCapsule(radius: 28)
-                    .fill(Theme.background)
-                    .shadow(color: .black.opacity(0.16), radius: 18, x: 4)
+                // Semi-transparent: frosted glass with a light beige tint.
+                ZStack {
+                    UnevenCapsule(radius: 26).fill(.ultraThinMaterial)
+                    UnevenCapsule(radius: 26).fill(Theme.background.opacity(0.45))
+                }
+                .shadow(color: .black.opacity(0.12), radius: 14, x: 3)
             )
-            .overlay(UnevenCapsule(radius: 28).stroke(Theme.border, lineWidth: 1))
+            .overlay(UnevenCapsule(radius: 26).stroke(Color.white.opacity(0.6), lineWidth: 1))
             Spacer(minLength: 0)
         }
         .environment(\.layoutDirection, .leftToRight)   // pin the panel to the screen's left edge
@@ -212,8 +216,8 @@ struct SideMenu: View {
                 Image(systemName: p.icon)
                     .font(.system(size: 19, weight: .semibold))
                     .foregroundColor(selected ? .white : Theme.burgundy)
-                    .frame(width: 50, height: 50)
-                    .background(RoundedRectangle(cornerRadius: 15, style: .continuous)
+                    .frame(width: 46, height: 46)
+                    .background(RoundedRectangle(cornerRadius: 14, style: .continuous)
                         .fill(selected ? Theme.burgundy : Theme.burgundy.opacity(0.1)))
                     .overlay(alignment: .topTrailing) {
                         if count > 0 {
@@ -225,7 +229,7 @@ struct SideMenu: View {
                     }
                 Text(p.title).font(.app(.caption2, selected ? .bold : .medium)).foregroundColor(Theme.ink)
             }
-            .frame(width: 66)
+            .frame(width: 60)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

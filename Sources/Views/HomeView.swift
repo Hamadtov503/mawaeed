@@ -22,7 +22,10 @@ struct HomeView: View {
                 SectionHeader(title: isToday ? "اليوم" : Fmt.dayTitle(day), detail: Fmt.hijriText(day))
                     // Report this line's position so the menu tab can sit right beside it.
                     .background(GeometryReader { g in
-                        Color.clear.preference(key: DayLineY.self, value: g.frame(in: .global).midY)
+                        let y = g.frame(in: .global).midY
+                        Color.clear
+                            .onAppear { router.dayLineY = y }
+                            .onChange(of: y) { router.dayLineY = $0 }
                     })
 
                 let allTasks = lateTasks + dayTasks + undated
@@ -49,7 +52,6 @@ struct HomeView: View {
             .animation(Router.soft, value: day)
         }
         .background(Theme.background.ignoresSafeArea())
-        .onPreferenceChange(DayLineY.self) { y in router.dayLineY = y }
     }
 
     private var header: some View {
@@ -137,11 +139,6 @@ func openMaps(_ place: String) {
     }
 }
 
-struct DayLineY: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
-}
-
 /// Winter (November–April): a snowflake. Summer (May–October): an air conditioner.
 struct SeasonIcon: View {
     let date: Date
@@ -160,8 +157,11 @@ struct SeasonIcon: View {
                 Image(systemName: "snowflake")
             }
         }
-        .font(.system(size: 17, weight: .semibold))
-        .foregroundStyle(isSummer ? Theme.navy : Color(red: 0.36, green: 0.62, blue: 0.86))
+        .font(.system(size: 18, weight: .bold))
+        .foregroundStyle(isSummer ? Theme.navy : Color.white)
+        // A faint outline so white snow still reads on the beige background.
+        .shadow(color: isSummer ? .clear : Color(red: 0.25, green: 0.38, blue: 0.55).opacity(0.55), radius: 0.8)
+        .shadow(color: isSummer ? .clear : Color(red: 0.25, green: 0.38, blue: 0.55).opacity(0.35), radius: 2.5)
         .accessibilityLabel(isSummer ? "صيف" : "شتاء")
     }
 }
