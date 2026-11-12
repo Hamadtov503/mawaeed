@@ -25,6 +25,7 @@ targets:
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         UIRequiresFullScreen: true
+        UIUserInterfaceStyle: Light
         ITSAppUsesNonExemptEncryption: false
         UIAppFonts:
           - IBMPlexSansArabic-Regular.ttf

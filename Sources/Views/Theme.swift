@@ -106,6 +106,7 @@ extension View {
             .environment(\.locale, Fmt.locale)
             .environment(\.calendar, Fmt.greg)
             .font(.app(.body))
+            .preferredColorScheme(.light)   // always the beige look, even in dark mode
     }
 }
 

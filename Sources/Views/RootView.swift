@@ -11,13 +11,22 @@ struct RootView: View {
         let pageOpen = router.showSettings || router.showNotifications
         ZStack {
             Theme.background.ignoresSafeArea()
-            Group {
-                if router.tab == 1 {
-                    AppointmentsView()
-                } else {
-                    HomeView(onAdd: { adding = true })
-                }
+            // Both tabs stay alive and cross-fade with a slight drift, so switching is soft.
+            ZStack {
+                HomeView(onAdd: { adding = true })
+                    .opacity(router.tab == 0 ? 1 : 0)
+                    .scaleEffect(router.tab == 0 ? 1 : 0.98)
+                    .offset(y: router.tab == 0 ? 0 : 8)
+                    .allowsHitTesting(router.tab == 0)
+                    .accessibilityHidden(router.tab != 0)
+                AppointmentsView()
+                    .opacity(router.tab == 1 ? 1 : 0)
+                    .scaleEffect(router.tab == 1 ? 1 : 0.98)
+                    .offset(y: router.tab == 1 ? 0 : 8)
+                    .allowsHitTesting(router.tab == 1)
+                    .accessibilityHidden(router.tab != 1)
             }
+            .animation(.easeInOut(duration: 0.32), value: router.tab)
             .safeAreaInset(edge: .bottom) {
                 FloatingTabBar(selection: $router.tab) { adding = true }
                     .padding(.horizontal, 14)
@@ -150,7 +159,9 @@ struct FloatingTabBar: View {
     private func tab(_ i: Int, _ title: String, _ icon: String) -> some View {
         let on = selection == i
         return Button {
-            withAnimation(.easeInOut(duration: 0.2)) { selection = i }
+            guard selection != i else { return }
+            UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+            withAnimation(.easeInOut(duration: 0.32)) { selection = i }
         } label: {
             VStack(spacing: 3) {
                 Image(systemName: icon).font(.system(size: 18, weight: .semibold))
