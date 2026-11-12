@@ -9,11 +9,11 @@ struct HomeView: View {
     @State private var day = Date()
 
     var body: some View {
-        let appointments = store.on(day: day)
         let isToday = Fmt.greg.isDateInToday(day)
-        let dayTasks = store.tasks(on: day).filter { !$0.isDone || isToday }
-        let lateTasks = isToday ? store.openTasks.filter { $0.isOverdue() && !$0.isDue(on: day) } : []
-        let undated = isToday ? store.openTasks.filter { $0.due == nil } : []
+        // Today (the default): everything coming up and every open task.
+        // Another day picked in the calendar: just that day's.
+        let appointments = isToday ? store.upcoming() : store.on(day: day)
+        let allTasks = isToday ? store.openTasks : store.tasks(on: day)
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 header
@@ -29,13 +29,11 @@ struct HomeView: View {
                             .onChange(of: y) { v in if router.dayLineY == 0 && v > 150 { router.dayLineY = v } }
                     })
 
-                let allTasks = lateTasks + dayTasks + undated
-
                 label(L("مواعيدي", "Appointments"), "calendar", appointments.count)
                 if appointments.isEmpty {
                     emptyRow(L("ليس لديك مواعيد", "No appointments"))
                 } else {
-                    ForEach(appointments) { AppointmentCard(item: $0) }
+                    ForEach(appointments) { AppointmentCard(item: $0, showDate: isToday) }
                 }
 
                 label(L("مهامي", "Tasks"), "checklist", allTasks.filter { !$0.isDone }.count)
