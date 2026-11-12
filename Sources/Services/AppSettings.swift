@@ -76,6 +76,8 @@ final class Router: ObservableObject {
     @Published var showNotifications = false
     /// Notifications sitting in Notification Center, shown as the bell's badge.
     @Published var deliveredCount = 0
+    /// Where the home page's day line ("اليوم") is on screen; the menu tab sits beside it.
+    @Published var dayLineY: CGFloat = 0
 
     static let soft = Animation.spring(response: 0.42, dampingFraction: 0.9)
 

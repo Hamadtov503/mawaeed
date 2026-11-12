@@ -95,10 +95,17 @@ struct RootView: View {
 
 /// The tab on the left edge that opens the side menu (also opens with a swipe from the edge).
 struct MenuHandle: View {
+    @EnvironmentObject var router: Router
     let onOpen: () -> Void
 
+    private let size = CGSize(width: 34, height: 118)
+
     var body: some View {
-        HStack {
+        GeometryReader { g in
+            let top = g.frame(in: .global).minY
+            // On the home page: level with the day line. Elsewhere: a little above the middle.
+            let wanted = router.page == .home && router.dayLineY > 0 ? router.dayLineY - top : g.size.height * 0.42
+            let y = min(max(wanted, size.height / 2 + 8), g.size.height - size.height / 2 - 8)
             Button(action: onOpen) {
                 ZStack(alignment: .leading) {
                     WaveTab()
@@ -109,19 +116,18 @@ struct MenuHandle: View {
                         .foregroundColor(.white)
                         .padding(.leading, 9)
                 }
-                .frame(width: 34, height: 118)
+                .frame(width: size.width, height: size.height)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityLabel("القائمة")
-            Spacer()
+            .gesture(DragGesture(minimumDistance: 15).onEnded { v in
+                if abs(v.translation.width) > 40 { onOpen() }
+            })
+            .position(x: size.width / 2, y: y)
+            .animation(.easeOut(duration: 0.15), value: y)
         }
         .environment(\.layoutDirection, .leftToRight)   // always on the screen's left edge
-        .frame(maxHeight: .infinity)
-        .offset(y: 70)   // beside the day's list, below the calendar
-        .gesture(DragGesture(minimumDistance: 15).onEnded { v in
-            if abs(v.translation.width) > 40 { onOpen() }
-        })
     }
 }
 

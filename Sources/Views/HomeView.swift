@@ -20,6 +20,10 @@ struct HomeView: View {
                 CalendarCard(selection: $day)
 
                 SectionHeader(title: isToday ? "اليوم" : Fmt.dayTitle(day), detail: Fmt.hijriText(day))
+                    // Report this line's position so the menu tab can sit right beside it.
+                    .background(GeometryReader { g in
+                        Color.clear.preference(key: DayLineY.self, value: g.frame(in: .global).midY)
+                    })
 
                 let allTasks = lateTasks + dayTasks + undated
 
@@ -45,6 +49,7 @@ struct HomeView: View {
             .animation(Router.soft, value: day)
         }
         .background(Theme.background.ignoresSafeArea())
+        .onPreferenceChange(DayLineY.self) { y in router.dayLineY = y }
     }
 
     private var header: some View {
@@ -85,18 +90,14 @@ struct HomeView: View {
         }
     }
 
-    /// "صباح الخير 🌹 حمد" — a rose lying on its side between the greeting and the name.
+    /// "صبآح الخير ❄︎ حمد" — the season's icon sits between the greeting and the name.
     private func greetingView(now: Date) -> some View {
         let h = Fmt.greg.component(.hour, from: now)
-        let greeting = h < 12 ? "صباح الخير" : "مساء الخير"
+        let greeting = h < 12 ? "صبآح الخير" : "مسآء الخير"
         let name = settings.userName.trimmingCharacters(in: .whitespaces)
-        return HStack(spacing: 6) {
+        return HStack(spacing: 7) {
             Text(greeting)
-            Text("🌹")
-                .font(.system(size: 17))
-                .rotationEffect(.degrees(-70))
-                .padding(.horizontal, 2)
-                .accessibilityHidden(true)
+            SeasonIcon(date: now)
             if !name.isEmpty { Text(name).lineLimit(1) }
         }
         .font(.app(size: 21, .bold))
@@ -133,5 +134,34 @@ func openMaps(_ place: String) {
     let q = place.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? place
     if let url = URL(string: place.hasPrefix("http") ? place : "http://maps.apple.com/?q=\(q)") {
         UIApplication.shared.open(url)
+    }
+}
+
+struct DayLineY: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
+}
+
+/// Winter (November–April): a snowflake. Summer (May–October): an air conditioner.
+struct SeasonIcon: View {
+    let date: Date
+
+    private var isSummer: Bool { (5...10).contains(Fmt.greg.component(.month, from: date)) }
+
+    var body: some View {
+        Group {
+            if isSummer {
+                if #available(iOS 16.0, *) {
+                    Image(systemName: "air.conditioner.horizontal.fill")
+                } else {
+                    Image(systemName: "wind")
+                }
+            } else {
+                Image(systemName: "snowflake")
+            }
+        }
+        .font(.system(size: 17, weight: .semibold))
+        .foregroundStyle(isSummer ? Theme.navy : Color(red: 0.36, green: 0.62, blue: 0.86))
+        .accessibilityLabel(isSummer ? "صيف" : "شتاء")
     }
 }
