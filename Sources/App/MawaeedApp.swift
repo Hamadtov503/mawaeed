@@ -6,7 +6,8 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         // The delegate must be in place before launch finishes so notification actions are handled.
         NotificationManager.shared.setUp()
-        UIView.appearance().semanticContentAttribute = .forceRightToLeft
+        // No UIView.appearance().semanticContentAttribute override: the app's only localization is Arabic,
+        // so UIKit is already right-to-left, and forcing it again mirrors text during navigation transitions.
         let bar = UINavigationBarAppearance()
         bar.configureWithTransparentBackground()
         bar.backgroundColor = Theme.uiBackground
