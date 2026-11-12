@@ -85,6 +85,7 @@ struct AppointmentDetail: View {
         .sheet(isPresented: $editing) {
             AppointmentEditor(appointment: a, isNew: false) { editing = false }
                 .environmentObject(store)
+                .appEnvironment()
         }
         .sheet(isPresented: $sharing) { ShareSheet(items: [a.shareText]) }
         .confirmationDialog("تحذف «\(a.title)»؟", isPresented: $confirmDelete, titleVisibility: .visible) {

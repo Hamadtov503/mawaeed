@@ -26,11 +26,13 @@ struct RootView: View {
         .sheet(isPresented: $adding) {
             AppointmentEditor(appointment: AppointmentEditor.blank(), isNew: true) { adding = false }
                 .environmentObject(store)
+                .appEnvironment()
         }
         .sheet(item: $router.openID) { ref in
             AppointmentDetail(id: ref.id) { router.openID = nil }
                 .environmentObject(store)
                 .environmentObject(router)
+                .appEnvironment()
         }
         .sheet(isPresented: $router.showSettings) {
             AppNavigation {
@@ -43,12 +45,14 @@ struct RootView: View {
             .environmentObject(store)
             .environmentObject(AppSettings.shared)
             .environmentObject(SyncManager.shared)
+            .appEnvironment()
         }
         .sheet(isPresented: $router.showNotifications) {
             NotificationsView { router.showNotifications = false }
                 .environmentObject(store)
                 .environmentObject(router)
                 .environmentObject(AppSettings.shared)
+                .appEnvironment()
         }
         .onChange(of: phase) { p in
             switch p {

@@ -42,13 +42,13 @@ extension View {
             .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous).stroke(Theme.border, lineWidth: 1))
     }
 
-    /// Lets the warm background show behind a Form on every iOS version.
-    @ViewBuilder func themedForm() -> some View {
-        if #available(iOS 16.0, *) {
-            self.scrollContentBackground(.hidden).background(Theme.background.ignoresSafeArea())
-        } else {
-            self.background(Theme.background.ignoresSafeArea())
-        }
+    /// Right-to-left, Arabic locale with Western digits, Gregorian calendar.
+    /// Applied at the app root and again at the root of every sheet. SwiftUI does not pick up the
+    /// direction on its own here: without it, Form/List content was drawn mirrored.
+    func appEnvironment() -> some View {
+        self.environment(\.layoutDirection, .rightToLeft)
+            .environment(\.locale, Fmt.locale)
+            .environment(\.calendar, Fmt.greg)
     }
 }
 
