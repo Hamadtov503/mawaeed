@@ -1,17 +1,27 @@
 import SwiftUI
 
-/// Add or edit an appointment, shown as a sheet. Built from cards in a ScrollView rather than a
-/// Form: Form/List rows are system list cells and were drawn mirrored in right-to-left.
+/// Add or edit an appointment, shown as a sheet: title and place, the date (Hijri or Gregorian)
+/// with the time under it, one reminder, and notes. The date and time open as popups that close
+/// on an outside tap; picking a day closes the calendar at once.
 struct AppointmentEditor: View {
     @EnvironmentObject var store: Store
     @State private var draft: Appointment
     @State private var hijri = true          // Hijri is the default way to pick the date
+    @State private var pickingDay = false
+    @State private var pickingTime = false
     @Namespace private var calendarSwitch
     let isNew: Bool
     let onFinish: () -> Void
 
     init(appointment: Appointment, isNew: Bool, onFinish: @escaping () -> Void) {
-        _draft = State(initialValue: appointment)
+        var a = appointment
+        if !a.hasTime {
+            // Appointments always have a time now; an old all-day one starts at 9:00.
+            a.hasTime = true
+            a.date = Fmt.greg.date(bySettingHour: 9, minute: 0, second: 0, of: a.date) ?? a.date
+        }
+        if a.reminders.count > 1 { a.reminders = [a.reminders.max() ?? 60] }
+        _draft = State(initialValue: a)
         self.isNew = isNew
         self.onFinish = onFinish
     }
@@ -21,6 +31,8 @@ struct AppointmentEditor: View {
         let cal = Fmt.greg
         let tomorrow = cal.date(byAdding: .day, value: 1, to: cal.startOfDay(for: Date())) ?? Date()
         a.date = cal.date(bySettingHour: 10, minute: 0, second: 0, of: tomorrow) ?? tomorrow
+        a.hasTime = true
+        a.reminders = [60]
         return a
     }
 
@@ -30,10 +42,7 @@ struct AppointmentEditor: View {
                 VStack(alignment: .leading, spacing: 20) {
                     titleCard
                     dateCard
-                    group(L("المكان", "Place")) {
-                        TextField(L("مثلاً: مستشفى الملك فهد", "e.g. King Fahad Hospital"), text: $draft.location)
-                    }
-                    group(L("ذكّرني", "Remind me")) { remindersList }
+                    group(L("ذكّرني", "Remind me")) { reminderChoice }
                     group(L("ملاحظات", "Notes")) {
                         ZStack(alignment: .topLeading) {
                             if draft.notes.isEmpty {
@@ -62,9 +71,11 @@ struct AppointmentEditor: View {
                         .disabled(draft.title.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             }
-            .onChange(of: draft.hasTime) { has in
-                if !has { draft.reminders = draft.reminders.filter { $0 == 0 || $0 >= 1440 } }
-                if draft.reminders.isEmpty { draft.reminders = [has ? 60 : 1440] }
+            .popup(isPresented: $pickingDay) {
+                DayPickerPopup(date: $draft.date, hijri: hijri) { close() }
+            }
+            .popup(isPresented: $pickingTime) {
+                TimePickerPopup(date: $draft.date) { close() }
             }
         }
     }
@@ -74,6 +85,11 @@ struct AppointmentEditor: View {
     private var titleCard: some View {
         group(nil) {
             TextField(L("عنوان الموعد", "Appointment title"), text: $draft.title).font(.app(.headline))
+            Divider()
+            HStack(spacing: 8) {
+                Image(systemName: "mappin.and.ellipse").foregroundColor(Theme.burgundy)
+                TextField(L("المكان (مثلاً: مستشفى الملك فهد)", "Place (e.g. King Fahad Hospital)"), text: $draft.location)
+            }
             if isNew {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
@@ -101,45 +117,33 @@ struct AppointmentEditor: View {
                 .padding(4)
                 .background(Capsule().fill(Theme.background))
 
-                Toggle(L("وقت محدد", "Specific time"), isOn: $draft.hasTime)
-
-                HStack {
-                    Text(draft.hasTime ? L("التاريخ والوقت", "Date & time") : L("التاريخ", "Date"))
-                    Spacer()
-                    // Both pickers stay alive and cross-fade, so switching calendars doesn't stutter.
-                    ZStack(alignment: .trailing) {
-                        picker(hijri: true).opacity(hijri ? 1 : 0).allowsHitTesting(hijri)
-                        picker(hijri: false).opacity(hijri ? 0 : 1).allowsHitTesting(!hijri)
-                    }
-                }
-
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        quick(L("اليوم", "Today"), 0)
-                        quick(L("بكرة", "Tomorrow"), 1)
-                        quick(L("بعد يومين", "In 2 days"), 2)
-                        quick(L("بعد أسبوع", "In a week"), 7)
-                    }
-                }
+                PickerRow(title: L("التاريخ", "Date"),
+                          value: hijri ? Fmt.hijriText(draft.date) : Fmt.dateText(draft.date, hasTime: false),
+                          icon: "calendar") { open(day: true) }
+                Divider()
+                PickerRow(title: L("الوقت", "Time"), value: Fmt.timeText(draft.date), icon: "clock") { open(day: false) }
             }
-            Text(hijri ? L("يوافق: \(Fmt.dateText(draft.date, hasTime: false, long: true))", "Same as: \(Fmt.dateText(draft.date, hasTime: false, long: true))") : L("يوافق: \(Fmt.hijriText(draft.date))", "Same as: \(Fmt.hijriText(draft.date))"))
+            Text(hijri ? L("يوافق: \(Fmt.dateText(draft.date, hasTime: false, long: true))", "Same as: \(Fmt.dateText(draft.date, hasTime: false, long: true))")
+                       : L("يوافق: \(Fmt.hijriText(draft.date))", "Same as: \(Fmt.hijriText(draft.date))"))
                 .font(.app(.caption)).foregroundColor(Theme.muted).padding(.horizontal, 6)
         }
     }
 
-    private var remindersList: some View {
-        let options = ReminderOption.options(hasTime: draft.hasTime)
+    /// One reminder at most: tapping the chosen one again clears it.
+    private var reminderChoice: some View {
+        let options = ReminderOption.options(hasTime: true)
         return VStack(spacing: 0) {
             ForEach(options, id: \.self) { m in
+                let on = draft.reminders.first == m
                 Button {
-                    if let i = draft.reminders.firstIndex(of: m) { draft.reminders.remove(at: i) } else { draft.reminders.append(m) }
+                    withAnimation(.easeInOut(duration: 0.15)) { draft.reminders = on ? [] : [m] }
                 } label: {
                     HStack {
-                        Text(ReminderOption.label(m, hasTime: draft.hasTime)).foregroundColor(Theme.ink)
+                        Text(ReminderOption.label(m, hasTime: true)).foregroundColor(Theme.ink)
                         Spacer()
-                        Image(systemName: draft.reminders.contains(m) ? "checkmark.circle.fill" : "circle")
-                            .font(.app(.title3))
-                            .foregroundColor(draft.reminders.contains(m) ? .brand : Theme.muted.opacity(0.5))
+                        Image(systemName: on ? "largecircle.fill.circle" : "circle")
+                            .font(.title3)
+                            .foregroundColor(on ? Theme.burgundy : Theme.muted.opacity(0.5))
                     }
                     .padding(.vertical, 10)
                     .contentShape(Rectangle())
@@ -180,33 +184,24 @@ struct AppointmentEditor: View {
         .buttonStyle(.plain)
     }
 
-    private func picker(hijri: Bool) -> some View {
-        DatePicker("", selection: $draft.date,
-                   displayedComponents: draft.hasTime ? [.date, .hourAndMinute] : [.date])
-            .labelsHidden()
-            .environment(\.calendar, hijri ? Fmt.hijriCalendar : Fmt.greg)
-            .environment(\.locale, hijri ? Fmt.hijriLocale : Fmt.locale)
+    private func open(day: Bool) {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        withAnimation(.spring(response: 0.32, dampingFraction: 0.9)) {
+            if day { pickingDay = true } else { pickingTime = true }
+        }
     }
 
-    private func quick(_ title: String, _ days: Int) -> some View {
-        Button {
-            let cal = Fmt.greg
-            let base = cal.date(byAdding: .day, value: days, to: cal.startOfDay(for: Date())) ?? Date()
-            let c = cal.dateComponents([.hour, .minute], from: draft.date)
-            draft.date = cal.date(bySettingHour: c.hour ?? 10, minute: c.minute ?? 0, second: 0, of: base) ?? base
-        } label: {
-            Text(title)
-                .font(.app(.caption, .semibold))
-                .padding(.horizontal, 12).padding(.vertical, 7)
-                .background(Capsule().fill(Theme.burgundy.opacity(0.15)))
-                .foregroundColor(Theme.burgundy)
+    private func close() {
+        withAnimation(.spring(response: 0.32, dampingFraction: 0.9)) {
+            pickingDay = false
+            pickingTime = false
         }
-        .buttonStyle(.plain)
     }
 
     private func save() {
         draft.title = draft.title.trimmingCharacters(in: .whitespacesAndNewlines)
         draft.location = draft.location.trimmingCharacters(in: .whitespacesAndNewlines)
+        draft.hasTime = true
         store.upsert(draft)
         onFinish()
     }

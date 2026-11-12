@@ -119,6 +119,8 @@ struct TaskEditor: View {
     @State private var draft: TaskItem
     @State private var hasDate: Bool
     @State private var confirmDelete = false
+    @State private var pickingDay = false
+    @State private var pickingTime = false
     let onFinish: () -> Void
 
     init(task: TaskItem, onFinish: @escaping () -> Void) {
@@ -140,12 +142,11 @@ struct TaskEditor: View {
                         Toggle(L("لها تاريخ", "Has a date"), isOn: $hasDate.animation(Router.soft))
                         if hasDate {
                             Toggle(L("وقت محدد", "Specific time"), isOn: $draft.hasTime.animation(Router.soft))
-                            HStack {
-                                Text(draft.hasTime ? L("التاريخ والوقت", "Date & time") : L("التاريخ", "Date"))
-                                Spacer()
-                                DatePicker("", selection: Binding(get: { draft.due ?? defaultDue }, set: { draft.due = $0 }),
-                                           displayedComponents: draft.hasTime ? [.date, .hourAndMinute] : [.date])
-                                    .labelsHidden()
+                            PickerRow(title: L("التاريخ", "Date"), value: Fmt.dateText(dueBinding.wrappedValue, hasTime: false),
+                                      icon: "calendar") { open(day: true) }
+                            if draft.hasTime {
+                                PickerRow(title: L("الوقت", "Time"), value: Fmt.timeText(dueBinding.wrappedValue),
+                                          icon: "clock") { open(day: false) }
                             }
                             Text(L("يوافق: \(Fmt.hijriText(draft.due ?? defaultDue))", "Same as: \(Fmt.hijriText(draft.due ?? defaultDue))"))
                                 .font(.app(.caption)).foregroundColor(Theme.muted)
@@ -184,6 +185,12 @@ struct TaskEditor: View {
                         .disabled(draft.title.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             }
+            .popup(isPresented: $pickingDay) {
+                DayPickerPopup(date: dueBinding, hijri: false) { close() }
+            }
+            .popup(isPresented: $pickingTime) {
+                TimePickerPopup(date: dueBinding) { close() }
+            }
             .confirmationDialog(L("تحذف المهمة؟", "Delete this task?"), isPresented: $confirmDelete, titleVisibility: .visible) {
                 Button(L("حذف", "Delete"), role: .destructive) {
                     store.deleteTask(draft.id)
@@ -191,6 +198,24 @@ struct TaskEditor: View {
                 }
                 Button(L("إلغاء", "Cancel"), role: .cancel) {}
             }
+        }
+    }
+
+    private var dueBinding: Binding<Date> {
+        Binding(get: { draft.due ?? defaultDue }, set: { draft.due = $0 })
+    }
+
+    private func open(day: Bool) {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        withAnimation(.spring(response: 0.32, dampingFraction: 0.9)) {
+            if day { pickingDay = true } else { pickingTime = true }
+        }
+    }
+
+    private func close() {
+        withAnimation(.spring(response: 0.32, dampingFraction: 0.9)) {
+            pickingDay = false
+            pickingTime = false
         }
     }
 
