@@ -13,6 +13,8 @@ final class AppSettings: ObservableObject {
     @Published var calendarSync: Bool { didSet { d.set(calendarSync, forKey: "calendarSync"); changed() } }
     /// The name the greeting uses ("صباح الخير يا …").
     @Published var userName: String { didSet { d.set(userName, forKey: "userName") } }
+    /// The app's language (Arabic by default). Changing it rebuilds the screens and reschedules reminders.
+    @Published var language: AppLanguage { didSet { d.set(language.rawValue, forKey: "language"); changed() } }
     /// Set once the intro has been completed.
     @Published var onboarded: Bool { didSet { d.set(onboarded, forKey: "onboarded") } }
 
@@ -29,6 +31,7 @@ final class AppSettings: ObservableObject {
         calendarSync = d.bool(forKey: "calendarSync")
         userName = d.string(forKey: "userName") ?? ""
         onboarded = d.bool(forKey: "onboarded")
+        language = AppLanguage(rawValue: d.string(forKey: "language") ?? "ar") ?? .ar
     }
 
     private func changed() {
@@ -50,9 +53,9 @@ enum Page: Int, CaseIterable, Identifiable {
     var id: Int { rawValue }
     var title: String {
         switch self {
-        case .home: return "الرئيسية"
-        case .appointments: return "مواعيدي"
-        case .tasks: return "مهامي"
+        case .home: return L("الرئيسية", "Home")
+        case .appointments: return L("مواعيدي", "Appointments")
+        case .tasks: return L("مهامي", "Tasks")
         }
     }
     var icon: String {

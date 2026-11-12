@@ -41,12 +41,12 @@ struct RootView: View {
                     .zIndex(3)
             }
             if router.showNotifications {
-                SlidePage(title: "التنبيهات", onBack: router.closePages) { NotificationsView() }
+                SlidePage(title: L("التنبيهات", "Notifications"), onBack: router.closePages) { NotificationsView() }
                     .transition(.move(edge: .trailing))
                     .zIndex(4)
             }
             if router.showSettings {
-                SlidePage(title: "الإعدادات", onBack: router.closePages) { SettingsView() }
+                SlidePage(title: L("الإعدادات", "Settings"), onBack: router.closePages) { SettingsView() }
                     .transition(.move(edge: .trailing))
                     .zIndex(4)
             }
@@ -120,7 +120,7 @@ struct MenuHandle: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("القائمة")
+            .accessibilityLabel(L("القائمة", "Menu"))
             .gesture(DragGesture(minimumDistance: 15).onEnded { v in
                 if abs(v.translation.width) > 40 { onOpen() }
             })
@@ -177,7 +177,7 @@ struct SideMenu: View {
             VStack(spacing: 14) {
                 ForEach(Page.allCases) { p in item(p) }
             }
-            .environment(\.layoutDirection, .rightToLeft)
+            .environment(\.layoutDirection, Fmt.isArabic ? .rightToLeft : .leftToRight)
             .padding(.vertical, 18)
             .padding(.leading, 4)
             .padding(.trailing, 8)
@@ -262,7 +262,7 @@ struct SlidePage<Content: View>: View {
                             .overlay(Circle().stroke(Theme.border, lineWidth: 1))
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel("رجوع")
+                    .accessibilityLabel(L("رجوع", "Back"))
                     Spacer()
                 }
             }

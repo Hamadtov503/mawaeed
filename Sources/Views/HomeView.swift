@@ -19,7 +19,7 @@ struct HomeView: View {
                 header
                 CalendarCard(selection: $day)
 
-                SectionHeader(title: isToday ? "اليوم" : Fmt.dayTitle(day), detail: Fmt.hijriText(day))
+                SectionHeader(title: isToday ? L("اليوم", "Today") : Fmt.dayTitle(day), detail: Fmt.hijriText(day))
                     // Record where this line sits (unscrolled) once; the menu tab stays at that height
                     // on every page and does not move with scrolling.
                     .background(GeometryReader { g in
@@ -31,16 +31,16 @@ struct HomeView: View {
 
                 let allTasks = lateTasks + dayTasks + undated
 
-                label("مواعيدي", "calendar", appointments.count)
+                label(L("مواعيدي", "Appointments"), "calendar", appointments.count)
                 if appointments.isEmpty {
-                    emptyRow("ليس لديك مواعيد")
+                    emptyRow(L("ليس لديك مواعيد", "No appointments"))
                 } else {
                     ForEach(appointments) { AppointmentCard(item: $0) }
                 }
 
-                label("مهامي", "checklist", allTasks.filter { !$0.isDone }.count)
+                label(L("مهامي", "Tasks"), "checklist", allTasks.filter { !$0.isDone }.count)
                 if allTasks.isEmpty {
-                    emptyRow("ليس لديك مهام")
+                    emptyRow(L("ليس لديك مهام", "No tasks"))
                 } else {
                     TaskList(tasks: allTasks)
                 }
@@ -79,7 +79,7 @@ struct HomeView: View {
                     }
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("التنبيهات")
+            .accessibilityLabel(L("التنبيهات", "Notifications"))
             Button { router.present(notifications: false) } label: {
                 Image(systemName: "gearshape.fill")
                     .font(.system(size: 20))
@@ -89,14 +89,14 @@ struct HomeView: View {
                     .shadow(color: Theme.burgundy.opacity(0.3), radius: 6, y: 3)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("الإعدادات")
+            .accessibilityLabel(L("الإعدادات", "Settings"))
         }
     }
 
     /// "صبآح الخير ❄︎ حمد" — the season's icon sits between the greeting and the name.
     private func greetingView(now: Date) -> some View {
         let h = Fmt.greg.component(.hour, from: now)
-        let greeting = h < 12 ? "صبآح الخير" : "مسآء الخير"
+        let greeting = h < 12 ? L("صبآح الخير", "Good morning") : L("مسآء الخير", "Good evening")
         let name = settings.userName.trimmingCharacters(in: .whitespaces)
         return HStack(spacing: 7) {
             Text(greeting)
@@ -163,6 +163,6 @@ struct SeasonIcon: View {
         // A faint outline so white snow still reads on the beige background.
         .shadow(color: isSummer ? .clear : Color(red: 0.25, green: 0.38, blue: 0.55).opacity(0.55), radius: 0.8)
         .shadow(color: isSummer ? .clear : Color(red: 0.25, green: 0.38, blue: 0.55).opacity(0.35), radius: 2.5)
-        .accessibilityLabel(isSummer ? "صيف" : "شتاء")
+        .accessibilityLabel(isSummer ? L("صيف", "Summer") : L("شتاء", "Winter"))
     }
 }

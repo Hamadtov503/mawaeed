@@ -5,7 +5,8 @@ import SwiftUI
 struct AppointmentEditor: View {
     @EnvironmentObject var store: Store
     @State private var draft: Appointment
-    @State private var hijri = false
+    @State private var hijri = true          // Hijri is the default way to pick the date
+    @Namespace private var calendarSwitch
     let isNew: Bool
     let onFinish: () -> Void
 
@@ -29,14 +30,14 @@ struct AppointmentEditor: View {
                 VStack(alignment: .leading, spacing: 20) {
                     titleCard
                     dateCard
-                    group("المكان") {
-                        TextField("مثلاً: مستشفى الملك فهد", text: $draft.location)
+                    group(L("المكان", "Place")) {
+                        TextField(L("مثلاً: مستشفى الملك فهد", "e.g. King Fahad Hospital"), text: $draft.location)
                     }
-                    group("ذكّرني") { remindersList }
-                    group("ملاحظات") {
+                    group(L("ذكّرني", "Remind me")) { remindersList }
+                    group(L("ملاحظات", "Notes")) {
                         ZStack(alignment: .topLeading) {
                             if draft.notes.isEmpty {
-                                Text("رقم الحجز، اسم الدكتور، الأوراق المطلوبة…")
+                                Text(L("رقم الحجز، اسم الدكتور، الأوراق المطلوبة…", "Booking number, doctor's name, documents to bring…"))
                                     .foregroundColor(Theme.muted.opacity(0.7))
                                     .padding(.top, 8).padding(.leading, 5)
                             }
@@ -51,12 +52,12 @@ struct AppointmentEditor: View {
                 .frame(maxWidth: .infinity)
             }
             .background(Theme.background.ignoresSafeArea())
-            .navigationTitle(isNew ? "موعد جديد" : "تعديل الموعد")
+            .navigationTitle(isNew ? L("موعد جديد", "New appointment") : L("تعديل الموعد", "Edit appointment"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("إلغاء", action: onFinish) }
+                ToolbarItem(placement: .cancellationAction) { Button(L("إلغاء", "Cancel"), action: onFinish) }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("حفظ", action: save)
+                    Button(L("حفظ", "Save"), action: save)
                         .font(.app(.headline))
                         .disabled(draft.title.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
@@ -72,7 +73,7 @@ struct AppointmentEditor: View {
 
     private var titleCard: some View {
         group(nil) {
-            TextField("عنوان الموعد", text: $draft.title).font(.app(.headline))
+            TextField(L("عنوان الموعد", "Appointment title"), text: $draft.title).font(.app(.headline))
             if isNew {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
@@ -91,38 +92,37 @@ struct AppointmentEditor: View {
 
     private var dateCard: some View {
         VStack(alignment: .leading, spacing: 8) {
-            group("الموعد") {
+            group(L("الموعد", "Appointment")) {
                 // A SwiftUI segmented control (not UISegmentedControl).
                 HStack(spacing: 6) {
-                    calendarOption("ميلادي", false)
-                    calendarOption("هجري", true)
+                    calendarOption(L("هجري", "Hijri"), true)          // right in Arabic
+                    calendarOption(L("ميلادي", "Gregorian"), false)   // left in Arabic
                 }
                 .padding(4)
                 .background(Capsule().fill(Theme.background))
 
-                Toggle("وقت محدد", isOn: $draft.hasTime)
+                Toggle(L("وقت محدد", "Specific time"), isOn: $draft.hasTime)
 
                 HStack {
-                    Text(draft.hasTime ? "التاريخ والوقت" : "التاريخ")
+                    Text(draft.hasTime ? L("التاريخ والوقت", "Date & time") : L("التاريخ", "Date"))
                     Spacer()
-                    DatePicker("", selection: $draft.date,
-                               displayedComponents: draft.hasTime ? [.date, .hourAndMinute] : [.date])
-                        .labelsHidden()
-                        .environment(\.calendar, hijri ? Fmt.hijriCalendar : Fmt.greg)
-                        .environment(\.locale, hijri ? Fmt.hijriLocale : Fmt.locale)
-                        .id(hijri)
+                    // Both pickers stay alive and cross-fade, so switching calendars doesn't stutter.
+                    ZStack(alignment: .trailing) {
+                        picker(hijri: true).opacity(hijri ? 1 : 0).allowsHitTesting(hijri)
+                        picker(hijri: false).opacity(hijri ? 0 : 1).allowsHitTesting(!hijri)
+                    }
                 }
 
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
-                        quick("اليوم", 0)
-                        quick("بكرة", 1)
-                        quick("بعد يومين", 2)
-                        quick("بعد أسبوع", 7)
+                        quick(L("اليوم", "Today"), 0)
+                        quick(L("بكرة", "Tomorrow"), 1)
+                        quick(L("بعد يومين", "In 2 days"), 2)
+                        quick(L("بعد أسبوع", "In a week"), 7)
                     }
                 }
             }
-            Text(hijri ? "يوافق: \(Fmt.dateText(draft.date, hasTime: false, long: true))" : "يوافق: \(Fmt.hijriText(draft.date))")
+            Text(hijri ? L("يوافق: \(Fmt.dateText(draft.date, hasTime: false, long: true))", "Same as: \(Fmt.dateText(draft.date, hasTime: false, long: true))") : L("يوافق: \(Fmt.hijriText(draft.date))", "Same as: \(Fmt.hijriText(draft.date))"))
                 .font(.app(.caption)).foregroundColor(Theme.muted).padding(.horizontal, 6)
         }
     }
@@ -163,15 +163,29 @@ struct AppointmentEditor: View {
     }
 
     private func calendarOption(_ title: String, _ value: Bool) -> some View {
-        Button { withAnimation(.easeInOut(duration: 0.15)) { hijri = value } } label: {
+        Button { withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { hijri = value } } label: {
             Text(title)
                 .font(.app(.subheadline, .semibold))
                 .foregroundColor(hijri == value ? .white : Theme.ink)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 8)
-                .background(Capsule().fill(hijri == value ? Theme.burgundy : Color.clear))
+                .background {
+                    if hijri == value {
+                        Capsule().fill(Theme.burgundy)
+                            .matchedGeometryEffect(id: "selection", in: calendarSwitch)
+                    }
+                }
+                .contentShape(Capsule())
         }
         .buttonStyle(.plain)
+    }
+
+    private func picker(hijri: Bool) -> some View {
+        DatePicker("", selection: $draft.date,
+                   displayedComponents: draft.hasTime ? [.date, .hourAndMinute] : [.date])
+            .labelsHidden()
+            .environment(\.calendar, hijri ? Fmt.hijriCalendar : Fmt.greg)
+            .environment(\.locale, hijri ? Fmt.hijriLocale : Fmt.locale)
     }
 
     private func quick(_ title: String, _ days: Int) -> some View {

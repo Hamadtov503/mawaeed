@@ -56,7 +56,7 @@ final class SyncManager: ObservableObject {
             lastError = nil
             sync()
         } catch {
-            lastError = "ما قدرت أحفظ المجلد: \(error.localizedDescription)"
+            lastError = L("ما قدرت أحفظ المجلد: \(error.localizedDescription)", "Couldn't save the folder: \(error.localizedDescription)")
         }
     }
 
@@ -117,7 +117,7 @@ final class SyncManager: ObservableObject {
                 // A file that exists but can't be read yet (still downloading) must not be overwritten.
                 if remote == nil, readError != nil {
                     if ok { folder.stopAccessingSecurityScopedResource() }
-                    self.finish(nil, error: "الملف لسا ينزل من iCloud — بحاول مرة ثانية.")
+                    self.finish(nil, error: L("الملف لسا ينزل من iCloud — بحاول مرة ثانية.", "The file is still downloading from iCloud — will retry."))
                     return
                 }
                 let merged = Store.shared.merge(remote: remote?.items ?? [], remoteTasks: remote?.tasks ?? [],
@@ -150,7 +150,7 @@ final class SyncManager: ObservableObject {
                     if ok { folder.stopAccessingSecurityScopedResource() }
                     DispatchQueue.main.async {
                         self.finish(writeError == nil ? Date() : nil,
-                                    error: writeError.map { "فشلت المزامنة: \($0.localizedDescription)" })
+                                    error: writeError.map { L("فشلت المزامنة: \($0.localizedDescription)", "Sync failed: \($0.localizedDescription)") })
                     }
                 }
             }

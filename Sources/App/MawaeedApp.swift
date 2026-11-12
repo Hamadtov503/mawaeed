@@ -39,6 +39,7 @@ struct MawaeedApp: App {
     var body: some Scene {
         WindowGroup {
             AppEntry()
+                .id(settings.language)   // rebuild every screen in the new language
                 .environmentObject(store)
                 .environmentObject(settings)
                 .environmentObject(router)

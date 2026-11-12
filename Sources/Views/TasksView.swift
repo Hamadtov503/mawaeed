@@ -16,22 +16,22 @@ struct TasksView: View {
         let done = store.doneTasks.filter(matches)
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                Text("مهامي").font(.app(size: 26, .bold)).foregroundColor(Theme.ink).padding(.top, 2)
-                SearchField(prompt: "ابحث في مهامك", text: $query)
-                AddButton(label: "مهمة جديدة", hint: "اضغط على علامة + لإضافة مهمة لإنجازها") { router.newTask() }
+                Text(L("مهامي", "Tasks")).font(.app(size: 26, .bold)).foregroundColor(Theme.ink).padding(.top, 2)
+                SearchField(prompt: L("ابحث في مهامك", "Search your tasks"), text: $query)
+                AddButton(label: L("مهمة جديدة", "New task"), hint: L("اضغط على علامة + لإضافة مهمة لإنجازها", "Tap + to add a task to get done")) { router.newTask() }
 
                 if !open.isEmpty {
-                    BandHeader(title: "مهامك الحالية", count: open.count, color: Theme.forest)
+                    BandHeader(title: L("مهامك الحالية", "Your current tasks"), count: open.count, color: Theme.forest)
                     TaskList(tasks: open)
                         .transition(.opacity.combined(with: .move(edge: .top)))
                 }
                 if !done.isEmpty {
-                    BandHeader(title: "مهامك المنجزة", count: done.count, color: Theme.slate)
+                    BandHeader(title: L("مهامك المنجزة", "Your completed tasks"), count: done.count, color: Theme.slate)
                     TaskList(tasks: done)
                         .transition(.opacity)
                 }
                 if open.isEmpty && done.isEmpty && !query.isEmpty {
-                    Text("ما فيه نتائج لـ«\(query)»").font(.app(.subheadline)).foregroundColor(Theme.muted)
+                    Text(L("ما فيه نتائج لـ«\(query)»", "No results for “\(query)”")).font(.app(.subheadline)).foregroundColor(Theme.muted)
                         .frame(maxWidth: .infinity).padding(.top, 8)
                 }
             }
@@ -79,11 +79,11 @@ struct TaskRow: View {
                     .scaleEffect(task.isDone ? 1.05 : 1)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(task.isDone ? "إلغاء الإنجاز" : "تم")
+            .accessibilityLabel(task.isDone ? L("إلغاء الإنجاز", "Mark not done") : L("تم", "Done"))
 
             Button { router.editingTask = task } label: {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(task.title.isEmpty ? "بدون عنوان" : task.title)
+                    Text(task.title.isEmpty ? L("بدون عنوان", "Untitled") : task.title)
                         .font(.app(.body, .medium))
                         .foregroundColor(task.isDone ? Theme.muted : Theme.ink)
                         .strikethrough(task.isDone, color: Theme.muted)
@@ -105,9 +105,9 @@ struct TaskRow: View {
         }
         .padding(.vertical, 8)
         .contextMenu {
-            Button { router.editingTask = task } label: { Label("تعديل", systemImage: "pencil") }
+            Button { router.editingTask = task } label: { Label(L("تعديل", "Edit"), systemImage: "pencil") }
             Button(role: .destructive) { withAnimation(Router.soft) { store.deleteTask(task.id) } } label: {
-                Label("حذف", systemImage: "trash")
+                Label(L("حذف", "Delete"), systemImage: "trash")
             }
         }
     }
@@ -134,35 +134,35 @@ struct TaskEditor: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     card {
-                        TextField("وش المهمة؟", text: $draft.title).font(.app(.headline))
+                        TextField(L("وش المهمة؟", "What's the task?"), text: $draft.title).font(.app(.headline))
                     }
                     card {
-                        Toggle("لها تاريخ", isOn: $hasDate.animation(Router.soft))
+                        Toggle(L("لها تاريخ", "Has a date"), isOn: $hasDate.animation(Router.soft))
                         if hasDate {
-                            Toggle("وقت محدد", isOn: $draft.hasTime.animation(Router.soft))
+                            Toggle(L("وقت محدد", "Specific time"), isOn: $draft.hasTime.animation(Router.soft))
                             HStack {
-                                Text(draft.hasTime ? "التاريخ والوقت" : "التاريخ")
+                                Text(draft.hasTime ? L("التاريخ والوقت", "Date & time") : L("التاريخ", "Date"))
                                 Spacer()
                                 DatePicker("", selection: Binding(get: { draft.due ?? defaultDue }, set: { draft.due = $0 }),
                                            displayedComponents: draft.hasTime ? [.date, .hourAndMinute] : [.date])
                                     .labelsHidden()
                             }
-                            Text("يوافق: \(Fmt.hijriText(draft.due ?? defaultDue))")
+                            Text(L("يوافق: \(Fmt.hijriText(draft.due ?? defaultDue))", "Same as: \(Fmt.hijriText(draft.due ?? defaultDue))"))
                                 .font(.app(.caption)).foregroundColor(Theme.muted)
-                            Toggle("ذكّرني", isOn: $draft.remind)
+                            Toggle(L("ذكّرني", "Remind me"), isOn: $draft.remind)
                         }
                     }
                     card {
                         ZStack(alignment: .topLeading) {
                             if draft.notes.isEmpty {
-                                Text("ملاحظات").foregroundColor(Theme.muted.opacity(0.7)).padding(.top, 8).padding(.leading, 5)
+                                Text(L("ملاحظات", "Notes")).foregroundColor(Theme.muted.opacity(0.7)).padding(.top, 8).padding(.leading, 5)
                             }
                             TextEditor(text: $draft.notes).frame(minHeight: 80).modifier(ClearTextEditorBackground())
                         }
                     }
                     if !isNew {
                         Button(role: .destructive) { confirmDelete = true } label: {
-                            Label("حذف المهمة", systemImage: "trash").font(.app(.body, .semibold))
+                            Label(L("حذف المهمة", "Delete task"), systemImage: "trash").font(.app(.body, .semibold))
                                 .foregroundColor(Theme.burgundy)
                                 .frame(maxWidth: .infinity).padding(.vertical, 12)
                         }
@@ -175,21 +175,21 @@ struct TaskEditor: View {
                 .frame(maxWidth: .infinity)
             }
             .background(Theme.background.ignoresSafeArea())
-            .navigationTitle(isNew ? "مهمة جديدة" : "تعديل المهمة")
+            .navigationTitle(isNew ? L("مهمة جديدة", "New task") : L("تعديل المهمة", "Edit task"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("إلغاء", action: onFinish) }
+                ToolbarItem(placement: .cancellationAction) { Button(L("إلغاء", "Cancel"), action: onFinish) }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("حفظ", action: save)
+                    Button(L("حفظ", "Save"), action: save)
                         .disabled(draft.title.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             }
-            .confirmationDialog("تحذف المهمة؟", isPresented: $confirmDelete, titleVisibility: .visible) {
-                Button("حذف", role: .destructive) {
+            .confirmationDialog(L("تحذف المهمة؟", "Delete this task?"), isPresented: $confirmDelete, titleVisibility: .visible) {
+                Button(L("حذف", "Delete"), role: .destructive) {
                     store.deleteTask(draft.id)
                     onFinish()
                 }
-                Button("إلغاء", role: .cancel) {}
+                Button(L("إلغاء", "Cancel"), role: .cancel) {}
             }
         }
     }

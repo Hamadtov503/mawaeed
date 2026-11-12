@@ -17,22 +17,22 @@ struct AppointmentsView: View {
         let past = store.past().filter(matches)
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                Text("مواعيدي").font(.app(size: 26, .bold)).foregroundColor(Theme.ink).padding(.top, 2)
-                SearchField(prompt: "ابحث بالعنوان أو المكان", text: $query)
-                AddButton(label: "موعد جديد", hint: "اضغط على علامة + لإضافة مواعيدك") { router.addingAppointment = true }
+                Text(L("مواعيدي", "Appointments")).font(.app(size: 26, .bold)).foregroundColor(Theme.ink).padding(.top, 2)
+                SearchField(prompt: L("ابحث بالعنوان أو المكان", "Search by title or place"), text: $query)
+                AddButton(label: L("موعد جديد", "New appointment"), hint: L("اضغط على علامة + لإضافة مواعيدك", "Tap + to add your appointments")) { router.addingAppointment = true }
 
                 if !upcoming.isEmpty {
-                    BandHeader(title: "مواعيدك القادمة", count: upcoming.count, color: Theme.navy)
+                    BandHeader(title: L("مواعيدك القادمة", "Your upcoming appointments"), count: upcoming.count, color: Theme.navy)
                     ForEach(upcoming) { AppointmentCard(item: $0, showDate: true) }
                         .transition(.opacity.combined(with: .move(edge: .top)))
                 }
                 if !past.isEmpty {
-                    BandHeader(title: "مواعيدك السابقة", count: past.count, color: Theme.slate)
+                    BandHeader(title: L("مواعيدك السابقة", "Your past appointments"), count: past.count, color: Theme.slate)
                     ForEach(past) { AppointmentCard(item: $0, showDate: true) }
                         .transition(.opacity)
                 }
                 if upcoming.isEmpty && past.isEmpty && !query.isEmpty {
-                    Text("ما فيه نتائج لـ«\(query)»").font(.app(.subheadline)).foregroundColor(Theme.muted)
+                    Text(L("ما فيه نتائج لـ«\(query)»", "No results for “\(query)”")).font(.app(.subheadline)).foregroundColor(Theme.muted)
                         .frame(maxWidth: .infinity).padding(.top, 8)
                 }
             }

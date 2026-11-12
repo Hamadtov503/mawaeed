@@ -109,7 +109,7 @@ extension View {
     /// Applied at the app root and again at the root of every sheet. SwiftUI does not pick up the
     /// direction on its own here: without it, Form/List content was drawn mirrored.
     func appEnvironment() -> some View {
-        self.environment(\.layoutDirection, .rightToLeft)
+        self.environment(\.layoutDirection, Fmt.isArabic ? .rightToLeft : .leftToRight)
             .environment(\.locale, Fmt.locale)
             .environment(\.calendar, Fmt.greg)
             .font(.app(.body))

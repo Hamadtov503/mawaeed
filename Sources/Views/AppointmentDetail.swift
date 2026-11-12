@@ -15,17 +15,17 @@ struct AppointmentDetail: View {
                 if let a = store.item(id) {
                     content(a)
                 } else {
-                    EmptyState(icon: "trash", title: "انحذف هذا الموعد", message: "")
+                    EmptyState(icon: "trash", title: L("انحذف هذا الموعد", "This appointment was deleted"), message: "")
                         .frame(maxHeight: .infinity)
                 }
             }
             .background(Theme.background.ignoresSafeArea())
-            .navigationTitle("الموعد")
+            .navigationTitle(L("الموعد", "Appointment"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("إغلاق", action: onClose) }
+                ToolbarItem(placement: .cancellationAction) { Button(L("إغلاق", "Close"), action: onClose) }
                 ToolbarItem(placement: .primaryAction) {
-                    if store.item(id) != nil { Button("تعديل") { editing = true } }
+                    if store.item(id) != nil { Button(L("تعديل", "Edit")) { editing = true } }
                 }
             }
         }
@@ -44,17 +44,17 @@ struct AppointmentDetail: View {
                 .padding(.vertical, 8)
 
                 VStack(spacing: 14) {
-                    row("calendar", "التاريخ", Fmt.dateText(a.date, hasTime: false, long: true))
+                    row("calendar", L("التاريخ", "Date"), Fmt.dateText(a.date, hasTime: false, long: true))
                     Divider()
-                    row("moon.fill", "هجري", Fmt.hijriText(a.date))
+                    row("moon.fill", L("هجري", "Hijri"), Fmt.hijriText(a.date))
                     Divider()
-                    row("clock", "الوقت", a.hasTime ? Fmt.timeText(a.date) : "طوال اليوم")
+                    row("clock", L("الوقت", "Time"), a.hasTime ? Fmt.timeText(a.date) : L("طوال اليوم", "All day"))
                     Divider()
-                    row("bell.fill", "التنبيه", ReminderOption.summary(a.reminders, hasTime: a.hasTime))
+                    row("bell.fill", L("التنبيه", "Reminder"), ReminderOption.summary(a.reminders, hasTime: a.hasTime))
                     if !a.location.isEmpty {
                         Divider()
                         Button { openMaps(a.location) } label: {
-                            row("mappin.and.ellipse", "المكان", a.location, link: true)
+                            row("mappin.and.ellipse", L("المكان", "Place"), a.location, link: true)
                         }
                         .buttonStyle(.plain)
                     }
@@ -63,18 +63,18 @@ struct AppointmentDetail: View {
 
                 if !a.notes.isEmpty {
                     VStack(alignment: .leading, spacing: 8) {
-                        Label("ملاحظات", systemImage: "note.text").font(.app(.subheadline, .bold)).foregroundColor(Theme.muted)
+                        Label(L("ملاحظات", "Notes"), systemImage: "note.text").font(.app(.subheadline, .bold)).foregroundColor(Theme.muted)
                         Text(a.notes).foregroundColor(Theme.ink).frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .card()
                 }
 
                 VStack(spacing: 0) {
-                    action("مشاركة", "square.and.arrow.up") { sharing = true }
+                    action(L("مشاركة", "Share"), "square.and.arrow.up") { sharing = true }
                     Divider().padding(.vertical, 12)
-                    action("نسخة مكررة", "plus.square.on.square") { store.duplicate(a.id) }
+                    action(L("نسخة مكررة", "Duplicate"), "plus.square.on.square") { store.duplicate(a.id) }
                     Divider().padding(.vertical, 12)
-                    action("حذف الموعد", "trash", color: .red) { confirmDelete = true }
+                    action(L("حذف الموعد", "Delete appointment"), "trash", color: .red) { confirmDelete = true }
                 }
                 .card()
             }
@@ -88,12 +88,12 @@ struct AppointmentDetail: View {
                 .appEnvironment()
         }
         .sheet(isPresented: $sharing) { ShareSheet(items: [a.shareText]) }
-        .confirmationDialog("تحذف «\(a.title)»؟", isPresented: $confirmDelete, titleVisibility: .visible) {
-            Button("حذف", role: .destructive) {
+        .confirmationDialog(L("تحذف «\(a.title)»؟", "Delete “\(a.title)”?"), isPresented: $confirmDelete, titleVisibility: .visible) {
+            Button(L("حذف", "Delete"), role: .destructive) {
                 onClose()
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { store.delete(a.id) }
             }
-            Button("إلغاء", role: .cancel) {}
+            Button(L("إلغاء", "Cancel"), role: .cancel) {}
         }
     }
 

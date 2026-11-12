@@ -10,7 +10,7 @@ struct CalendarCard: View {
     @State private var direction: Edge = .leading
 
     private let hc = Fmt.hijriCalendar
-    private let weekdays = ["أحد", "إثنين", "ثلاثاء", "أربعاء", "خميس", "جمعة", "سبت"]
+    private let weekdays = [L("أحد", "Sun"), L("إثنين", "Mon"), L("ثلاثاء", "Tue"), L("أربعاء", "Wed"), L("خميس", "Thu"), L("جمعة", "Fri"), L("سبت", "Sat")]
 
     init(selection: Binding<Date>) {
         _selection = selection
@@ -65,7 +65,7 @@ struct CalendarCard: View {
         HStack(alignment: .center) {
             Button { goToToday() } label: {
                 VStack(alignment: .leading, spacing: 1) {
-                    Text("\(Fmt.hijriMonth.string(from: firstDay)) \(String(year))")
+                    Text("\(Fmt.hijriMonth.string(from: firstDay)) \(Fmt.num(year))")
                         .font(.app(size: 19, .bold))
                         .foregroundColor(Theme.burgundy)
                     HStack(spacing: 6) {

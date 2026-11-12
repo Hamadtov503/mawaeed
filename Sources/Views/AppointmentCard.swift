@@ -13,7 +13,7 @@ struct AppointmentCard: View {
             HStack(spacing: 14) {
                 Tile(icon: item.displayIcon, color: status == .past ? Theme.muted : .brand)
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(item.title.isEmpty ? "بدون عنوان" : item.title)
+                    Text(item.title.isEmpty ? L("بدون عنوان", "Untitled") : item.title)
                         .font(.app(.headline))
                         .foregroundColor(status == .past ? Theme.muted : Theme.ink)
                         .lineLimit(1)
@@ -29,9 +29,9 @@ struct AppointmentCard: View {
         }
         .buttonStyle(.plain)
         .contextMenu {
-            Button { store.duplicate(item.id) } label: { Label("نسخة مكررة", systemImage: "plus.square.on.square") }
+            Button { store.duplicate(item.id) } label: { Label(L("نسخة مكررة", "Duplicate"), systemImage: "plus.square.on.square") }
             Button(role: .destructive) { withAnimation { store.delete(item.id) } } label: {
-                Label("حذف", systemImage: "trash")
+                Label(L("حذف", "Delete"), systemImage: "trash")
             }
         }
     }

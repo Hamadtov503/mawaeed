@@ -72,7 +72,7 @@ struct Appointment: Identifiable, Codable, Equatable {
     enum Status { case today, tomorrow, week, later, past }
 
     var subtitle: String {
-        var parts = [hasTime ? Fmt.timeText(date) : "طوال اليوم"]
+        var parts = [hasTime ? Fmt.timeText(date) : L("طوال اليوم", "All day")]
         if !location.isEmpty { parts.append(location) }
         return parts.joined(separator: " · ")
     }
@@ -102,17 +102,17 @@ enum ReminderOption {
 
     static func label(_ m: Int, hasTime: Bool) -> String {
         switch m {
-        case 0: return hasTime ? "وقت الموعد" : "صباح نفس اليوم"
-        case ..<60: return "قبل \(Fmt.minutes(m))"
-        case ..<1440: return "قبل \(Fmt.hours(m / 60))"
-        case ..<10080: return "قبل \(Fmt.days(m / 1440))"
-        default: return "قبل \(Fmt.weeks(m / 10080))"
+        case 0: return hasTime ? L("وقت الموعد", "At the time") : L("صباح نفس اليوم", "Morning of the day")
+        case ..<60: return L("قبل \(Fmt.minutes(m))", "\(Fmt.minutes(m)) before")
+        case ..<1440: return L("قبل \(Fmt.hours(m / 60))", "\(Fmt.hours(m / 60)) before")
+        case ..<10080: return L("قبل \(Fmt.days(m / 1440))", "\(Fmt.days(m / 1440)) before")
+        default: return L("قبل \(Fmt.weeks(m / 10080))", "\(Fmt.weeks(m / 10080)) before")
         }
     }
 
     static func summary(_ list: [Int], hasTime: Bool) -> String {
-        if list.isEmpty { return "بدون تنبيه" }
-        return list.sorted(by: >).map { label($0, hasTime: hasTime) }.joined(separator: "، ")
+        if list.isEmpty { return L("بدون تنبيه", "No reminder") }
+        return list.sorted(by: >).map { label($0, hasTime: hasTime) }.joined(separator: L("، ", ", "))
     }
 }
 
@@ -122,14 +122,14 @@ struct Suggestion: Identifiable {
     let icon: String
     var id: String { title }
 
-    static let all: [Suggestion] = [
-        Suggestion(title: "موعد مستشفى", icon: "stethoscope"),
-        Suggestion(title: "موعد أسنان", icon: "mouth.fill"),
-        Suggestion(title: "مراجعة جهة حكومية", icon: "building.columns.fill"),
-        Suggestion(title: "اجتماع", icon: "person.3.fill"),
-        Suggestion(title: "صيانة السيارة", icon: "car.fill"),
-        Suggestion(title: "مناسبة", icon: "gift.fill"),
-        Suggestion(title: "سفر", icon: "airplane"),
-        Suggestion(title: "موعد", icon: "calendar.badge.clock"),
-    ]
+    static var all: [Suggestion] { [
+        Suggestion(title: L("موعد مستشفى", "Hospital"), icon: "stethoscope"),
+        Suggestion(title: L("موعد أسنان", "Dentist"), icon: "mouth.fill"),
+        Suggestion(title: L("مراجعة جهة حكومية", "Government office"), icon: "building.columns.fill"),
+        Suggestion(title: L("اجتماع", "Meeting"), icon: "person.3.fill"),
+        Suggestion(title: L("صيانة السيارة", "Car service"), icon: "car.fill"),
+        Suggestion(title: L("مناسبة", "Occasion"), icon: "gift.fill"),
+        Suggestion(title: L("سفر", "Travel"), icon: "airplane"),
+        Suggestion(title: L("موعد", "Appointment"), icon: "calendar.badge.clock"),
+    ] }
 }

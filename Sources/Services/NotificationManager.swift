@@ -60,7 +60,7 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
             guard let fire = t.reminderMoment(reminderMinutes: settings.reminderMinutes), fire > now else { continue }
             let c = UNMutableNotificationContent()
             c.title = "✅ \(t.title)"
-            c.body = t.hasTime ? "موعد المهمة الحين" : "مهمة اليوم — لا تنساها"
+            c.body = t.hasTime ? L("موعد المهمة الحين", "Task due now") : L("مهمة اليوم — لا تنساها", "Today's task — don't forget it")
             if !t.notes.isEmpty { c.body += "\n\(t.notes)" }
             c.sound = .default
             c.threadIdentifier = t.id.uuidString
@@ -111,9 +111,9 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         guard !today.isEmpty || !todayTasks.isEmpty else { return nil }
         let c = UNMutableNotificationContent()
         var parts: [String] = []
-        if !today.isEmpty { parts.append(Fmt.count(today.count, one: "موعد واحد", two: "موعدين", few: "مواعيد", many: "موعد")) }
-        if !todayTasks.isEmpty { parts.append(Fmt.count(todayTasks.count, one: "مهمة وحدة", two: "مهمتين", few: "مهام", many: "مهمة")) }
-        c.title = "☀️ صباح الخير — عندك اليوم " + parts.joined(separator: " و")
+        if !today.isEmpty { parts.append(Fmt.appointments(today.count)) }
+        if !todayTasks.isEmpty { parts.append(Fmt.tasks(todayTasks.count)) }
+        c.title = L("☀️ صباح الخير — عندك اليوم ", "☀️ Good morning — today you have ") + parts.joined(separator: L(" و", " and "))
         var lines = today.prefix(4).map { $0.hasTime ? "• \($0.title) \(Fmt.timeText($0.date))" : "• \($0.title)" }
         lines += todayTasks.prefix(3).map { "✓ \($0.title)" }
         c.body = lines.joined(separator: "\n")
@@ -124,8 +124,8 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
 
     func sendTest() {
         let c = UNMutableNotificationContent()
-        c.title = "📌 تجربة التنبيه"
-        c.body = "تمام! التنبيهات شغّالة 👍"
+        c.title = L("📌 تجربة التنبيه", "📌 Test reminder")
+        c.body = L("تمام! التنبيهات شغّالة 👍", "All set! Reminders work 👍")
         c.sound = .default
         center.add(UNNotificationRequest(identifier: "test", content: c,
                                          trigger: UNTimeIntervalNotificationTrigger(timeInterval: 5, repeats: false)))

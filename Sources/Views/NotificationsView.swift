@@ -34,8 +34,8 @@ struct NotificationsView: View {
                 VStack(alignment: .leading, spacing: 14) {
                     if !delivered.isEmpty {
                         HStack {
-                            SectionHeader(title: "وصلتك", detail: "\(delivered.count)")
-                            Button("مسح الكل") {
+                            SectionHeader(title: L("وصلتك", "Received"), detail: "\(delivered.count)")
+                            Button(L("مسح الكل", "Clear all")) {
                                 NotificationManager.shared.clearDelivered()
                                 withAnimation { delivered = [] }
                             }
@@ -52,10 +52,10 @@ struct NotificationsView: View {
                     }
 
                     let list = upcoming
-                    SectionHeader(title: "التنبيهات الجاية", detail: list.isEmpty ? nil : "\(list.count)")
+                    SectionHeader(title: L("التنبيهات الجاية", "Upcoming reminders"), detail: list.isEmpty ? nil : "\(list.count)")
                     if list.isEmpty {
-                        EmptyState(icon: "bell.slash", title: "ما فيه تنبيهات جاية",
-                                   message: "لما تضيف موعد، تنبيهاته تطلع هنا مع وقت وصول كل تنبيه.")
+                        EmptyState(icon: "bell.slash", title: L("ما فيه تنبيهات جاية", "No upcoming reminders"),
+                                   message: L("لما تضيف موعد، تنبيهاته تطلع هنا مع وقت وصول كل تنبيه.", "When you add an appointment, its reminders show here with when each arrives."))
                             .card()
                     } else {
                         VStack(spacing: 0) {
@@ -80,7 +80,7 @@ struct NotificationsView: View {
                 Tile(icon: "bell.fill", color: Theme.burgundy, size: 40)
                 VStack(alignment: .leading, spacing: 3) {
                     Text(u.appointment.title).font(.app(.subheadline, .bold)).foregroundColor(Theme.ink).lineLimit(1)
-                    Text("\(ReminderOption.label(u.offset, hasTime: u.appointment.hasTime)) · يوصلك \(Fmt.dateText(u.fire, hasTime: true))")
+                    Text(L("\(ReminderOption.label(u.offset, hasTime: u.appointment.hasTime)) · يوصلك \(Fmt.dateText(u.fire, hasTime: true))", "\(ReminderOption.label(u.offset, hasTime: u.appointment.hasTime)) · arrives \(Fmt.dateText(u.fire, hasTime: true))"))
                         .font(.app(.caption)).foregroundColor(Theme.muted).lineLimit(1)
                 }
                 Spacer(minLength: 6)
