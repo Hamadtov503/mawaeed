@@ -1,17 +1,11 @@
 import SwiftUI
 
-/// All appointments: upcoming grouped by day, past ones, or a calendar to pick a day.
+/// مواعيدي: search, a centred plus, then «مواعيدك القادمة» and «مواعيدك السابقة»
+/// (each only once it has something in it). Swiping right-to-left goes back home.
 struct AppointmentsView: View {
     @EnvironmentObject var store: Store
     @EnvironmentObject var router: Router
-    @State private var mode: Mode = .upcoming
-    @State private var day = Date()
     @State private var query = ""
-
-    enum Mode: String, CaseIterable, Identifiable {
-        case upcoming = "القادمة", calendar = "التقويم", past = "السابقة"
-        var id: Self { self }
-    }
 
     private func matches(_ a: Appointment) -> Bool {
         query.isEmpty || a.title.localizedCaseInsensitiveContains(query)
@@ -19,72 +13,117 @@ struct AppointmentsView: View {
     }
 
     var body: some View {
+        let upcoming = store.upcoming().filter(matches)
+        let past = store.past().filter(matches)
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                PageTitle(title: "مواعيدي") { router.addingAppointment = true }
+                Text("مواعيدي").font(.app(size: 26, .bold)).foregroundColor(Theme.ink).padding(.top, 2)
+                SearchField(prompt: "ابحث بالعنوان أو المكان", text: $query)
+                AddButton(label: "موعد جديد") { router.addingAppointment = true }
 
-                HStack(spacing: 8) {
-                    Image(systemName: "magnifyingglass").foregroundColor(Theme.muted)
-                    TextField("ابحث بالعنوان أو المكان", text: $query)
-                    if !query.isEmpty {
-                        Button { query = "" } label: { Image(systemName: "xmark.circle.fill").foregroundColor(Theme.muted) }
-                            .buttonStyle(.plain)
-                    }
+                if !upcoming.isEmpty {
+                    BandHeader(title: "مواعيدك القادمة", count: upcoming.count, color: Theme.navy)
+                    ForEach(upcoming) { AppointmentCard(item: $0, showDate: true) }
+                        .transition(.opacity.combined(with: .move(edge: .top)))
                 }
-                .card(padding: 12, radius: 18)
-
-                HStack(spacing: 8) {
-                    ForEach(Mode.allCases) { m in
-                        Chip(title: m.rawValue, selected: mode == m) { withAnimation(Router.soft) { mode = m } }
-                    }
+                if !past.isEmpty {
+                    BandHeader(title: "مواعيدك السابقة", count: past.count, color: Theme.slate)
+                    ForEach(past) { AppointmentCard(item: $0, showDate: true) }
+                        .transition(.opacity)
                 }
-
-                switch mode {
-                case .upcoming: grouped(store.upcoming().filter(matches), empty: "ما عندك مواعيد جاية")
-                case .past: grouped(store.past().filter(matches), empty: "ما فيه مواعيد سابقة")
-                case .calendar: calendar
+                if upcoming.isEmpty && past.isEmpty && !query.isEmpty {
+                    Text("ما فيه نتائج لـ«\(query)»").font(.app(.subheadline)).foregroundColor(Theme.muted)
+                        .frame(maxWidth: .infinity).padding(.top, 8)
                 }
             }
             .padding(.horizontal, 18)
-            .padding(.bottom, 18)
+            .padding(.bottom, 28)
             .frame(maxWidth: 650)
             .frame(maxWidth: .infinity)
+            .animation(Router.soft, value: upcoming.map(\.id))
+            .animation(Router.soft, value: past.map(\.id))
         }
         .background(Theme.background.ignoresSafeArea())
+        .swipeBackHome()
     }
+}
 
-    @ViewBuilder
-    private func grouped(_ list: [Appointment], empty: String) -> some View {
-        if list.isEmpty {
-            EmptyState(icon: "calendar", title: empty, message: query.isEmpty ? "اضغط ➕ تحت وأضف موعد." : "جرّب كلمة بحث ثانية").card()
-        } else {
-            ForEach(groups(list), id: \.0) { g in
-                SectionHeader(title: g.0, detail: "\(g.1.count)")
-                ForEach(g.1) { AppointmentCard(item: $0) }
+/// The search bar used on the appointments and tasks pages.
+struct SearchField: View {
+    let prompt: String
+    @Binding var text: String
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass").foregroundColor(Theme.muted)
+            TextField(prompt, text: $text).font(.app(.body))
+            if !text.isEmpty {
+                Button { text = "" } label: { Image(systemName: "xmark.circle.fill").foregroundColor(Theme.muted) }
+                    .buttonStyle(.plain)
             }
         }
+        .card(padding: 12, radius: 18)
     }
+}
 
-    private func groups(_ list: [Appointment]) -> [(String, [Appointment])] {
-        var out: [(String, [Appointment])] = []
-        for a in list {
-            let key = Fmt.dayTitle(a.date)
-            if let i = out.firstIndex(where: { $0.0 == key }) { out[i].1.append(a) } else { out.append((key, [a])) }
-        }
-        return out
-    }
+/// The centred plus under the search bar.
+struct AddButton: View {
+    let label: String
+    let action: () -> Void
 
-    private var calendar: some View {
-        let list = store.on(day: day).filter(matches)
-        return VStack(alignment: .leading, spacing: 14) {
-            DatePicker("اختر اليوم", selection: $day, displayedComponents: .date)
-                .datePickerStyle(.graphical)
-                .card(padding: 10)
-            SectionHeader(title: Fmt.dayTitle(day), detail: Fmt.hijriText(day))
-            if list.isEmpty {
-                EmptyState(icon: "calendar", title: "ما فيه مواعيد بهاليوم", message: "").card()
+    var body: some View {
+        HStack {
+            Spacer()
+            Button(action: {
+                UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+                action()
+            }) {
+                Image(systemName: "plus")
+                    .font(.system(size: 22, weight: .bold))
+                    .foregroundColor(.white)
+                    .frame(width: 56, height: 56)
+                    .background(Circle().fill(Theme.burgundy))
+                    .shadow(color: Theme.burgundy.opacity(0.3), radius: 8, y: 4)
             }
-            ForEach(list) { AppointmentCard(item: $0) }
+            .buttonStyle(.plain)
+            .accessibilityLabel(label)
+            Spacer()
         }
+        .padding(.vertical, 4)
+    }
+}
+
+/// A band-like section title: «مواعيدك القادمة», «مهامك المنجزة»…
+struct BandHeader: View {
+    let title: String
+    let count: Int
+    let color: Color
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Text(title).font(.app(.subheadline, .bold)).foregroundColor(.white)
+            Spacer()
+            Text("\(count)").font(.app(.caption, .bold)).foregroundColor(color)
+                .frame(minWidth: 22, minHeight: 22)
+                .background(Circle().fill(Color.white))
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 9)
+        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(color))
+        .padding(.top, 6)
+    }
+}
+
+extension View {
+    /// A right-to-left swipe (finger moving toward the left of the screen) goes back to the home page.
+    /// Measured in global coordinates so the right-to-left layout does not flip it.
+    func swipeBackHome() -> some View {
+        simultaneousGesture(
+            DragGesture(minimumDistance: 30, coordinateSpace: .global)
+                .onEnded { v in
+                    let dx = v.translation.width, dy = v.translation.height
+                    if dx < -80 && abs(dy) < abs(dx) * 0.6 { Router.shared.go(.home) }
+                }
+        )
     }
 }

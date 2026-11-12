@@ -1,91 +1,49 @@
 import SwiftUI
 
-/// مهامي: open tasks grouped (late, today, coming, no date) or the finished ones. The plus adds a task.
+/// مهامي: search, a centred plus, then «مهامك الحالية» and «مهامك المنجزة»
+/// (each only once it has something in it). Swiping right-to-left goes back home.
 struct TasksView: View {
     @EnvironmentObject var store: Store
     @EnvironmentObject var router: Router
-    @State private var showDone = false
+    @State private var query = ""
+
+    private func matches(_ t: TaskItem) -> Bool {
+        query.isEmpty || t.title.localizedCaseInsensitiveContains(query) || t.notes.localizedCaseInsensitiveContains(query)
+    }
 
     var body: some View {
-        let now = Date()
-        let open = store.openTasks
-        let late = open.filter { $0.isOverdue(now: now) }
-        let today = open.filter { $0.isDue(on: now) && !$0.isOverdue(now: now) }
-        let coming = open.filter { ($0.due ?? .distantPast) > now && !$0.isDue(on: now) }
-        let undated = open.filter { $0.due == nil }
+        let open = store.openTasks.filter(matches)
+        let done = store.doneTasks.filter(matches)
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                PageTitle(title: "مهامي") { router.newTask() }
+            VStack(alignment: .leading, spacing: 14) {
+                Text("مهامي").font(.app(size: 26, .bold)).foregroundColor(Theme.ink).padding(.top, 2)
+                SearchField(prompt: "ابحث في مهامك", text: $query)
+                AddButton(label: "مهمة جديدة") { router.newTask() }
 
-                HStack(spacing: 8) {
-                    Chip(title: "الحالية", selected: !showDone) { withAnimation(Router.soft) { showDone = false } }
-                    Chip(title: "المنجزة", icon: "checkmark", selected: showDone) { withAnimation(Router.soft) { showDone = true } }
+                if !open.isEmpty {
+                    BandHeader(title: "مهامك الحالية", count: open.count, color: Theme.forest)
+                    TaskList(tasks: open)
+                        .transition(.opacity.combined(with: .move(edge: .top)))
                 }
-
-                if showDone {
-                    if store.doneTasks.isEmpty {
-                        empty("ما فيه مهام منجزة")
-                    } else {
-                        TaskList(tasks: store.doneTasks)
-                    }
-                } else if open.isEmpty {
-                    empty("ما عندك مهام — اضغط ➕ وأضف وحدة")
-                } else {
-                    group("متأخرة", late, Theme.burgundy)
-                    group("اليوم", today, Theme.navy)
-                    group("القادمة", coming, Theme.forest)
-                    group("بدون تاريخ", undated, Theme.slate)
+                if !done.isEmpty {
+                    BandHeader(title: "مهامك المنجزة", count: done.count, color: Theme.slate)
+                    TaskList(tasks: done)
+                        .transition(.opacity)
+                }
+                if open.isEmpty && done.isEmpty && !query.isEmpty {
+                    Text("ما فيه نتائج لـ«\(query)»").font(.app(.subheadline)).foregroundColor(Theme.muted)
+                        .frame(maxWidth: .infinity).padding(.top, 8)
                 }
             }
             .padding(.horizontal, 18)
-            .padding(.top, 2)
             .padding(.bottom, 28)
             .frame(maxWidth: 650)
             .frame(maxWidth: .infinity)
+            .animation(Router.soft, value: open.map(\.id))
+            .animation(Router.soft, value: done.map(\.id))
         }
         .background(Theme.background.ignoresSafeArea())
-    }
-
-    @ViewBuilder
-    private func group(_ title: String, _ list: [TaskItem], _ color: Color) -> some View {
-        if !list.isEmpty {
-            HStack(spacing: 6) {
-                Capsule().fill(color).frame(width: 4, height: 18)
-                Text(title).font(.app(.subheadline, .bold)).foregroundColor(color)
-                Text("\(list.count)").font(.app(.caption, .bold)).foregroundColor(color)
-            }
-            .padding(.horizontal, 4)
-            TaskList(tasks: list)
-        }
-    }
-
-    private func empty(_ text: String) -> some View {
-        Text(text).font(.app(.subheadline)).foregroundColor(Theme.muted)
-            .frame(maxWidth: .infinity).padding(.vertical, 24).card()
-    }
-}
-
-/// A page title with the plus button on the left.
-struct PageTitle: View {
-    let title: String
-    let onAdd: () -> Void
-
-    var body: some View {
-        HStack {
-            Text(title).font(.app(size: 26, .bold)).foregroundColor(Theme.ink)
-            Spacer()
-            Button(action: onAdd) {
-                Image(systemName: "plus")
-                    .font(.system(size: 19, weight: .bold))
-                    .foregroundColor(.white)
-                    .frame(width: 46, height: 46)
-                    .background(Circle().fill(Theme.burgundy))
-                    .shadow(color: Theme.burgundy.opacity(0.3), radius: 6, y: 3)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("إضافة")
-        }
-        .padding(.top, 2)
+        .swipeBackHome()
     }
 }
 
