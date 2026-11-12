@@ -216,6 +216,7 @@ final class Store: ObservableObject {
 
     func refresh() {
         scheduleSideEffects()
+        NotificationManager.shared.refreshDeliveredCount()
         objectWillChange.send()
     }
 

@@ -43,6 +43,17 @@ final class Router: ObservableObject {
     static let shared = Router()
     @Published var tab = 0
     @Published var openID: AppointmentRef? = nil
+    @Published var showSettings = false
+    @Published var showNotifications = false
+    /// Notifications sitting in Notification Center, shown as the bell's badge.
+    @Published var deliveredCount = 0
+
+    /// Opens an appointment from inside another sheet: close that sheet first, then open.
+    func open(_ id: UUID) {
+        showNotifications = false
+        showSettings = false
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) { self.openID = AppointmentRef(id: id) }
+    }
 }
 
 struct AppointmentRef: Identifiable, Hashable {

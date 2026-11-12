@@ -20,6 +20,24 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         }
     }
 
+    /// Notifications already shown (still in Notification Center).
+    func delivered(_ done: @escaping ([UNNotification]) -> Void) {
+        center.getDeliveredNotifications { list in
+            DispatchQueue.main.async {
+                let sorted = list.sorted { $0.date > $1.date }
+                Router.shared.deliveredCount = sorted.count
+                done(sorted)
+            }
+        }
+    }
+
+    func refreshDeliveredCount() { delivered { _ in } }
+
+    func clearDelivered() {
+        center.removeAllDeliveredNotifications()
+        Router.shared.deliveredCount = 0
+    }
+
     func status(_ done: @escaping (UNAuthorizationStatus) -> Void) {
         center.getNotificationSettings { s in DispatchQueue.main.async { done(s.authorizationStatus) } }
     }
@@ -100,6 +118,7 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification,
                                 withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         completionHandler([.banner, .list, .sound])
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) { self.refreshDeliveredCount() }
     }
 
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse,
@@ -107,10 +126,11 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         let id = (response.notification.request.content.userInfo["id"] as? String).flatMap(UUID.init(uuidString:))
         DispatchQueue.main.async {
             if let id = id, Store.shared.item(id) != nil {
-                Router.shared.openID = AppointmentRef(id: id)
+                Router.shared.open(id)
             } else {
                 Router.shared.tab = 0
             }
+            NotificationManager.shared.refreshDeliveredCount()
             completionHandler()
         }
     }

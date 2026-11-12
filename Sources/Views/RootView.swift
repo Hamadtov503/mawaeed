@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Three tabs and a floating bar with a centre add button. Details and the form open as sheets.
+/// Two tabs and a floating bar with a centre add button. Details and the form open as sheets.
 struct RootView: View {
     @EnvironmentObject var store: Store
     @EnvironmentObject var router: Router
@@ -11,10 +11,10 @@ struct RootView: View {
         ZStack {
             Theme.background.ignoresSafeArea()
             Group {
-                switch router.tab {
-                case 1: AppointmentsView()
-                case 2: SettingsView()
-                default: HomeView(onAdd: { adding = true })
+                if router.tab == 1 {
+                    AppointmentsView()
+                } else {
+                    HomeView(onAdd: { adding = true })
                 }
             }
             .safeAreaInset(edge: .bottom) {
@@ -31,6 +31,24 @@ struct RootView: View {
             AppointmentDetail(id: ref.id) { router.openID = nil }
                 .environmentObject(store)
                 .environmentObject(router)
+        }
+        .sheet(isPresented: $router.showSettings) {
+            AppNavigation {
+                SettingsView()
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) { Button("إغلاق") { router.showSettings = false } }
+                    }
+            }
+            .environmentObject(store)
+            .environmentObject(AppSettings.shared)
+            .environmentObject(SyncManager.shared)
+        }
+        .sheet(isPresented: $router.showNotifications) {
+            NotificationsView { router.showNotifications = false }
+                .environmentObject(store)
+                .environmentObject(router)
+                .environmentObject(AppSettings.shared)
         }
         .onChange(of: phase) { p in
             switch p {
@@ -54,7 +72,6 @@ struct FloatingTabBar: View {
     var body: some View {
         HStack(spacing: 0) {
             tab(0, "الرئيسية", "house.fill")
-            tab(1, "مواعيدي", "calendar")
             Button(action: onAdd) {
                 Image(systemName: "plus")
                     .font(.system(size: 20, weight: .bold))
@@ -66,7 +83,7 @@ struct FloatingTabBar: View {
             .buttonStyle(.plain)
             .frame(maxWidth: .infinity)
             .accessibilityLabel("موعد جديد")
-            tab(2, "الإعدادات", "gearshape.fill")
+            tab(1, "مواعيدي", "calendar")
         }
         .padding(6)
         .background(Capsule().fill(.ultraThinMaterial))

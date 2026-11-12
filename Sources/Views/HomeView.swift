@@ -71,16 +71,16 @@ struct HomeView: View {
                 Image(systemName: "sparkles").foregroundColor(Theme.gold)
             }
             Spacer(minLength: 8)
-            Button { router.tab = 1 } label: {
-                Image(systemName: "bell")
+            Button { router.showNotifications = true } label: {
+                Image(systemName: router.deliveredCount > 0 ? "bell.badge" : "bell")
                     .font(.system(size: 20, weight: .medium))
                     .foregroundColor(Theme.ink)
                     .frame(width: 50, height: 50)
                     .background(Circle().fill(Theme.card))
                     .overlay(Circle().stroke(Theme.border, lineWidth: 1))
                     .overlay(alignment: .topTrailing) {
-                        if todayCount > 0 {
-                            Text("\(todayCount)")
+                        if router.deliveredCount > 0 {
+                            Text("\(router.deliveredCount)")
                                 .font(.caption2.bold()).foregroundColor(.white)
                                 .padding(.horizontal, 5).frame(minWidth: 18, minHeight: 18)
                                 .background(Capsule().fill(Color.red))
@@ -88,8 +88,8 @@ struct HomeView: View {
                     }
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("مواعيدي")
-            Button { router.tab = 2 } label: {
+            .accessibilityLabel("التنبيهات")
+            Button { router.showSettings = true } label: {
                 Image(systemName: "gearshape.fill")
                     .font(.system(size: 22))
                     .foregroundColor(.white)
