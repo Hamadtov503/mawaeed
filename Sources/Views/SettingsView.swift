@@ -151,10 +151,6 @@ struct SettingsView: View {
         }
         .background(Theme.background.ignoresSafeArea())
     }
-        .background(Theme.background.ignoresSafeArea())
-            .navigationTitle(title).navigationBarTitleDisplayMode(.inline)
-            .onAppear(perform: refreshStatus)
-    }
 
     private var notificationsSection: some View {
         PrefGroup("التنبيهات", footer: "ملخص الصباح يجيك كل يوم فيه شي مستحق أو متأخر.") {
