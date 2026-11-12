@@ -126,8 +126,10 @@ struct MenuHandle: View {
 
 /// Rounded on the inner (right) side only, flat against the screen's left edge.
 struct UnevenCapsule: Shape {
+    var radius: CGFloat = 18
+
     func path(in r: CGRect) -> Path {
-        let rad = min(r.width, 18)
+        let rad = min(r.width / 2, min(r.height / 2, radius))
         var p = Path()
         // Screen-left edge is flat; the right side is rounded.
         p.move(to: CGPoint(x: r.minX, y: r.minY))
@@ -141,53 +143,31 @@ struct UnevenCapsule: Shape {
     }
 }
 
-/// The side menu: the three pages, then notifications and settings.
+/// A slim side menu on the left edge: the three pages as icons with a small label.
 struct SideMenu: View {
     @EnvironmentObject var router: Router
     @EnvironmentObject var store: Store
 
     var body: some View {
         HStack(spacing: 0) {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 10) {
-                    Image("Logo").resizable().scaledToFit().frame(width: 44, height: 44)
-                    Text("مواعيدي").font(.ruqaa(size: 30)).foregroundColor(Theme.burgundy)
-                    Spacer()
-                    Button { router.toggleMenu(false) } label: {
-                        Image(systemName: "xmark").font(.system(size: 14, weight: .bold)).foregroundColor(Theme.muted)
-                            .frame(width: 34, height: 34)
-                            .background(Circle().fill(Theme.sand))
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("إغلاق")
-                }
-                .padding(.bottom, 14)
-
-                ForEach(Page.allCases) { p in
-                    row(p.title, p.icon, badge: badge(for: p), selected: router.page == p) { router.go(p) }
-                }
-
-                Divider().padding(.vertical, 10)
-
-                row("التنبيهات", "bell.fill", badge: router.deliveredCount, selected: false) { router.present(notifications: true) }
-                row("الإعدادات", "gearshape.fill", badge: 0, selected: false) { router.present(notifications: false) }
-
-                Spacer()
-                Text("0.1 Beta").font(.app(.caption2)).foregroundColor(Theme.muted)
+            VStack(spacing: 18) {
+                ForEach(Page.allCases) { p in item(p) }
             }
-            .environment(\.layoutDirection, .rightToLeft)   // the menu's content reads right-to-left
-            .padding(20)
-            .padding(.top, 30)
-            .frame(width: 290)
-            .frame(maxHeight: .infinity)
-            .background(Theme.background.ignoresSafeArea())
-            .overlay(Rectangle().fill(Theme.border).frame(width: 1).ignoresSafeArea(), alignment: .trailing)
-            .shadow(color: .black.opacity(0.15), radius: 20)
+            .environment(\.layoutDirection, .rightToLeft)
+            .padding(.vertical, 22)
+            .padding(.horizontal, 12)
+            .background(
+                UnevenCapsule(radius: 28)
+                    .fill(Theme.background)
+                    .shadow(color: .black.opacity(0.16), radius: 18, x: 4)
+            )
+            .overlay(UnevenCapsule(radius: 28).stroke(Theme.border, lineWidth: 1))
             Spacer(minLength: 0)
         }
         .environment(\.layoutDirection, .leftToRight)   // pin the panel to the screen's left edge
+        .frame(maxHeight: .infinity)
         .gesture(DragGesture(minimumDistance: 20).onEnded { v in
-            if abs(v.translation.width) > 60 { router.toggleMenu(false) }
+            if abs(v.translation.width) > 50 { router.toggleMenu(false) }
         })
     }
 
@@ -199,26 +179,28 @@ struct SideMenu: View {
         }
     }
 
-    private func row(_ title: String, _ icon: String, badge: Int, selected: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: 12) {
-                Image(systemName: icon)
-                    .font(.system(size: 17, weight: .semibold))
+    private func item(_ p: Page) -> some View {
+        let selected = router.page == p
+        let count = badge(for: p)
+        return Button { router.go(p) } label: {
+            VStack(spacing: 5) {
+                Image(systemName: p.icon)
+                    .font(.system(size: 19, weight: .semibold))
                     .foregroundColor(selected ? .white : Theme.burgundy)
-                    .frame(width: 40, height: 40)
-                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .frame(width: 50, height: 50)
+                    .background(RoundedRectangle(cornerRadius: 15, style: .continuous)
                         .fill(selected ? Theme.burgundy : Theme.burgundy.opacity(0.1)))
-                Text(title).font(.app(.body, selected ? .bold : .medium)).foregroundColor(Theme.ink)
-                Spacer()
-                if badge > 0 {
-                    Text("\(badge)").font(.app(.caption, .bold)).foregroundColor(.white)
-                        .padding(.horizontal, 8).padding(.vertical, 2)
-                        .background(Capsule().fill(Theme.burgundy))
-                }
+                    .overlay(alignment: .topTrailing) {
+                        if count > 0 {
+                            Text("\(count)").font(.app(size: 10, .bold)).foregroundColor(.white)
+                                .frame(minWidth: 17, minHeight: 17)
+                                .background(Circle().fill(Theme.navy))
+                                .offset(x: 5, y: -5)
+                        }
+                    }
+                Text(p.title).font(.app(.caption2, selected ? .bold : .medium)).foregroundColor(Theme.ink)
             }
-            .padding(.vertical, 6)
-            .padding(.horizontal, 8)
-            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(selected ? Theme.sand : Color.clear))
+            .frame(width: 66)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

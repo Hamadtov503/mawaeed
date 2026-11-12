@@ -5,6 +5,7 @@ import SwiftUI
 struct HomeView: View {
     @EnvironmentObject var store: Store
     @EnvironmentObject var router: Router
+    @EnvironmentObject var settings: AppSettings
     @State private var day = Date()
 
     var body: some View {
@@ -56,7 +57,7 @@ struct HomeView: View {
 
     private var header: some View {
         HStack(spacing: 10) {
-            Text("\(greeting) 🌹")
+            Text(greetingLine)
                 .font(.app(.title2, .bold)).foregroundColor(Theme.ink)
                 .lineLimit(1).minimumScaleFactor(0.7)
             Spacer(minLength: 8)
@@ -89,6 +90,12 @@ struct HomeView: View {
             .buttonStyle(.plain)
             .accessibilityLabel("الإعدادات")
         }
+    }
+
+    /// "مساء الخير 🌷 حمد" — the flower sits between the greeting and the name.
+    private var greetingLine: String {
+        let name = settings.userName.trimmingCharacters(in: .whitespaces)
+        return name.isEmpty ? "\(greeting) 🌷" : "\(greeting) 🌷 \(name)"
     }
 
     private var greeting: String {

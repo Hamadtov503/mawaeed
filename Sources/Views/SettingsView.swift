@@ -27,6 +27,9 @@ struct SettingsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
+                SettingsGroup(title: "اسمك", footer: "يطلع في الترحيب بالرئيسية بعد «صباح الخير / مساء الخير».") {
+                    TextField("اكتب اسمك", text: $settings.userName).font(.app(.body))
+                }
                 notifications
                 syncGroup
                 calendarGroup

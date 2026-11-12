@@ -55,7 +55,7 @@ struct CalendarCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 10) {
             header
             grid
         }
@@ -64,19 +64,19 @@ struct CalendarCard: View {
     private var header: some View {
         HStack(alignment: .center) {
             Button { goToToday() } label: {
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 1) {
                     Text("\(Fmt.hijriMonth.string(from: firstDay)) \(String(year))")
-                        .font(.app(size: 26, .bold))
+                        .font(.app(size: 19, .bold))
                         .foregroundColor(Theme.burgundy)
                     HStack(spacing: 6) {
-                        Image(systemName: "calendar").font(.system(size: 14)).foregroundColor(Theme.forest)
-                        Text(gregorianSpan).font(.app(.subheadline)).foregroundColor(Theme.muted)
+                        Image(systemName: "calendar").font(.system(size: 11)).foregroundColor(Theme.forest)
+                        Text(gregorianSpan).font(.app(.caption)).foregroundColor(Theme.muted)
                     }
                 }
             }
             .buttonStyle(.plain)
             Spacer()
-            HStack(spacing: 10) {
+            HStack(spacing: 8) {
                 arrow("chevron.backward") { shift(-1) }
                 arrow("chevron.forward") { shift(1) }
             }
@@ -86,11 +86,11 @@ struct CalendarCard: View {
     private func arrow(_ icon: String, _ action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: icon)
-                .font(.system(size: 16, weight: .semibold))
+                .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(Theme.ink)
-                .frame(width: 44, height: 44)
-                .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Theme.card))
-                .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(Theme.border, lineWidth: 1))
+                .frame(width: 32, height: 32)
+                .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Theme.card))
+                .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(Theme.border, lineWidth: 1))
         }
         .buttonStyle(.plain)
     }
@@ -101,11 +101,11 @@ struct CalendarCard: View {
         return VStack(spacing: 0) {
             HStack(spacing: 0) {
                 ForEach(weekdays, id: \.self) { w in
-                    Text(w).font(.app(.caption, .semibold)).foregroundColor(Theme.burgundy.opacity(0.85))
+                    Text(w).font(.app(size: 10, .semibold)).foregroundColor(Theme.burgundy.opacity(0.85))
                         .frame(maxWidth: .infinity)
                 }
             }
-            .padding(.vertical, 10)
+            .padding(.vertical, 6)
             .background(Theme.sand)
 
             VStack(spacing: 0) {
@@ -113,7 +113,7 @@ struct CalendarCard: View {
                     HStack(spacing: 0) {
                         ForEach(rows[r]) { cell in dayCell(cell) }
                     }
-                    .padding(.vertical, 4)
+                    .padding(.vertical, 1)
                     .background(r % 2 == 0 ? Theme.card.opacity(0.55) : Theme.card)
                 }
             }
@@ -121,8 +121,8 @@ struct CalendarCard: View {
             .transition(.asymmetric(insertion: .move(edge: direction).combined(with: .opacity),
                                     removal: .opacity))
         }
-        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(Theme.border, lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(Theme.border, lineWidth: 1))
         .gesture(DragGesture(minimumDistance: 25).onEnded { v in
             guard abs(v.translation.width) > abs(v.translation.height), abs(v.translation.width) > 50 else { return }
             // Right-to-left: swiping right goes forward in time, left goes back.
@@ -140,29 +140,29 @@ struct CalendarCard: View {
                 if !cell.inMonth { jump(to: cell.date) }
             }
         } label: {
-            VStack(spacing: 1) {
+            VStack(spacing: 0) {
                 Text("\(cell.hijriDay)")
-                    .font(.app(size: 19, .bold))
+                    .font(.app(size: 15, .bold))
                     .foregroundColor(cell.inMonth ? (isToday ? Theme.burgundy : Theme.ink) : Theme.muted.opacity(0.7))
                 Text("\(cell.gregDay)")
-                    .font(.app(size: 12))
+                    .font(.app(size: 9.5))
                     .foregroundColor(cell.inMonth ? Theme.muted : Theme.muted.opacity(0.6))
                 Circle()
                     .fill(busy ? Theme.forest : Color.clear)
-                    .frame(width: 6, height: 6)
-                    .padding(.top, 2)
+                    .frame(width: 4, height: 4)
+                    .padding(.top, 1)
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 7)
+            .padding(.vertical, 3)
             .background(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
                     .fill(isSelected ? Theme.sand : Color.clear)
-                    .padding(.horizontal, 3)
+                    .padding(.horizontal, 4)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .stroke(isToday ? Theme.burgundy : (isSelected ? Theme.border : Color.clear), lineWidth: isToday ? 2 : 1)
-                    .padding(.horizontal, 3)
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .stroke(isToday ? Theme.burgundy : (isSelected ? Theme.border : Color.clear), lineWidth: isToday ? 1.5 : 1)
+                    .padding(.horizontal, 4)
             )
             .contentShape(Rectangle())
         }
