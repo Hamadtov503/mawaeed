@@ -140,7 +140,7 @@ func openMaps(_ place: String) {
     }
 }
 
-/// Winter (November–April): a snowflake. Summer (May–October): an air conditioner.
+/// Winter (November–April): a snowman. Summer (May–October): an air conditioner.
 struct SeasonIcon: View {
     let date: Date
 
@@ -149,20 +149,22 @@ struct SeasonIcon: View {
     var body: some View {
         Group {
             if isSummer {
-                if #available(iOS 16.0, *) {
-                    Image(systemName: "air.conditioner.horizontal.fill")
-                } else {
-                    Image(systemName: "wind")
+                Group {
+                    if #available(iOS 16.0, *) {
+                        Image(systemName: "air.conditioner.horizontal.fill")
+                    } else {
+                        Image(systemName: "wind")
+                    }
                 }
+                .font(.system(size: 18, weight: .bold))
+                .foregroundStyle(Theme.navy)
             } else {
-                Image(systemName: "snowflake")
+                Image("Snowman")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 32, height: 32)
             }
         }
-        .font(.system(size: 18, weight: .bold))
-        .foregroundStyle(isSummer ? Theme.navy : Color.white)
-        // A faint outline so white snow still reads on the beige background.
-        .shadow(color: isSummer ? .clear : Color(red: 0.25, green: 0.38, blue: 0.55).opacity(0.55), radius: 0.8)
-        .shadow(color: isSummer ? .clear : Color(red: 0.25, green: 0.38, blue: 0.55).opacity(0.35), radius: 2.5)
         .accessibilityLabel(isSummer ? L("صيف", "Summer") : L("شتاء", "Winter"))
     }
 }
