@@ -128,12 +128,6 @@ enum Fmt {
         return days(total)
     }
 
-    /// "اليوم ٨:٣٠ ص", "بكرة", "الخميس ٤:٠٠ م": the day (and time) of an upcoming appointment.
-    static func countdownDay(_ a: Appointment) -> String {
-        let day = (greg.isDateInToday(a.date) || greg.isDateInTomorrow(a.date)) ? dayTitle(a.date) : dateText(a.date, hasTime: false)
-        return a.hasTime ? "\(day) \(timeText(a.date))" : day
-    }
-
     /// "Now", "in 20 minutes", "Today 4:30 PM", "Tomorrow", "in 3 days", "2 days ago".
     static func countdown(to date: Date, hasTime: Bool, now: Date = Date()) -> String {
         let dayDiff = greg.dateComponents([.day], from: greg.startOfDay(for: now), to: greg.startOfDay(for: date)).day ?? 0
