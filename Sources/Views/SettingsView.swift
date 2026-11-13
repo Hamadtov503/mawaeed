@@ -96,7 +96,9 @@ struct SettingsView: View {
             // Three clearly different marks, each in its own colour.
             Button { syncNow() } label: { syncRow }
             Button { pick(.syncFile) } label: { row(L("استيراد", "Import"), "arrow.down.doc.fill", Theme.forest) }
+                .accessibilityIdentifier("settings.importSync")
             Button { startSync() } label: { row(L("تصدير", "Export"), "arrow.up.doc.fill", Theme.burgundy) }
+                .accessibilityIdentifier("settings.exportSync")
         }
     }
 
@@ -111,7 +113,9 @@ struct SettingsView: View {
     private var backupGroup: some View {
         SettingsGroup(title: L("النسخ الاحتياطي", "Backup"), footer: nil) {
             Button { export() } label: { Label(L("تصدير نسخة احتياطية", "Export a backup"), systemImage: "externaldrive.badge.plus") }
+                .accessibilityIdentifier("settings.exportBackup")
             Button { pick(.restore) } label: { Label(L("استيراد نسخة احتياطية", "Import a backup"), systemImage: "externaldrive.badge.checkmark") }
+                .accessibilityIdentifier("settings.importBackup")
         }
     }
 

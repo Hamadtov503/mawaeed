@@ -365,6 +365,31 @@ final class MawaeedUITests: XCTestCase {
         }
     }
 
+    /// After opening the Files picker from settings and leaving it (Cancel, or a swipe down),
+    /// the settings page must still respond: its back button closes it.
+    func testSettingsBackAfterFilesPicker() {
+        launchToHome()
+        for (i, id) in ["settings.exportBackup", "settings.importBackup", "settings.exportSync"].enumerated() {
+            app.buttons["button.settings"].tap()
+            let row = app.buttons[id]
+            XCTAssertTrue(row.waitForExistence(timeout: 4), "\(id) missing")
+            row.tap()
+            sleep(3)
+            shot("60-\(i)-picker-\(id)")
+            // Leave the picker: Cancel if it shows one, otherwise swipe the sheet down.
+            let cancel = app.buttons.matching(NSPredicate(format: "label IN %@", ["إلغاء", "Cancel"])).firstMatch
+            if cancel.exists { cancel.tap() } else { app.swipeDown(velocity: .fast) }
+            sleep(2)
+            shot("61-\(i)-after-picker-\(id)")
+            let back = app.buttons["button.back"]
+            XCTAssertTrue(back.waitForExistence(timeout: 4), "back button missing after \(id)")
+            back.tap()
+            sleep(1)
+            XCTAssertFalse(app.staticTexts["slidePage.title"].exists, "the back button did not close settings after \(id)")
+            XCTAssertTrue(app.buttons["button.settings"].isHittable, "home is not usable after \(id)")
+        }
+    }
+
     /// The same screens in English.
     func testEnglish() {
         app.launchArguments = ["-uitest", "-lang-en", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
