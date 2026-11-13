@@ -42,8 +42,8 @@ struct SettingsView: View {
                         }
                     }
                 }
-                syncGroup
                 calendarGroup
+                syncGroup
                 backupGroup
                 Text(L("مواعيدي — الإصدار \(version)", "Mawaeed · Version \(version)"))
                     .font(.app(.caption)).foregroundColor(Theme.muted)
@@ -87,8 +87,12 @@ struct SettingsView: View {
     }
 
     private func reportSync() {
-        if let e = sync.lastError {
-            menu = .notice(L("ما تمت المزامنة", "Sync didn't finish"), message: e)
+        if !sync.isOn {
+            menu = .notice(L("لم تُفعَّل المزامنة بعد", "Sync isn't set up yet"),
+                           message: L("اختر «تصدير» لحفظ ملف المزامنة في آي كلاود، أو «استيراد» لاختيار ملف مزامنة موجود.",
+                                      "Choose «Export» to save the sync file to iCloud, or «Import» to pick an existing sync file."))
+        } else if let e = sync.lastError {
+            menu = .notice(L("لم تكتمل المزامنة", "Sync didn't finish"), message: e)
         } else {
             let when = sync.lastSync.map { Fmt.dateText($0, hasTime: true) } ?? ""
             menu = .notice(L("تمت المزامنة ✅", "Synced ✅"),
@@ -99,39 +103,27 @@ struct SettingsView: View {
     // MARK: Groups
 
     private var syncGroup: some View {
-        SettingsGroup(title: L("المزامنة مع آي كلاود", "iCloud sync"),
-              footer: sync.isOn
-                ? L("أي تعديل ينحفظ في المجلد، والجوال الثاني يسحبه أول ما تفتح التطبيق وكل 30 ثانية وهو مفتوح.", "Every change is saved to the folder; the other phone picks it up when the app opens and every 30 seconds while open.")
-                : L("مواعيدك ومهامك تنحفظ في ملف «مواعيدي.json» داخل آي كلاود درايف حقك، فتبقى لو غيرت جوالك وتطلع في جوال ثاني. احفظ الملف هنا، وفي الجوال الثاني اختر نفس الملف.", "Your appointments and tasks are kept in a file («مواعيدي.json») in your own iCloud Drive, so they survive a new phone and show on another one. Save the file here, and pick the same file on the other phone.")) {
-            if sync.isOn {
-                info("folder.fill", L("المجلد", "Folder"), sync.folderName ?? "")
-                info(sync.isSyncing ? "arrow.triangle.2.circlepath.icloud" : "checkmark.icloud.fill", L("آخر مزامنة", "Last sync"),
-                     sync.isSyncing ? L("جاري…", "Syncing…") : (sync.lastSync.map { Fmt.dateText($0, hasTime: true) } ?? "—"))
-                Button { syncNow() } label: { Label(L("زامن الحين", "Sync now"), systemImage: "arrow.triangle.2.circlepath") }
-                Button { pick(.syncFile) } label: { Label(L("اختر ملف مزامنة ثاني", "Choose another sync file"), systemImage: "doc.badge.gearshape") }
-                Button(role: .destructive) { sync.turnOff() } label: {
-                    Label(L("أوقف المزامنة على هالجوال", "Stop syncing on this phone"), systemImage: "xmark.icloud").foregroundColor(.red)
-                }
-            } else {
-                Button { startSync() } label: { Label(L("احفظ ملف المزامنة في آي كلاود درايف", "Save the sync file to iCloud Drive"), systemImage: "icloud.and.arrow.up.fill") }
-                Button { pick(.syncFile) } label: { Label(L("عندي ملف مزامنة من جوال ثاني", "I have a sync file from another phone"), systemImage: "icloud.and.arrow.down.fill") }
+        SettingsGroup(title: L("المزامنة مع آي كلاود", "iCloud sync"), footer: nil) {
+            Button { syncNow() } label: {
+                Label(L("زامِن الآن", "Sync now"), systemImage: sync.isSyncing ? "arrow.triangle.2.circlepath.icloud.fill" : "arrow.triangle.2.circlepath.icloud")
             }
-            if let e = sync.lastError { Text(e).font(.app(.footnote)).foregroundColor(.orange) }
+            Button { pick(.syncFile) } label: { Label(L("استيراد", "Import"), systemImage: "icloud.and.arrow.down") }
+            Button { startSync() } label: { Label(L("تصدير", "Export"), systemImage: "icloud.and.arrow.up") }
         }
     }
 
     private var calendarGroup: some View {
         SettingsGroup(title: L("التقويم", "Calendar"), footer: nil) {
             Toggle(isOn: Binding(get: { settings.calendarSync }, set: { enableCalendar($0) })) {
-                Label(L("زامن مواعيدك مع تقويم الجهاز", "Sync your appointments with the device calendar"), systemImage: "calendar")
+                Label(L("مزامنة المواعيد مع تقويم الجهاز", "Sync your appointments with the device calendar"), systemImage: "calendar")
             }
         }
     }
 
     private var backupGroup: some View {
-        SettingsGroup(title: L("نسخة احتياطية يدوية", "Manual backup"), footer: nil) {
-            Button { export() } label: { Label(L("صدّر نسخة لأي مكان…", "Export a copy…"), systemImage: "square.and.arrow.up") }
-            Button { pick(.restore) } label: { Label(L("استرجع من نسخة…", "Restore from a copy…"), systemImage: "arrow.down.doc.fill") }
+        SettingsGroup(title: L("النسخ الاحتياطي", "Backup"), footer: nil) {
+            Button { export() } label: { Label(L("تصدير نسخة احتياطية", "Export a backup"), systemImage: "externaldrive.badge.plus") }
+            Button { pick(.restore) } label: { Label(L("استيراد نسخة احتياطية", "Import a backup"), systemImage: "externaldrive.badge.checkmark") }
         }
     }
 
@@ -168,8 +160,8 @@ struct SettingsView: View {
             settings.calendarSync = granted
             refresh()
             if !granted {
-                menu = .notice(L("ما فيه صلاحية", "No access"),
-                                  message: L("افتح إعدادات الجوال ← الخصوصية ← التقويمات، واسمح لـ«مواعيدي» بالوصول الكامل.", "Open Settings → Privacy → Calendars and give Mawaeed full access."))
+                menu = .notice(L("لا توجد صلاحية", "No access"),
+                                  message: L("افتح إعدادات الجهاز ← الخصوصية ← التقويمات، واسمح لتطبيق «مواعيدي» بالوصول الكامل.", "Open Settings → Privacy → Calendars and give Mawaeed full access."))
             }
         }
     }
@@ -184,15 +176,15 @@ struct SettingsView: View {
         do {
             let url = try sync.makeStarterFile()
             menu = MenuRequest(
-                title: L("حفظ ملف المزامنة", "Saving the sync file"),
-                message: L("بتنفتح شاشة الحفظ: اختر iCloud Drive (ومجلد إذا تبي)، واضغط «نقل» أو «حفظ» فوق.",
+                title: L("تصدير ملف المزامنة", "Exporting the sync file"),
+                message: L("ستُفتح شاشة الحفظ: اختر iCloud Drive (ومجلدًا إن شئت)، ثم اضغط «نقل» أو «حفظ» في الأعلى.",
                            "The save screen opens: choose iCloud Drive (and a folder if you like), then tap «Move» or «Save» at the top."),
                 actions: [
                     MenuAction(title: L("متابعة", "Continue"), icon: "icloud.and.arrow.up") { picker = PickerRequest(mode: .move(url)) },
                     MenuAction(title: L("إلغاء", "Cancel"), icon: "xmark") {},
                 ])
         } catch {
-            menu = .notice(L("ما قدرت أجهّز الملف", "Couldn't prepare the file"), message: error.localizedDescription)
+            menu = .notice(L("تعذّر تجهيز الملف", "Couldn't prepare the file"), message: error.localizedDescription)
         }
     }
 
@@ -205,14 +197,14 @@ struct SettingsView: View {
             try Store.encoder.encode(file).write(to: url, options: .atomic)
             picker = PickerRequest(mode: .export(url))
         } catch {
-            menu = .notice(L("ما قدرت أجهّز النسخة", "Couldn't prepare the copy"), message: error.localizedDescription)
+            menu = .notice(L("تعذّر تجهيز النسخة", "Couldn't prepare the copy"), message: error.localizedDescription)
         }
     }
 
     private func handleImport(_ result: Result<[URL], Error>) {
         switch result {
         case .failure(let e):
-            menu = .notice(L("ما انفتح", "Couldn't open"), message: e.localizedDescription)
+            menu = .notice(L("تعذّر فتح الملف", "Couldn't open"), message: e.localizedDescription)
         case .success(let urls):
             guard let url = urls.first else { return }
             if importMode == .syncFile {
@@ -222,13 +214,13 @@ struct SettingsView: View {
                     let b = try sync.readBackup(at: url)
                     pendingRestore = (b.items.filter { $0.isAppointment }, b.tasks)
                     let n = pendingRestore!
-                    menu = MenuRequest(title: L("استرجاع \(Fmt.appointments(n.items.count)) و\(Fmt.tasks(n.tasks.count)) من النسخة", "Restore \(Fmt.appointments(n.items.count)) and \(Fmt.tasks(n.tasks.count)) from the copy"), actions: [
-                        MenuAction(title: L("دمج مع الموجود", "Merge with current"), icon: "arrow.triangle.merge") { restore(replace: false) },
-                        MenuAction(title: L("استبدال كل شي", "Replace everything"), icon: "arrow.2.squarepath", destructive: true) { restore(replace: true) },
+                    menu = MenuRequest(title: L("استيراد \(Fmt.appointments(n.items.count)) و\(Fmt.tasks(n.tasks.count)) من النسخة", "Restore \(Fmt.appointments(n.items.count)) and \(Fmt.tasks(n.tasks.count)) from the copy"), actions: [
+                        MenuAction(title: L("الدمج مع البيانات الحالية", "Merge with current"), icon: "arrow.triangle.merge") { restore(replace: false) },
+                        MenuAction(title: L("استبدال جميع البيانات", "Replace everything"), icon: "arrow.2.squarepath", destructive: true) { restore(replace: true) },
                         MenuAction(title: L("إلغاء", "Cancel"), icon: "xmark") { pendingRestore = nil },
                     ])
                 } catch {
-                    menu = .notice(L("الملف ما ينقرأ", "Can't read the file"), message: L("تأكد إنه نسخة من مواعيدي.\n\(error.localizedDescription)", "Make sure it's a Mawaeed backup.\n\(error.localizedDescription)"))
+                    menu = .notice(L("تعذّرت قراءة الملف", "Can't read the file"), message: L("تأكد أنه نسخة من تطبيق مواعيدي.\n\(error.localizedDescription)", "Make sure it's a Mawaeed backup.\n\(error.localizedDescription)"))
                 }
             }
         }
@@ -238,7 +230,7 @@ struct SettingsView: View {
         guard let b = pendingRestore else { return }
         store.restore(b.items, tasks: b.tasks, replace: replace)
         pendingRestore = nil
-        menu = .notice(L("تم الاسترجاع ✅", "Restored ✅"), message: L("رجّعت \(Fmt.appointments(b.items.count)) و\(Fmt.tasks(b.tasks.count)).", "Restored \(Fmt.appointments(b.items.count)) and \(Fmt.tasks(b.tasks.count))."))
+        menu = .notice(L("تم الاستيراد ✅", "Restored ✅"), message: L("تم استيراد \(Fmt.appointments(b.items.count)) و\(Fmt.tasks(b.tasks.count)).", "Restored \(Fmt.appointments(b.items.count)) and \(Fmt.tasks(b.tasks.count))."))
     }
 }
 
