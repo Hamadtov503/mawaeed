@@ -216,18 +216,11 @@ struct SettingsView: View {
         picker = PickerRequest(mode: .open([.json]))
     }
 
-    /// First phone: save a sync file holding everything on this phone into iCloud Drive; it is used from then on.
+    /// Save a sync file holding everything on this phone (into iCloud Drive); it is used from then on.
+    /// The save screen opens straight away; it has its own Cancel.
     private func startSync() {
         do {
-            let url = try sync.makeStarterFile()
-            menu = MenuRequest(
-                title: L(sync.isOn ? "تصدير ملف المزامنة" : "إنشاء ملف مزامنة جديد", sync.isOn ? "Exporting the sync file" : "Creating a new sync file"),
-                message: L("ستُفتح شاشة الحفظ: اختر iCloud Drive (ومجلدًا إن شئت)، ثم اضغط «نقل» أو «حفظ» في الأعلى.",
-                           "The save screen opens: choose iCloud Drive (and a folder if you like), then tap «Move» or «Save» at the top."),
-                actions: [
-                    MenuAction(title: L("متابعة", "Continue"), icon: "icloud.and.arrow.up") { picker = PickerRequest(mode: .move(url)) },
-                    MenuAction(title: L("إلغاء", "Cancel"), icon: "xmark") {},
-                ])
+            picker = PickerRequest(mode: .move(try sync.makeStarterFile()))
         } catch {
             menu = .notice(L("تعذّر تجهيز الملف", "Couldn't prepare the file"), message: error.localizedDescription)
         }
