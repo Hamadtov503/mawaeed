@@ -159,6 +159,19 @@ final class MawaeedUITests: XCTestCase {
             XCTAssertTrue(title.waitForExistence(timeout: 5))
             title.tap()
             title.typeText("Task \(n)")
+            if n == 1 {
+                // Two icon buttons only; the second opens the grid, and picking an icon closes it.
+                XCTAssertTrue(app.buttons["button.taskPhoto"].exists, "photo button missing")
+                app.buttons["button.taskIcons"].tap()
+                let cart = app.buttons["icon.cart.fill"]
+                XCTAssertTrue(cart.waitForExistence(timeout: 3), "icon grid did not open")
+                sleep(1)
+                shot("10a-icon-grid")
+                cart.tap()
+                sleep(1)
+                XCTAssertFalse(cart.exists, "icon grid stayed open after picking")
+                shot("10b-icon-picked")
+            }
             app.buttons["button.save"].tap()
             sleep(2)
             assertHandle(at: base, "after adding task \(n)")

@@ -179,6 +179,7 @@ struct TaskEditor: View {
     @State private var picking: Picking? = nil
     @State private var confirmDelete = false
     @State private var choosingPhoto = false
+    @State private var choosingIcon = false
     let onFinish: () -> Void
 
     enum Picking { case startDay, startTime, endDay, endTime }
@@ -305,6 +306,7 @@ struct TaskEditor: View {
                         .accessibilityIdentifier("button.save")
                 }
             }
+            .popup(isPresented: $choosingIcon) { iconGrid }
             .popup(isPresented: Binding(get: { picking == .startDay }, set: { if !$0 { picking = nil } })) {
                 DayPickerPopup(date: startBinding, hijri: false) { close() }
             }
@@ -329,49 +331,44 @@ struct TaskEditor: View {
 
     // MARK: Pieces
 
+    /// Two buttons only: your own picture (from Photos), and a symbol that opens a grid of icons.
     private var iconPicker: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                // Your own picture: shown first, chosen from Photos.
-                Button { choosingPhoto = true } label: {
-                    Group {
-                        if let data = draft.iconImage, let ui = UIImage(data: data) {
-                            Image(uiImage: ui).resizable().scaledToFill()
-                        } else {
-                            Image(systemName: "square.and.arrow.up")   // upload (works on iOS 15; photo.badge.plus needs 16)
-                                .font(.system(size: 17, weight: .semibold))
-                                .foregroundColor(draft.priority.color)
-                        }
-                    }
-                    .frame(width: 42, height: 42)
-                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(draft.priority.color.opacity(0.1)))
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .stroke(draft.iconImage != nil ? draft.priority.color : Color.clear, lineWidth: 2.5))
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(L("صورة من الألبوم", "Picture from Photos"))
-
-                ForEach(TaskItem.icons, id: \.self) { name in
-                    let on = draft.iconImage == nil && draft.displayIcon == name
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.15)) {
-                            draft.icon = name
-                            draft.iconImage = nil
-                        }
-                    } label: {
-                        Image(systemName: name)
+        HStack(spacing: 10) {
+            Button { choosingPhoto = true } label: {
+                Group {
+                    if let data = draft.iconImage, let ui = UIImage(data: data) {
+                        Image(uiImage: ui).resizable().scaledToFill()
+                    } else {
+                        Image(systemName: "square.and.arrow.up")   // upload (works on iOS 15; photo.badge.plus needs 16)
                             .font(.system(size: 17, weight: .semibold))
-                            .foregroundColor(on ? .white : draft.priority.color)
-                            .frame(width: 42, height: 42)
-                            .background(RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .fill(on ? draft.priority.color : draft.priority.color.opacity(0.1)))
+                            .foregroundColor(draft.priority.color)
                     }
-                    .buttonStyle(.plain)
                 }
+                .frame(width: 42, height: 42)
+                .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(draft.priority.color.opacity(0.1)))
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(draft.iconImage != nil ? draft.priority.color : Color.clear, lineWidth: 2.5))
             }
-            .padding(.vertical, 2)
+            .buttonStyle(.plain)
+            .accessibilityLabel(L("صورة من الألبوم", "Picture from Photos"))
+            .accessibilityIdentifier("button.taskPhoto")
+
+            let symbolOn = draft.iconImage == nil
+            Button { withAnimation(.spring(response: 0.32, dampingFraction: 0.9)) { choosingIcon = true } } label: {
+                Image(systemName: draft.displayIcon)
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundColor(symbolOn ? .white : draft.priority.color)
+                    .frame(width: 42, height: 42)
+                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(symbolOn ? draft.priority.color : draft.priority.color.opacity(0.1)))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(L("اختر أيقونة", "Choose an icon"))
+            .accessibilityIdentifier("button.taskIcons")
+            Spacer(minLength: 0)
         }
+        .padding(.vertical, 2)
         .sheet(isPresented: $choosingPhoto) {
             PhotoPicker { image in
                 if let data = IconImage.make(from: image) {
@@ -379,6 +376,34 @@ struct TaskEditor: View {
                 }
             }
             .ignoresSafeArea()
+        }
+    }
+
+    /// The icons to choose from; picking one closes the grid.
+    private var iconGrid: some View {
+        VStack(spacing: 12) {
+            Text(L("اختر أيقونة", "Choose an icon")).font(.app(.headline, .bold)).foregroundColor(Theme.ink)
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 5), spacing: 10) {
+                ForEach(TaskItem.icons, id: \.self) { name in
+                    let on = draft.iconImage == nil && draft.displayIcon == name
+                    Button {
+                        withAnimation(.spring(response: 0.32, dampingFraction: 0.9)) {
+                            draft.icon = name
+                            draft.iconImage = nil
+                            choosingIcon = false
+                        }
+                    } label: {
+                        Image(systemName: name)
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(on ? .white : draft.priority.color)
+                            .frame(width: 50, height: 50)
+                            .background(RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .fill(on ? draft.priority.color : draft.priority.color.opacity(0.1)))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("icon.\(name)")
+                }
+            }
         }
     }
 
