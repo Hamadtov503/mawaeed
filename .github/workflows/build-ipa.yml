@@ -14,6 +14,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: RTL check (no iOS-drawn menus, dialogs or pickers)
+        run: ./scripts/check-rtl.sh
+
       - name: Install tools
         run: brew install xcodegen ldid
 
