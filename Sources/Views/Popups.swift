@@ -412,7 +412,8 @@ extension View {
 struct DocumentPicker: UIViewControllerRepresentable {
     enum Mode {
         case open([UTType])
-        case export(URL)
+        case export(URL)      // save a copy somewhere
+        case move(URL)        // move the file somewhere and keep using it there
     }
 
     let mode: Mode
@@ -428,6 +429,8 @@ struct DocumentPicker: UIViewControllerRepresentable {
             vc.allowsMultipleSelection = false
         case .export(let url):
             vc = UIDocumentPickerViewController(forExporting: [url], asCopy: true)
+        case .move(let url):
+            vc = UIDocumentPickerViewController(forExporting: [url], asCopy: false)
         }
         vc.delegate = context.coordinator
         return vc

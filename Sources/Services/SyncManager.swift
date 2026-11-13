@@ -41,18 +41,37 @@ final class SyncManager: ObservableObject {
 
     private init() {
         lastSync = UserDefaults.standard.object(forKey: lastKey) as? Date
-        folderName = resolveFolder()?.lastPathComponent
+        folderName = resolveFolder().map(Self.displayName)
     }
 
     var isOn: Bool { folderName != nil }
 
+    private static func isFile(_ url: URL) -> Bool { url.pathExtension.lowercased() == "json" }
+
+    /// "مواعيدي" for a folder; the folder the file sits in for a file.
+    static func displayName(of url: URL) -> String {
+        isFile(url) ? url.deletingLastPathComponent().lastPathComponent : url.lastPathComponent
+    }
+
+    /// A first copy of the sync file with everything on this phone, ready to be saved into iCloud Drive.
+    func makeStarterFile() throws -> URL {
+        let snapshot = SyncFile(items: Store.shared.items.map { var a = $0; a.calendarEventID = nil; return a },
+                                tasks: Store.shared.tasks, deleted: nil)
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let url = dir.appendingPathComponent(Self.fileName)
+        try Store.encoder.encode(snapshot).write(to: url, options: .atomic)
+        return url
+    }
+
+    /// The sync target: the sync file itself (saved or picked by the user), or a folder holding it.
     func setFolder(_ url: URL) {
         let ok = url.startAccessingSecurityScopedResource()
         defer { if ok { url.stopAccessingSecurityScopedResource() } }
         do {
             let data = try url.bookmarkData(options: [], includingResourceValuesForKeys: nil, relativeTo: nil)
             UserDefaults.standard.set(data, forKey: bookmarkKey)
-            folderName = url.lastPathComponent
+            folderName = Self.displayName(of: url)
             lastError = nil
             sync()
         } catch {
@@ -98,8 +117,9 @@ final class SyncManager: ObservableObject {
 
         queue.async {
             let ok = folder.startAccessingSecurityScopedResource()
-            let file = folder.appendingPathComponent(Self.fileName)
-            let placeholder = folder.appendingPathComponent(".\(Self.fileName).icloud")
+            let direct = Self.isFile(folder)   // access to the file itself, not to a folder
+            let file = direct ? folder : folder.appendingPathComponent(Self.fileName)
+            let placeholder = file.deletingLastPathComponent().appendingPathComponent(".\(file.lastPathComponent).icloud")
             var remote: SyncFile?
             var readError: Error?
             let fm = FileManager.default
@@ -142,7 +162,9 @@ final class SyncManager: ObservableObject {
                             let data = try Store.encoder.encode(snapshot)
                             var coordError: NSError?
                             NSFileCoordinator().coordinate(writingItemAt: file, options: .forReplacing, error: &coordError) { u in
-                                do { try data.write(to: u, options: .atomic) } catch { writeError = error }
+                                // With access to the file alone, it is overwritten in place (an atomic write
+                                // needs a temporary file beside it, which isn't allowed).
+                                do { try data.write(to: u, options: direct ? [] : .atomic) } catch { writeError = error }
                             }
                             if let e = coordError { writeError = e }
                         } catch { writeError = error }

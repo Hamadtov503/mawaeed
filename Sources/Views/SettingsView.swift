@@ -8,13 +8,13 @@ struct SettingsView: View {
     @EnvironmentObject var settings: AppSettings
     @EnvironmentObject var sync: SyncManager
 
-    @State private var importMode: ImportMode = .folder
+    @State private var importMode: ImportMode = .syncFile
     @State private var picker: PickerRequest? = nil
     @State private var pendingRestore: (items: [Appointment], tasks: [TaskItem])? = nil
     @State private var menu: MenuRequest? = nil
     @State private var calendarAccount: String? = nil
 
-    enum ImportMode { case folder, restore }
+    enum ImportMode { case syncFile, restore }
 
     /// One Files picker at a time: choosing the sync folder, a backup to restore, or where to save a backup.
     struct PickerRequest: Identifiable {
@@ -58,7 +58,11 @@ struct SettingsView: View {
         .onAppear(perform: refresh)
         .sheet(item: $picker) { req in
             DocumentPicker(mode: req.mode) { urls in
-                if case .open = req.mode { handleImport(.success(urls)) }
+                switch req.mode {
+                case .open: handleImport(.success(urls))
+                case .move: if let u = urls.first { sync.setFolder(u) }   // the sync file, now in iCloud Drive
+                case .export: break
+                }
             }
             .ignoresSafeArea()
         }
@@ -71,18 +75,19 @@ struct SettingsView: View {
         SettingsGroup(title: L("المزامنة مع آي كلاود", "iCloud sync"),
               footer: sync.isOn
                 ? L("أي تعديل ينحفظ في المجلد، والجوال الثاني يسحبه أول ما تفتح التطبيق وكل 30 ثانية وهو مفتوح.", "Every change is saved to the folder; the other phone picks it up when the app opens and every 30 seconds while open.")
-                : L("مواعيدك ومهامك تنحفظ في ملف داخل آي كلاود درايف حقك، فتبقى لو غيرت جوالك وتطلع في جوال ثاني. اختر مجلد هنا، وفي الجوال الثاني اختر نفس المجلد.", "Your appointments and tasks are kept in a file in your own iCloud Drive, so they survive a new phone and show on another one. Pick a folder here, and the same folder on the other phone.")) {
+                : L("مواعيدك ومهامك تنحفظ في ملف «مواعيدي.json» داخل آي كلاود درايف حقك، فتبقى لو غيرت جوالك وتطلع في جوال ثاني. احفظ الملف هنا، وفي الجوال الثاني اختر نفس الملف.", "Your appointments and tasks are kept in a file («مواعيدي.json») in your own iCloud Drive, so they survive a new phone and show on another one. Save the file here, and pick the same file on the other phone.")) {
             if sync.isOn {
                 info("folder.fill", L("المجلد", "Folder"), sync.folderName ?? "")
                 info(sync.isSyncing ? "arrow.triangle.2.circlepath.icloud" : "checkmark.icloud.fill", L("آخر مزامنة", "Last sync"),
                      sync.isSyncing ? L("جاري…", "Syncing…") : (sync.lastSync.map { Fmt.dateText($0, hasTime: true) } ?? "—"))
                 Button { sync.sync() } label: { Label(L("زامن الحين", "Sync now"), systemImage: "arrow.triangle.2.circlepath") }
-                Button { pick(.folder) } label: { Label(L("غيّر المجلد", "Change folder"), systemImage: "folder.badge.gearshape") }
+                Button { pick(.syncFile) } label: { Label(L("اختر ملف مزامنة ثاني", "Choose another sync file"), systemImage: "doc.badge.gearshape") }
                 Button(role: .destructive) { sync.turnOff() } label: {
                     Label(L("أوقف المزامنة على هالجوال", "Stop syncing on this phone"), systemImage: "xmark.icloud").foregroundColor(.red)
                 }
             } else {
-                Button { pick(.folder) } label: { Label(L("فعّل المزامنة واختر مجلد في آي كلاود درايف", "Turn on sync and pick an iCloud Drive folder"), systemImage: "icloud.fill") }
+                Button { startSync() } label: { Label(L("احفظ ملف المزامنة في آي كلاود درايف", "Save the sync file to iCloud Drive"), systemImage: "icloud.and.arrow.up.fill") }
+                Button { pick(.syncFile) } label: { Label(L("عندي ملف مزامنة من جوال ثاني", "I have a sync file from another phone"), systemImage: "icloud.and.arrow.down.fill") }
             }
             if let e = sync.lastError { Text(e).font(.app(.footnote)).foregroundColor(.orange) }
         }
@@ -144,21 +149,24 @@ struct SettingsView: View {
 
     private func pick(_ mode: ImportMode) {
         importMode = mode
-        guard mode == .folder else {
-            picker = PickerRequest(mode: .open([.json]))
-            return
+        picker = PickerRequest(mode: .open([.json]))
+    }
+
+    /// First phone: save a sync file holding everything on this phone into iCloud Drive; it is used from then on.
+    private func startSync() {
+        do {
+            let url = try sync.makeStarterFile()
+            menu = MenuRequest(
+                title: L("حفظ ملف المزامنة", "Saving the sync file"),
+                message: L("بتنفتح شاشة الحفظ: اختر iCloud Drive (ومجلد إذا تبي)، واضغط «نقل» أو «حفظ» فوق.",
+                           "The save screen opens: choose iCloud Drive (and a folder if you like), then tap «Move» or «Save» at the top."),
+                actions: [
+                    MenuAction(title: L("متابعة", "Continue"), icon: "icloud.and.arrow.up") { picker = PickerRequest(mode: .move(url)) },
+                    MenuAction(title: L("إلغاء", "Cancel"), icon: "xmark") {},
+                ])
+        } catch {
+            menu = .notice(L("ما قدرت أجهّز الملف", "Couldn't prepare the file"), message: error.localizedDescription)
         }
-        // iOS's folder picker looks like a file browser, so say how it works before opening it.
-        menu = MenuRequest(
-            title: L("اختيار مجلد المزامنة", "Choosing the sync folder"),
-            message: L("بتنفتح شاشة الملفات: اختر iCloud Drive، وادخل للمجلد اللي تبيه (أو سوّ مجلد جديد من زر ⋯)، وأنت داخله اضغط «فتح» فوق.",
-                       "The Files screen opens: choose iCloud Drive, go into the folder you want (or make a new one from ⋯), and while inside it tap «Open» at the top."),
-            actions: [
-                MenuAction(title: L("متابعة", "Continue"), icon: "folder") {
-                    picker = PickerRequest(mode: .open([.folder]))
-                },
-                MenuAction(title: L("إلغاء", "Cancel"), icon: "xmark") {},
-            ])
     }
 
     private func export() {
@@ -180,7 +188,7 @@ struct SettingsView: View {
             menu = .notice(L("ما انفتح", "Couldn't open"), message: e.localizedDescription)
         case .success(let urls):
             guard let url = urls.first else { return }
-            if importMode == .folder {
+            if importMode == .syncFile {
                 sync.setFolder(url)
             } else {
                 do {
