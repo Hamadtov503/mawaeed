@@ -17,29 +17,32 @@ jobs:
           - os: macos-15
             ios: "18"
             tag: ui-tests
-            xcode: ""
           # An older iOS too: phones on TrollStore run iOS 17 or earlier, and some SwiftUI layout
           # and hit-testing behaviour differs there.
-          - os: macos-14
+          - os: macos-15
             ios: "17"
             tag: ui-tests-17
-            xcode: /Applications/Xcode_15.4.app
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 50
+    timeout-minutes: 70
     steps:
       - uses: actions/checkout@v4
-
-      - name: Select Xcode
-        if: matrix.xcode != ''
-        run: |
-          sudo xcode-select -s "${{ matrix.xcode }}" || ls /Applications | grep Xcode
-          xcodebuild -version
 
       - name: Install tools
         run: brew install xcodegen
 
       - name: Generate Xcode project
         run: xcodegen generate
+
+      - name: Get the iOS ${{ matrix.ios }} simulator
+        run: |
+          if ! xcrun simctl list runtimes | grep -q "iOS ${{ matrix.ios }}\."; then
+            xcodebuild -downloadPlatform iOS -buildVersion ${{ matrix.ios }}.5 || xcodebuild -downloadPlatform iOS -buildVersion ${{ matrix.ios }}.4 || true
+          fi
+          RT=$(xcrun simctl list runtimes | grep -oE "com.apple.CoreSimulator.SimRuntime.iOS-${{ matrix.ios }}-[0-9-]+" | tail -1)
+          echo "runtime: $RT"
+          if [ -n "$RT" ] && ! xcrun simctl list devices available | awk -v want="-- iOS ${{ matrix.ios }}." '/^-- / { on = index($0, want) == 1; next } on && /iPhone/ { f=1 } END { exit !f }'; then
+            xcrun simctl create "iPhone 15 Pro" com.apple.CoreSimulator.SimDeviceType.iPhone-15-Pro "$RT"
+          fi
 
       - name: Pick a simulator
         run: |
