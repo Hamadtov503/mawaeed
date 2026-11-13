@@ -356,25 +356,14 @@ struct TaskEditor: View {
             .buttonStyle(.plain)
             .accessibilityLabel(L("صورة من الألبوم", "Picture from Photos"))
             .accessibilityIdentifier("button.taskPhoto")
-            // A picture can be removed with the small ✕ on its corner (the icon comes back).
-            .overlay(alignment: .topTrailing) {
+            // A long press on the picture offers to remove it (the icon comes back).
+            .contextMenu {
                 if draft.iconImage != nil {
-                    Button {
+                    Button(role: .destructive) {
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) { draft.iconImage = nil }
                     } label: {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 9, weight: .bold))
-                            .foregroundColor(.white)
-                            .frame(width: 20, height: 20)
-                            .background(Circle().fill(Theme.burgundy))
-                            .overlay(Circle().stroke(Theme.card, lineWidth: 2))
-                            .contentShape(Circle().inset(by: -8))
+                        Label(L("احذف الصورة", "Remove picture"), systemImage: "trash")
                     }
-                    .buttonStyle(.plain)
-                    .offset(x: Fmt.isArabic ? -13 : 13, y: -13)   // outside the picture's corner, not over it
-                    .transition(.scale.combined(with: .opacity))
-                    .accessibilityLabel(L("احذف الصورة", "Remove picture"))
-                    .accessibilityIdentifier("button.removePhoto")
                 }
             }
 
