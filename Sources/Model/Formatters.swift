@@ -67,10 +67,11 @@ enum Fmt {
     }()
 
     /// A number in the app's digits (١٢٣ in Arabic, 123 in English), without grouping.
-    static func num(_ n: Int) -> String {
+    static func num(_ n: Int, digits: Int = 1) -> String {
         let f = NumberFormatter()
         f.locale = locale
         f.usesGroupingSeparator = false
+        f.minimumIntegerDigits = digits
         return f.string(from: NSNumber(value: n)) ?? "\(n)"
     }
 
@@ -125,6 +126,12 @@ enum Fmt {
         if m >= 2 { return months(m) }
         let total = abs(greg.dateComponents([.day], from: greg.startOfDay(for: a), to: greg.startOfDay(for: b)).day ?? 0)
         return days(total)
+    }
+
+    /// "اليوم ٨:٣٠ ص", "بكرة", "الخميس ٤:٠٠ م": the day (and time) of an upcoming appointment.
+    static func countdownDay(_ a: Appointment) -> String {
+        let day = (greg.isDateInToday(a.date) || greg.isDateInTomorrow(a.date)) ? dayTitle(a.date) : dateText(a.date, hasTime: false)
+        return a.hasTime ? "\(day) \(timeText(a.date))" : day
     }
 
     /// "Now", "in 20 minutes", "Today 4:30 PM", "Tomorrow", "in 3 days", "2 days ago".

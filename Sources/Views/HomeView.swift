@@ -19,6 +19,10 @@ struct HomeView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 header
+                if let next = store.upcoming().first {
+                    NextUpStrip(item: next)
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                }
                 CalendarCard(selection: $day)
 
                 SectionHeader(title: isToday ? L("اليوم", "Today") : Fmt.dayTitle(day), detail: Fmt.hijriText(day))
@@ -35,7 +39,14 @@ struct HomeView: View {
                 if appointments.isEmpty {
                     emptyRow(L("ليس لديك مواعيد", "No appointments"))
                 } else {
-                    ForEach(appointments) { AppointmentCard(item: $0, showDate: isToday) }
+                    if isToday {
+                        // Today: a "now" line among today's appointments, refreshed every minute.
+                        TimelineView(.periodic(from: Date(), by: 60)) { ctx in
+                            todayList(appointments, now: ctx.date)
+                        }
+                    } else {
+                        ForEach(appointments) { AppointmentCard(item: $0, showDate: false) }
+                    }
                 }
 
                 label(L("مهامي", "Tasks"), "checklist", allTasks.filter { !$0.isDone }.count)
@@ -134,6 +145,20 @@ struct HomeView: View {
         .minimumScaleFactor(0.7)
     }
 
+    /// Today's appointments that have already started, the "now" line, then the rest. The line only
+    /// shows when there is something today to place it among.
+    @ViewBuilder
+    private func todayList(_ items: [Appointment], now: Date) -> some View {
+        let todays = items.filter { Fmt.greg.isDate($0.date, inSameDayAs: now) }
+        let started = items.filter { todays.contains($0) && ($0.hasTime ? $0.date <= now : true) }
+        let rest = items.filter { !started.contains($0) }
+        VStack(spacing: 18) {
+            ForEach(started) { AppointmentCard(item: $0, showDate: true) }
+            if !todays.isEmpty { NowLine(now: now) }
+            ForEach(rest) { AppointmentCard(item: $0, showDate: true) }
+        }
+    }
+
     private func emptyRow(_ text: String) -> some View {
         Text(text)
             .font(.app(.subheadline)).foregroundColor(Theme.muted)
@@ -184,5 +209,99 @@ struct SeasonIcon: View {
             }
         }
         .accessibilityLabel(isSummer ? L("صيف", "Summer") : L("شتاء", "Winter"))
+    }
+}
+
+
+/// The nearest appointment, at the top of home, with a live countdown. Tapping opens it.
+struct NextUpStrip: View {
+    @EnvironmentObject var router: Router
+    let item: Appointment
+
+    var body: some View {
+        TimelineView(.periodic(from: Date(), by: 1)) { ctx in
+            content(now: ctx.date)
+        }
+        .onTapGesture { router.openID = AppointmentRef(id: item.id) }
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityIdentifier("nextUp")
+    }
+
+    private func content(now: Date) -> some View {
+        // A timed appointment counts down to its time; an all-day one to the start of its day.
+        let target = item.hasTime ? item.date : Fmt.greg.startOfDay(for: item.date)
+        let left = max(0, Int(target.timeIntervalSince(now)))
+        return HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 5) {
+                HStack(spacing: 6) {
+                    Circle().fill(Theme.sand).frame(width: 6, height: 6)
+                    Text(Fmt.joined([L("التالي", "Next"), Fmt.countdownDay(item)]))
+                        .font(.app(.caption, .semibold))
+                        .foregroundColor(.white.opacity(0.75))
+                        .lineLimit(1)
+                }
+                Text(item.title.isEmpty ? L("بدون عنوان", "Untitled") : item.title)
+                    .font(.app(.headline, .bold))
+                    .foregroundColor(.white)
+                    .lineLimit(1)
+            }
+            Spacer(minLength: 8)
+            if left == 0 {
+                Text(item.hasTime ? L("الحين", "Now") : L("اليوم", "Today"))
+                    .font(.app(.title3, .bold)).foregroundColor(Theme.sand)
+            } else {
+                counter(left)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 13)
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(LinearGradient(colors: [Theme.navy, Theme.navy.opacity(0.88)], startPoint: .topLeading, endPoint: .bottomTrailing))
+        )
+        .shadow(color: Theme.navy.opacity(0.25), radius: 10, y: 4)
+    }
+
+    /// Days, hours, minutes, seconds; the days only when there is at least one.
+    private func counter(_ seconds: Int) -> some View {
+        let d = seconds / 86400, h = (seconds % 86400) / 3600, m = (seconds % 3600) / 60, s = seconds % 60
+        var parts: [(Int, String)] = []
+        if d > 0 { parts.append((d, L("يوم", "day"))) }
+        parts += [(h, L("ساعة", "hr")), (m, L("دقيقة", "min")), (s, L("ثانية", "sec"))]
+        return HStack(alignment: .top, spacing: 4) {
+            ForEach(Array(parts.enumerated()), id: \.offset) { i, p in
+                if i > 0 {
+                    Text(":").font(.app(size: 18, .bold)).foregroundColor(.white.opacity(0.45))
+                }
+                VStack(spacing: 1) {
+                    Text(Fmt.num(p.0, digits: 2))
+                        .font(.app(size: 19, .bold))
+                        .monospacedDigit()
+                        .foregroundColor(.white)
+                    Text(p.1).font(.app(size: 9, .medium)).foregroundColor(.white.opacity(0.6))
+                }
+                .frame(minWidth: 28)
+            }
+        }
+        .fixedSize()
+    }
+}
+
+/// "الآن · ٤:٣٧ م" with a thin line: where the present sits among today's appointments.
+struct NowLine: View {
+    let now: Date
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Circle().fill(Theme.burgundy).frame(width: 8, height: 8)
+            Text(Fmt.joined([L("الآن", "Now"), Fmt.timeText(now)]))
+                .font(.app(.caption, .bold))
+                .foregroundColor(Theme.burgundy)
+                .fixedSize()
+            Rectangle().fill(Theme.burgundy.opacity(0.45)).frame(height: 1)
+        }
+        .padding(.horizontal, 4)
+        .accessibilityIdentifier("nowLine")
     }
 }
