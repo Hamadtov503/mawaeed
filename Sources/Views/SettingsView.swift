@@ -112,7 +112,7 @@ struct SettingsView: View {
             // Three clearly different marks, each in its own colour.
             Button { syncNow() } label: { syncRow }
             Button { pick(.syncFile) } label: { row(L("استيراد", "Import"), "arrow.down.doc.fill", Theme.forest) }
-            Button { startSync() } label: { row(L("تصدير", "Export"), "paperplane.fill", Theme.burgundy) }
+            Button { startSync() } label: { row(L("تصدير", "Export"), "arrow.up.doc.fill", Theme.burgundy) }
         }
     }
 
