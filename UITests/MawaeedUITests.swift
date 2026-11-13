@@ -328,8 +328,10 @@ final class MawaeedUITests: XCTestCase {
         card.press(forDuration: 1.2)
         sleep(2)
         shot("50-long-press-menu")
-        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.05)).tap()
+        XCTAssertTrue(app.buttons["menuAction.حذف"].exists, "the long-press menu did not open")
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.85)).tap()   // the dimmed area below the menu
         sleep(1)
+        XCTAssertFalse(app.buttons["menuAction.حذف"].exists, "an outside tap did not close the menu")
         go("tasks")
         app.buttons["addTask"].tap()
         let title = app.textFields["field.taskTitle"]
