@@ -233,3 +233,14 @@ struct ShareSheet: UIViewControllerRepresentable {
     }
     func updateUIViewController(_ vc: UIActivityViewController, context: Context) {}
 }
+
+extension TaskPriority {
+    var color: Color {
+        switch self {
+        case .low: return Theme.slate
+        case .medium: return Theme.navy
+        case .high: return Theme.dyn(0xB4621A, 0xF0A35E)
+        case .urgent: return Theme.burgundy
+        }
+    }
+}

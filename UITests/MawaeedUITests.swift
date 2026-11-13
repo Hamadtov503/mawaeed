@@ -160,6 +160,41 @@ final class MawaeedUITests: XCTestCase {
         XCTAssertFalse(app.textFields["field.taskTitle"].exists, "a sideways swipe over a task opened it")
         shot("13-home-with-tasks")
         assertHandle(at: base, "home after tasks")
+
+        // On the home page a task can't be ticked directly: tapping it opens it, and it is done from there.
+        XCTAssertFalse(app.buttons["تم"].exists, "the home page lets a task be ticked directly")
+        element(containing: "Task 2").tap()
+        XCTAssertTrue(app.buttons["button.toggleDone"].waitForExistence(timeout: 5), "tapping a task on home didn't open it")
+        shot("14-task-opened-from-home")
+        app.buttons["button.toggleDone"].tap()
+        sleep(2)
+        shot("15-home-after-done")
+        assertHandle(at: base, "home after marking a task done")
+    }
+
+    /// A scheduled task: priority, icon, start now, an end; shown with its time range.
+    func testScheduledTask() {
+        launchToHome()
+        go("tasks")
+        app.buttons["addTask"].tap()
+        let title = app.textFields["field.taskTitle"]
+        XCTAssertTrue(title.waitForExistence(timeout: 5))
+        title.tap()
+        title.typeText("Report")
+        element(containing: "عالية").tap()        // priority: high
+        element(containing: "محدد بوقت").tap()    // scheduled
+        sleep(1)
+        shot("40-task-scheduled-form")
+        XCTAssertTrue(app.buttons["row.date"].exists, "no end date row for a scheduled task")
+        app.buttons["row.date"].tap()
+        XCTAssertTrue(app.buttons[dayID(2)].waitForExistence(timeout: 4))
+        app.buttons[dayID(2)].tap()
+        sleep(1)
+        shot("41-task-end-picked")
+        app.buttons["button.save"].tap()
+        sleep(2)
+        shot("42-tasks-with-scheduled")
+        XCTAssertTrue(element(containing: "Report").exists)
     }
 
     /// A tap outside the calendar popup closes it.

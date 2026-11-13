@@ -47,15 +47,17 @@ struct TasksView: View {
     }
 }
 
-/// Tasks in one card, separated by thin lines.
+/// Tasks in one card, separated by thin lines. On the home page they are read-only:
+/// tapping a task opens it, and it is marked done from there.
 struct TaskList: View {
     let tasks: [TaskItem]
+    var interactive = true
 
     var body: some View {
         VStack(spacing: 0) {
             ForEach(tasks) { t in
-                TaskRow(task: t)
-                if t.id != tasks.last?.id { Divider().padding(.leading, 44) }
+                TaskRow(task: t, interactive: interactive)
+                if t.id != tasks.last?.id { Divider().padding(.leading, 52) }
             }
         }
         .card(padding: 12)
@@ -66,44 +68,42 @@ struct TaskRow: View {
     @EnvironmentObject var store: Store
     @EnvironmentObject var router: Router
     let task: TaskItem
+    var interactive = true
 
     var body: some View {
         HStack(spacing: 12) {
-            Button {
-                UIImpactFeedbackGenerator(style: .soft).impactOccurred()
-                withAnimation(Router.soft) { store.toggleTask(task.id) }
-            } label: {
-                Image(systemName: task.isDone ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 24, weight: .regular))
-                    .foregroundColor(task.isDone ? Theme.forest : (task.isOverdue() ? Theme.burgundy : Theme.muted.opacity(0.6)))
-                    .scaleEffect(task.isDone ? 1.05 : 1)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(task.isDone ? L("إلغاء الإنجاز", "Mark not done") : L("تم", "Done"))
-
-            VStack(alignment: .leading, spacing: 2) {
+            statusMark
+            Tile(icon: task.displayIcon, color: task.isDone ? Theme.muted : task.priority.color, size: 34)
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 6) {
                     Text(task.title.isEmpty ? L("بدون عنوان", "Untitled") : task.title)
                         .font(.app(.body, .medium))
                         .foregroundColor(task.isDone ? Theme.muted : Theme.ink)
                         .strikethrough(task.isDone, color: Theme.muted)
-                        .lineLimit(2)
-                    if let due = task.dueText {
-                        HStack(spacing: 4) {
-                            Image(systemName: task.remind && !task.isDone ? "bell.fill" : "calendar")
-                                .font(.system(size: 10))
-                            Text(due)
-                        }
-                        .font(.app(.caption))
-                        .foregroundColor(task.isOverdue() ? Theme.burgundy : Theme.muted)
-                    }
+                        .lineLimit(1)
+                    Spacer(minLength: 4)
+                    Text(task.priority.title)
+                        .font(.app(size: 10, .bold))
+                        .foregroundColor(task.priority.color)
+                        .padding(.horizontal, 7).padding(.vertical, 2)
+                        .background(Capsule().fill(task.priority.color.opacity(0.12)))
+                        .fixedSize()
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .contentShape(Rectangle())
-                // A tap gesture rather than a Button, so a sideways swipe over the row doesn't open it.
-                .onTapGesture { router.editingTask = task }
-                .accessibilityAddTraits(.isButton)
+                HStack(spacing: 4) {
+                    Image(systemName: task.isScheduled ? (task.remind && !task.isDone ? "bell.fill" : "calendar") : "infinity")
+                        .font(.system(size: 10))
+                    Text(task.dueText ?? L("مفتوحة", "Open"))
+                        .lineLimit(1)
+                }
+                .font(.app(.caption))
+                .foregroundColor(task.isOverdue() ? Theme.burgundy : Theme.muted)
+            }
         }
         .padding(.vertical, 8)
+        .contentShape(Rectangle())
+        // A tap gesture rather than a Button, so a sideways swipe over the row doesn't open it.
+        .onTapGesture { router.editingTask = task }
+        .accessibilityAddTraits(.isButton)
         .contextMenu {
             Button { router.editingTask = task } label: { Label(L("تعديل", "Edit"), systemImage: "pencil") }
             Button(role: .destructive) { withAnimation(Router.soft) { store.deleteTask(task.id) } } label: {
@@ -111,21 +111,48 @@ struct TaskRow: View {
             }
         }
     }
+
+    /// A tappable tick on the tasks page; on the home page only a status mark.
+    @ViewBuilder
+    private var statusMark: some View {
+        let mark = Image(systemName: task.isDone ? "checkmark.circle.fill" : "circle")
+            .font(.system(size: 22, weight: .regular))
+            .foregroundColor(task.isDone ? Theme.forest : (task.isOverdue() ? Theme.burgundy : Theme.muted.opacity(0.6)))
+        if interactive {
+            Button {
+                UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+                withAnimation(Router.soft) { store.toggleTask(task.id) }
+            } label: { mark }
+            .buttonStyle(.plain)
+            .accessibilityLabel(task.isDone ? L("إلغاء الإنجاز", "Mark not done") : L("تم", "Done"))
+        } else {
+            mark.accessibilityHidden(true)
+        }
+    }
 }
 
-/// Add or edit a task (a sheet; cards in a ScrollView, no Form).
+/// Add or edit a task (a sheet; cards in a ScrollView, no Form): title and icon, priority,
+/// open or scheduled (start now or at a chosen time, and an end), reminder, notes, done.
 struct TaskEditor: View {
     @EnvironmentObject var store: Store
     @State private var draft: TaskItem
-    @State private var hasDate: Bool
+    @State private var scheduled: Bool
+    @State private var startNow: Bool
+    @State private var picking: Picking? = nil
     @State private var confirmDelete = false
-    @State private var pickingDay = false
-    @State private var pickingTime = false
     let onFinish: () -> Void
 
+    enum Picking { case startDay, startTime, endDay, endTime }
+
     init(task: TaskItem, onFinish: @escaping () -> Void) {
-        _draft = State(initialValue: task)
-        _hasDate = State(initialValue: task.due != nil)
+        var t = task
+        if t.due != nil {
+            t.hasTime = true
+            if t.start == nil { t.start = t.createdAt }
+        }
+        _draft = State(initialValue: t)
+        _scheduled = State(initialValue: t.due != nil)
+        _startNow = State(initialValue: false)
         self.onFinish = onFinish
     }
 
@@ -135,36 +162,77 @@ struct TaskEditor: View {
         AppNavigation {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
-                    card {
+                    card(nil) {
                         TextField(L("وش المهمة؟", "What's the task?"), text: $draft.title).font(.app(.headline))
                             .accessibilityIdentifier("field.taskTitle")
+                        iconPicker
                     }
-                    card {
-                        Toggle(L("لها تاريخ", "Has a date"), isOn: $hasDate.animation(Router.soft))
-                            .accessibilityIdentifier("toggle.hasDate")
-                        if hasDate {
-                            Toggle(L("وقت محدد", "Specific time"), isOn: $draft.hasTime.animation(Router.soft))
-                            PickerRow(title: L("التاريخ", "Date"), value: Fmt.dateText(dueBinding.wrappedValue, hasTime: false),
-                                      icon: "calendar") { open(day: true) }
-                                .accessibilityIdentifier("row.date")
-                            if draft.hasTime {
-                                PickerRow(title: L("الوقت", "Time"), value: Fmt.timeText(dueBinding.wrappedValue),
-                                          icon: "clock") { open(day: false) }
+
+                    card(L("درجة المهمة", "Priority")) {
+                        HStack(spacing: 6) {
+                            ForEach(TaskPriority.allCases) { p in
+                                segment(p.title, on: draft.priority == p, color: p.color) { draft.priority = p }
                             }
-                            Text(L("يوافق: \(Fmt.hijriText(draft.due ?? defaultDue))", "Same as: \(Fmt.hijriText(draft.due ?? defaultDue))"))
-                                .font(.app(.caption)).foregroundColor(Theme.muted)
-                            Toggle(L("ذكّرني", "Remind me"), isOn: $draft.remind)
                         }
                     }
-                    card {
+
+                    card(L("وقت المهمة", "Task time")) {
+                        HStack(spacing: 6) {
+                            segment(L("مفتوح", "Open"), on: !scheduled, color: Theme.slate) { setScheduled(false) }
+                            segment(L("محدد بوقت", "Scheduled"), on: scheduled, color: Theme.navy) { setScheduled(true) }
+                        }
+                        if scheduled {
+                            Text(L("بداية المهمة", "Start")).font(.app(.footnote, .bold)).foregroundColor(Theme.muted)
+                            HStack(spacing: 6) {
+                                segment(L("الآن", "Now"), on: startNow, color: Theme.forest) {
+                                    startNow = true
+                                    draft.start = Date()
+                                    fixEnd()
+                                }
+                                segment(L("وقت وتاريخ", "Pick a time"), on: !startNow, color: Theme.forest) { startNow = false }
+                            }
+                            if !startNow {
+                                PickerRow(title: L("التاريخ", "Date"), value: Fmt.dateText(startBinding.wrappedValue, hasTime: false),
+                                          icon: "calendar") { open(.startDay) }
+                                PickerRow(title: L("الوقت", "Time"), value: Fmt.timeText(startBinding.wrappedValue),
+                                          icon: "clock") { open(.startTime) }
+                            }
+                            Divider()
+                            Text(L("نهاية المهمة", "End")).font(.app(.footnote, .bold)).foregroundColor(Theme.muted)
+                            PickerRow(title: L("التاريخ", "Date"), value: Fmt.dateText(endBinding.wrappedValue, hasTime: false),
+                                      icon: "calendar") { open(.endDay) }
+                                .accessibilityIdentifier("row.date")
+                            PickerRow(title: L("الوقت", "Time"), value: Fmt.timeText(endBinding.wrappedValue),
+                                      icon: "clock") { open(.endTime) }
+                            Toggle(L("ذكّرني عند نهاية المهمة", "Remind me at the end"), isOn: $draft.remind)
+                        }
+                    }
+
+                    card(L("ملاحظات", "Notes")) {
                         ZStack(alignment: .topLeading) {
                             if draft.notes.isEmpty {
-                                Text(L("ملاحظات", "Notes")).foregroundColor(Theme.muted.opacity(0.7)).padding(.top, 8).padding(.leading, 5)
+                                Text(L("تفاصيل إضافية…", "More details…")).foregroundColor(Theme.muted.opacity(0.7)).padding(.top, 8).padding(.leading, 5)
                             }
                             TextEditor(text: $draft.notes).frame(minHeight: 80).modifier(ClearTextEditorBackground())
                         }
                     }
+
                     if !isNew {
+                        Button {
+                            UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+                            store.toggleTask(draft.id)
+                            onFinish()
+                        } label: {
+                            Label(draft.isDone ? L("إرجاعها غير منجزة", "Mark as not done") : L("تم إنجاز المهمة", "Mark as done"),
+                                  systemImage: draft.isDone ? "arrow.uturn.backward" : "checkmark.circle.fill")
+                                .font(.app(.body, .bold))
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity).padding(.vertical, 14)
+                                .background(Capsule().fill(draft.isDone ? Theme.slate : Theme.forest))
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("button.toggleDone")
+
                         Button(role: .destructive) { confirmDelete = true } label: {
                             Label(L("حذف المهمة", "Delete task"), systemImage: "trash").font(.app(.body, .semibold))
                                 .foregroundColor(Theme.burgundy)
@@ -189,11 +257,17 @@ struct TaskEditor: View {
                         .accessibilityIdentifier("button.save")
                 }
             }
-            .popup(isPresented: $pickingDay) {
-                DayPickerPopup(date: dueBinding, hijri: false) { close() }
+            .popup(isPresented: Binding(get: { picking == .startDay }, set: { if !$0 { picking = nil } })) {
+                DayPickerPopup(date: startBinding, hijri: false) { close() }
             }
-            .popup(isPresented: $pickingTime) {
-                TimePickerPopup(date: dueBinding) { close() }
+            .popup(isPresented: Binding(get: { picking == .startTime }, set: { if !$0 { picking = nil } })) {
+                TimePickerPopup(date: startBinding) { close() }
+            }
+            .popup(isPresented: Binding(get: { picking == .endDay }, set: { if !$0 { picking = nil } })) {
+                DayPickerPopup(date: endBinding, hijri: false) { close() }
+            }
+            .popup(isPresented: Binding(get: { picking == .endTime }, set: { if !$0 { picking = nil } })) {
+                TimePickerPopup(date: endBinding) { close() }
             }
             .confirmationDialog(L("تحذف المهمة؟", "Delete this task?"), isPresented: $confirmDelete, titleVisibility: .visible) {
                 Button(L("حذف", "Delete"), role: .destructive) {
@@ -205,39 +279,99 @@ struct TaskEditor: View {
         }
     }
 
-    private var dueBinding: Binding<Date> {
-        Binding(get: { draft.due ?? defaultDue }, set: { draft.due = $0 })
+    // MARK: Pieces
+
+    private var iconPicker: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(TaskItem.icons, id: \.self) { name in
+                    let on = draft.displayIcon == name
+                    Button { withAnimation(.easeInOut(duration: 0.15)) { draft.icon = name } } label: {
+                        Image(systemName: name)
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundColor(on ? .white : draft.priority.color)
+                            .frame(width: 42, height: 42)
+                            .background(RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .fill(on ? draft.priority.color : draft.priority.color.opacity(0.1)))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.vertical, 2)
+        }
     }
 
-    private func open(day: Bool) {
-        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-        withAnimation(.spring(response: 0.32, dampingFraction: 0.9)) {
-            if day { pickingDay = true } else { pickingTime = true }
+    private func segment(_ title: String, on: Bool, color: Color, _ action: @escaping () -> Void) -> some View {
+        Button { withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) { action() } } label: {
+            Text(title)
+                .font(.app(.subheadline, .semibold))
+                .foregroundColor(on ? .white : Theme.ink)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 9)
+                .background(Capsule().fill(on ? color : Theme.sand))
         }
+        .buttonStyle(.plain)
+    }
+
+    private var startBinding: Binding<Date> {
+        Binding(get: { draft.start ?? Date() }, set: { draft.start = $0; fixEnd() })
+    }
+
+    private var endBinding: Binding<Date> {
+        Binding(get: { draft.due ?? defaultEnd }, set: { draft.due = $0; fixEnd() })
+    }
+
+    private var defaultEnd: Date { (draft.start ?? Date()).addingTimeInterval(3600) }
+
+    /// The end can't be before the start: push it to an hour after.
+    private func fixEnd() {
+        guard let st = draft.start else { return }
+        if let d = draft.due, d < st { draft.due = st.addingTimeInterval(3600) }
+    }
+
+    private func setScheduled(_ on: Bool) {
+        scheduled = on
+        if on {
+            draft.hasTime = true
+            if draft.start == nil { draft.start = Date(); startNow = true }
+            if draft.due == nil { draft.due = defaultEnd }
+        }
+    }
+
+    private func open(_ p: Picking) {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        withAnimation(.spring(response: 0.32, dampingFraction: 0.9)) { picking = p }
     }
 
     private func close() {
-        withAnimation(.spring(response: 0.32, dampingFraction: 0.9)) {
-            pickingDay = false
-            pickingTime = false
+        withAnimation(.spring(response: 0.32, dampingFraction: 0.9)) { picking = nil }
+    }
+
+    private func card<C: View>(_ title: String?, @ViewBuilder _ content: () -> C) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if let t = title {
+                Text(t).font(.app(.footnote, .bold)).foregroundColor(Theme.muted).padding(.horizontal, 6)
+            }
+            VStack(alignment: .leading, spacing: 12) { content() }
+                .foregroundColor(Theme.ink)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .card(padding: 16)
         }
-    }
-
-    private var defaultDue: Date {
-        let cal = Fmt.greg
-        return cal.date(bySettingHour: 17, minute: 0, second: 0, of: Date()) ?? Date()
-    }
-
-    private func card<C: View>(@ViewBuilder _ content: () -> C) -> some View {
-        VStack(alignment: .leading, spacing: 14) { content() }
-            .foregroundColor(Theme.ink)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .card(padding: 16)
     }
 
     private func save() {
         draft.title = draft.title.trimmingCharacters(in: .whitespacesAndNewlines)
-        if hasDate { draft.due = draft.due ?? defaultDue } else { draft.due = nil }
+        if scheduled {
+            draft.hasTime = true
+            if startNow || draft.start == nil { draft.start = draft.start ?? Date() }
+            if draft.due == nil { draft.due = defaultEnd }
+            fixEnd()
+        } else {
+            draft.start = nil
+            draft.due = nil
+            draft.hasTime = false
+        }
+        if draft.icon == nil { draft.icon = "checklist" }
         store.upsertTask(draft)
         onFinish()
     }
