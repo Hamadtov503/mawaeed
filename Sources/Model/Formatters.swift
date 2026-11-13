@@ -91,14 +91,15 @@ enum Fmt {
     static func timeText(_ d: Date) -> String { time.string(from: d) }
 
     /// The home page's day line, the same shape for every day: «اليوم» / «أمس» / «غدًا» or the weekday
-    /// as the title, and the Hijri date with the short Gregorian one after it.
+    /// as the title, and the Hijri day and month with the Gregorian ones after them (no years).
     static func dayLine(_ d: Date) -> (title: String, detail: String) {
         let title: String
         if greg.isDateInToday(d) { title = L("اليوم", "Today") }
         else if greg.isDateInYesterday(d) { title = L("أمس", "Yesterday") }
         else if greg.isDateInTomorrow(d) { title = L("غدًا", "Tomorrow") }
         else { title = formatter("EEEE").string(from: d) }
-        return (title, joined([hijriText(d), formatter("d MMMM").string(from: d)]))
+        // Without the year: «٢٣ جمادى الآخرة، ٣ ديسمبر».
+        return (title, joined([formatter("d MMMM", hijri: true).string(from: d), formatter("d MMMM").string(from: d)]))
     }
 
     /// Today / Tomorrow / Yesterday or the full date — used as day headers.
