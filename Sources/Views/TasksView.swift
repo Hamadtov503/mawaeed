@@ -47,20 +47,21 @@ struct TasksView: View {
     }
 }
 
-/// Tasks in one card, separated by thin lines. On the home page they are read-only:
-/// tapping a task opens it, and it is marked done from there.
+/// Each task in its own card, the same size as an appointment card. On the home page they are
+/// read-only: tapping a task opens it, and it is marked done from there.
 struct TaskList: View {
     let tasks: [TaskItem]
     var interactive = true
+    var spacing: CGFloat = 14
 
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: spacing) {
             ForEach(tasks) { t in
                 TaskRow(task: t, interactive: interactive)
-                if t.id != tasks.last?.id { Divider().padding(.leading, 52) }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .card(padding: 12)
             }
         }
-        .card(padding: 12)
     }
 }
 
@@ -74,10 +75,10 @@ struct TaskRow: View {
         HStack(spacing: 12) {
             if interactive { statusMark }      // no tick on the home page: a task is finished from inside it
             TaskIcon(task: task, size: 42)
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
                     Text(task.title.isEmpty ? L("بدون عنوان", "Untitled") : task.title)
-                        .font(.app(.body, .medium))
+                        .font(.app(.headline))
                         .foregroundColor(task.isDone ? Theme.muted : Theme.ink)
                         .strikethrough(task.isDone, color: Theme.muted)
                         .lineLimit(1)
@@ -95,11 +96,10 @@ struct TaskRow: View {
                     Text(task.dueText ?? L("مفتوحة", "Open"))
                         .lineLimit(1)
                 }
-                .font(.app(.caption))
+                .font(.app(.subheadline))
                 .foregroundColor(task.isOverdue() ? Theme.burgundy : Theme.muted)
             }
         }
-        .padding(.vertical, 8)
         .contentShape(Rectangle())
         // A tap gesture rather than a Button, so a sideways swipe over the row doesn't open it.
         .onTapGesture { router.editingTask = task }

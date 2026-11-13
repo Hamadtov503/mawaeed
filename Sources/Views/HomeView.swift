@@ -57,7 +57,7 @@ struct HomeView: View {
                 if allTasks.isEmpty {
                     emptyRow(L("ليس لديك مهام", "No tasks"))
                 } else {
-                    TaskList(tasks: allTasks, interactive: false)   // opened to be marked done
+                    TaskList(tasks: allTasks, interactive: false, spacing: 18)   // opened to be marked done
                 }
             }
             .padding(.horizontal, 18)
