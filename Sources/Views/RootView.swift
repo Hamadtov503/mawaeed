@@ -94,7 +94,7 @@ struct RootView: View {
     /// A full-screen page that slides in from the side (the trailing edge) and out again.
     private func slide<V: View>(_ shown: Bool, @ViewBuilder _ content: () -> V) -> some View {
         let page = content()
-        GeometryReader { g in
+        return GeometryReader { g in
             let away = (g.size.width + 40) * (Fmt.isArabic ? -1 : 1)   // offset is not mirrored: left in Arabic
             page
                 .offset(x: shown ? 0 : away)
