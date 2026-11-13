@@ -84,6 +84,8 @@ final class Router: ObservableObject {
     @Published var editingTask: TaskItem? = nil
     @Published var showSettings = false
     @Published var showNotifications = false
+    /// An app-drawn menu or question over the pages (long press on a card, a task row…).
+    @Published var menu: MenuRequest? = nil
     /// Notifications sitting in Notification Center, shown as the bell's badge.
     @Published var deliveredCount = 0
     /// Where the home page's day line ("اليوم") is on screen; the menu tab sits beside it.

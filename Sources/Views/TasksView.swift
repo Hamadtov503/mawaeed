@@ -104,11 +104,12 @@ struct TaskRow: View {
         // A tap gesture rather than a Button, so a sideways swipe over the row doesn't open it.
         .onTapGesture { router.editingTask = task }
         .accessibilityAddTraits(.isButton)
-        .contextMenu {
-            Button { router.editingTask = task } label: { Label(L("تعديل", "Edit"), systemImage: "pencil") }
-            Button(role: .destructive) { withAnimation(Router.soft) { store.deleteTask(task.id) } } label: {
-                Label(L("حذف", "Delete"), systemImage: "trash")
-            }
+        .onLongPress {
+            let t = task
+            router.menu = MenuRequest(title: t.title, actions: [
+                MenuAction(title: L("تعديل", "Edit"), icon: "pencil") { router.editingTask = t },
+                MenuAction(title: L("حذف", "Delete"), icon: "trash", destructive: true) { withAnimation(Router.soft) { store.deleteTask(t.id) } },
+            ])
         }
     }
 
@@ -177,9 +178,9 @@ struct TaskEditor: View {
     @State private var scheduled: Bool
     @State private var startNow: Bool
     @State private var picking: Picking? = nil
-    @State private var confirmDelete = false
     @State private var choosingPhoto = false
     @State private var choosingIcon = false
+    @State private var menu: MenuRequest? = nil
     let onFinish: () -> Void
 
     enum Picking { case startDay, startTime, endDay, endTime }
@@ -283,7 +284,15 @@ struct TaskEditor: View {
                         .buttonStyle(.plain)
                         .accessibilityIdentifier("button.toggleDone")
 
-                        Button(role: .destructive) { confirmDelete = true } label: {
+                        Button(role: .destructive) {
+                            menu = MenuRequest(title: L("تحذف المهمة؟", "Delete this task?"), actions: [
+                                MenuAction(title: L("حذف", "Delete"), icon: "trash", destructive: true) {
+                                    store.deleteTask(draft.id)
+                                    onFinish()
+                                },
+                                MenuAction(title: L("إلغاء", "Cancel"), icon: "xmark") {},
+                            ])
+                        } label: {
                             Label(L("حذف المهمة", "Delete task"), systemImage: "trash").font(.app(.body, .semibold))
                                 .foregroundColor(Theme.burgundy)
                                 .frame(maxWidth: .infinity).padding(.vertical, 12)
@@ -322,13 +331,7 @@ struct TaskEditor: View {
             .popup(isPresented: Binding(get: { picking == .endTime }, set: { if !$0 { picking = nil } })) {
                 TimePickerPopup(date: endBinding) { close() }
             }
-            .confirmationDialog(L("تحذف المهمة؟", "Delete this task?"), isPresented: $confirmDelete, titleVisibility: .visible) {
-                Button(L("حذف", "Delete"), role: .destructive) {
-                    store.deleteTask(draft.id)
-                    onFinish()
-                }
-                Button(L("إلغاء", "Cancel"), role: .cancel) {}
-            }
+            .actionMenu($menu)
         }
     }
 
@@ -338,7 +341,7 @@ struct TaskEditor: View {
     /// glass that opens the grid of icons.
     private var iconPicker: some View {
         HStack(spacing: 10) {
-            Button { choosingPhoto = true } label: {
+            Group {
                 Group {
                     if let data = draft.iconImage, let ui = UIImage(data: data) {
                         Image(uiImage: ui).resizable().scaledToFill()
@@ -353,21 +356,22 @@ struct TaskEditor: View {
                 // same frame as the button and nothing jumps when the menu closes.
                 .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .strokeBorder(draft.iconImage != nil ? draft.priority.color : Theme.border, lineWidth: draft.iconImage != nil ? 2.5 : 1))
-                .contentShape(.contextMenuPreview, RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             }
-            .buttonStyle(.plain)
+            .onTapGesture { choosingPhoto = true }
+            // A long press on the picture offers to remove it (the icon comes back).
+            .onLongPress {
+                guard draft.iconImage != nil else { return }
+                menu = MenuRequest(actions: [
+                    MenuAction(title: L("احذف الصورة", "Remove picture"), icon: "trash", destructive: true) {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) { draft.iconImage = nil }
+                    },
+                ])
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityAddTraits(.isButton)
             .accessibilityLabel(L("صورة من الألبوم", "Picture from Photos"))
             .accessibilityIdentifier("button.taskPhoto")
-            // A long press on the picture offers to remove it (the icon comes back).
-            .contextMenu {
-                if draft.iconImage != nil {
-                    Button(role: .destructive) {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) { draft.iconImage = nil }
-                    } label: {
-                        Label(L("احذف الصورة", "Remove picture"), systemImage: "trash")
-                    }
-                }
-            }
 
             Button {
                 // Put the keyboard away so the whole grid shows.

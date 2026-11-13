@@ -37,11 +37,12 @@ struct AppointmentCard: View {
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)
         .accessibilityIdentifier("card.\(item.title)")
-        .contextMenu {
-            Button { store.duplicate(item.id) } label: { Label(L("نسخة مكررة", "Duplicate"), systemImage: "plus.square.on.square") }
-            Button(role: .destructive) { withAnimation { store.delete(item.id) } } label: {
-                Label(L("حذف", "Delete"), systemImage: "trash")
-            }
+        .onLongPress {
+            let id = item.id
+            router.menu = MenuRequest(title: item.title, actions: [
+                MenuAction(title: L("نسخة مكررة", "Duplicate"), icon: "plus.square.on.square") { store.duplicate(id) },
+                MenuAction(title: L("حذف", "Delete"), icon: "trash", destructive: true) { withAnimation { store.delete(id) } },
+            ])
         }
     }
 }

@@ -6,7 +6,7 @@ struct AppointmentDetail: View {
     let onClose: () -> Void
     @EnvironmentObject var store: Store
     @State private var editing = false
-    @State private var confirmDelete = false
+    @State private var menu: MenuRequest? = nil
     @State private var sharing = false
 
     var body: some View {
@@ -74,7 +74,15 @@ struct AppointmentDetail: View {
                     Divider().padding(.vertical, 12)
                     action(L("نسخة مكررة", "Duplicate"), "plus.square.on.square") { store.duplicate(a.id) }
                     Divider().padding(.vertical, 12)
-                    action(L("حذف الموعد", "Delete appointment"), "trash", color: .red) { confirmDelete = true }
+                    action(L("حذف الموعد", "Delete appointment"), "trash", color: .red) {
+                        menu = MenuRequest(title: L("تحذف «\(a.title)»؟", "Delete “\(a.title)”?"), actions: [
+                            MenuAction(title: L("حذف", "Delete"), icon: "trash", destructive: true) {
+                                onClose()
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { store.delete(a.id) }
+                            },
+                            MenuAction(title: L("إلغاء", "Cancel"), icon: "xmark") {},
+                        ])
+                    }
                 }
                 .card()
             }
@@ -88,13 +96,7 @@ struct AppointmentDetail: View {
                 .appEnvironment()
         }
         .sheet(isPresented: $sharing) { ShareSheet(items: [a.shareText]) }
-        .confirmationDialog(L("تحذف «\(a.title)»؟", "Delete “\(a.title)”?"), isPresented: $confirmDelete, titleVisibility: .visible) {
-            Button(L("حذف", "Delete"), role: .destructive) {
-                onClose()
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { store.delete(a.id) }
-            }
-            Button(L("إلغاء", "Cancel"), role: .cancel) {}
-        }
+        .actionMenu($menu)
     }
 
     private func row(_ icon: String, _ title: String, _ value: String, link: Bool = false) -> some View {

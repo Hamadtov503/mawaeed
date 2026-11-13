@@ -13,7 +13,7 @@ struct SettingsView: View {
     @State private var showExporter = false
     @State private var exportDoc = BackupDocument(data: Data())
     @State private var pendingRestore: (items: [Appointment], tasks: [TaskItem])? = nil
-    @State private var alert: AlertInfo? = nil
+    @State private var menu: MenuRequest? = nil
     @State private var calendarAccount: String? = nil
 
     enum ImportMode { case folder, restore }
@@ -59,18 +59,9 @@ struct SettingsView: View {
                       allowsMultipleSelection: false) { handleImport($0) }
         .fileExporter(isPresented: $showExporter, document: exportDoc, contentType: .json,
                       defaultFilename: L("مواعيدي-\(Fmt.fileStamp.string(from: Date()))", "Mawaeed-\(Fmt.fileStamp.string(from: Date()))")) { result in
-            if case .failure(let e) = result { alert = AlertInfo(title: L("ما انحفظ الملف", "The file wasn't saved"), message: e.localizedDescription) }
+            if case .failure(let e) = result { menu = .notice(L("ما انحفظ الملف", "The file wasn't saved"), message: e.localizedDescription) }
         }
-        .confirmationDialog(L("استرجاع \(Fmt.appointments(pendingRestore?.items.count ?? 0)) و\(Fmt.tasks(pendingRestore?.tasks.count ?? 0)) من النسخة", "Restore \(Fmt.appointments(pendingRestore?.items.count ?? 0)) and \(Fmt.tasks(pendingRestore?.tasks.count ?? 0)) from the copy"),
-                            isPresented: Binding(get: { pendingRestore != nil }, set: { if !$0 { pendingRestore = nil } }),
-                            titleVisibility: .visible) {
-            Button(L("دمج مع الموجود", "Merge with current")) { restore(replace: false) }
-            Button(L("استبدال كل شي", "Replace everything"), role: .destructive) { restore(replace: true) }
-            Button(L("إلغاء", "Cancel"), role: .cancel) { pendingRestore = nil }
-        }
-        .alert(item: $alert) { a in
-            Alert(title: Text(a.title), message: Text(a.message), dismissButton: .default(Text(L("تمام", "OK"))))
-        }
+        .actionMenu($menu)
     }
 
     // MARK: Groups
@@ -144,7 +135,7 @@ struct SettingsView: View {
             settings.calendarSync = granted
             refresh()
             if !granted {
-                alert = AlertInfo(title: L("ما فيه صلاحية", "No access"),
+                menu = .notice(L("ما فيه صلاحية", "No access"),
                                   message: L("افتح إعدادات الجوال ← الخصوصية ← التقويمات، واسمح لـ«مواعيدي» بالوصول الكامل.", "Open Settings → Privacy → Calendars and give Mawaeed full access."))
             }
         }
@@ -161,14 +152,14 @@ struct SettingsView: View {
             exportDoc = BackupDocument(data: try Store.encoder.encode(file))
             showExporter = true
         } catch {
-            alert = AlertInfo(title: L("ما قدرت أجهّز النسخة", "Couldn't prepare the copy"), message: error.localizedDescription)
+            menu = .notice(L("ما قدرت أجهّز النسخة", "Couldn't prepare the copy"), message: error.localizedDescription)
         }
     }
 
     private func handleImport(_ result: Result<[URL], Error>) {
         switch result {
         case .failure(let e):
-            alert = AlertInfo(title: L("ما انفتح", "Couldn't open"), message: e.localizedDescription)
+            menu = .notice(L("ما انفتح", "Couldn't open"), message: e.localizedDescription)
         case .success(let urls):
             guard let url = urls.first else { return }
             if importMode == .folder {
@@ -177,8 +168,14 @@ struct SettingsView: View {
                 do {
                     let b = try sync.readBackup(at: url)
                     pendingRestore = (b.items.filter { $0.isAppointment }, b.tasks)
+                    let n = pendingRestore!
+                    menu = MenuRequest(title: L("استرجاع \(Fmt.appointments(n.items.count)) و\(Fmt.tasks(n.tasks.count)) من النسخة", "Restore \(Fmt.appointments(n.items.count)) and \(Fmt.tasks(n.tasks.count)) from the copy"), actions: [
+                        MenuAction(title: L("دمج مع الموجود", "Merge with current"), icon: "arrow.triangle.merge") { restore(replace: false) },
+                        MenuAction(title: L("استبدال كل شي", "Replace everything"), icon: "arrow.2.squarepath", destructive: true) { restore(replace: true) },
+                        MenuAction(title: L("إلغاء", "Cancel"), icon: "xmark") { pendingRestore = nil },
+                    ])
                 } catch {
-                    alert = AlertInfo(title: L("الملف ما ينقرأ", "Can't read the file"), message: L("تأكد إنه نسخة من مواعيدي.\n\(error.localizedDescription)", "Make sure it's a Mawaeed backup.\n\(error.localizedDescription)"))
+                    menu = .notice(L("الملف ما ينقرأ", "Can't read the file"), message: L("تأكد إنه نسخة من مواعيدي.\n\(error.localizedDescription)", "Make sure it's a Mawaeed backup.\n\(error.localizedDescription)"))
                 }
             }
         }
@@ -188,7 +185,7 @@ struct SettingsView: View {
         guard let b = pendingRestore else { return }
         store.restore(b.items, tasks: b.tasks, replace: replace)
         pendingRestore = nil
-        alert = AlertInfo(title: L("تم الاسترجاع ✅", "Restored ✅"), message: L("رجّعت \(Fmt.appointments(b.items.count)) و\(Fmt.tasks(b.tasks.count)).", "Restored \(Fmt.appointments(b.items.count)) and \(Fmt.tasks(b.tasks.count))."))
+        menu = .notice(L("تم الاسترجاع ✅", "Restored ✅"), message: L("رجّعت \(Fmt.appointments(b.items.count)) و\(Fmt.tasks(b.tasks.count)).", "Restored \(Fmt.appointments(b.items.count)) and \(Fmt.tasks(b.tasks.count))."))
     }
 }
 

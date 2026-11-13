@@ -301,3 +301,99 @@ struct PhotoPicker: UIViewControllerRepresentable {
         }
     }
 }
+
+// MARK: Action menus
+
+/// One choice in an `ActionMenu`.
+struct MenuAction: Identifiable {
+    let id = UUID()
+    let title: String
+    let icon: String
+    var destructive = false
+    let run: () -> Void
+}
+
+/// What a long press or a "delete?" question shows: an optional title and message, then the choices.
+struct MenuRequest: Identifiable {
+    let id = UUID()
+    var title: String? = nil
+    var message: String? = nil
+    let actions: [MenuAction]
+
+    /// A short notice with one "OK" (replaces an alert).
+    static func notice(_ title: String, message: String) -> MenuRequest {
+        MenuRequest(title: title, message: message, actions: [MenuAction(title: L("تمام", "OK"), icon: "checkmark") {}])
+    }
+}
+
+/// A menu drawn by the app (not by iOS), so it always reads in the app's direction: the text on the
+/// leading side (right in Arabic) and the icon on the trailing side. Replaces long-press menus,
+/// confirmation dialogs and alerts, which iOS drew mirrored.
+struct ActionMenu: View {
+    let request: MenuRequest
+    let onClose: () -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            if request.title != nil || request.message != nil {
+                VStack(spacing: 6) {
+                    if let t = request.title {
+                        Text(t).font(.app(.headline, .bold)).foregroundColor(Theme.ink)
+                    }
+                    if let m = request.message {
+                        Text(m).font(.app(.subheadline)).foregroundColor(Theme.muted)
+                    }
+                }
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 8)
+                .padding(.bottom, 12)
+            }
+            VStack(spacing: 0) {
+                ForEach(Array(request.actions.enumerated()), id: \.element.id) { i, a in
+                    if i > 0 { Divider().overlay(Theme.border) }
+                    Button {
+                        onClose()
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { a.run() }
+                    } label: {
+                        HStack(spacing: 12) {
+                            Text(a.title).font(.app(.body, .semibold))
+                            Spacer(minLength: 8)
+                            Image(systemName: a.icon).font(.system(size: 17, weight: .semibold))
+                        }
+                        .foregroundColor(a.destructive ? Theme.burgundy : Theme.ink)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 14)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("menuAction.\(a.title)")
+                }
+            }
+            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Theme.background))
+            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Theme.border, lineWidth: 1))
+        }
+    }
+}
+
+extension View {
+    /// Shows `request` as an app-drawn menu; an outside tap closes it.
+    func actionMenu(_ request: Binding<MenuRequest?>) -> some View {
+        popup(isPresented: Binding(get: { request.wrappedValue != nil },
+                                   set: { if !$0 { request.wrappedValue = nil } })) {
+            if let r = request.wrappedValue {
+                ActionMenu(request: r) {
+                    withAnimation(.spring(response: 0.32, dampingFraction: 0.9)) { request.wrappedValue = nil }
+                }
+            }
+        }
+    }
+
+    /// A long press: a light tap of feedback, then `action`.
+    func onLongPress(_ action: @escaping () -> Void) -> some View {
+        onLongPressGesture(minimumDuration: 0.45) {
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            withAnimation(.spring(response: 0.32, dampingFraction: 0.9)) { action() }
+        }
+    }
+}

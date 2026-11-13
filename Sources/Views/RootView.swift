@@ -57,6 +57,7 @@ struct RootView: View {
                     .zIndex(4)
             }
         }
+        .actionMenu($router.menu)
         .ignoresSafeArea(.keyboard, edges: .bottom)
         .sheet(isPresented: $router.addingAppointment) {
             AppointmentEditor(appointment: AppointmentEditor.blank(), isNew: true) { router.addingAppointment = false }
