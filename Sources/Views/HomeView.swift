@@ -101,6 +101,17 @@ struct HomeView: View {
                 greetingView(now: ctx.date)
             }
             Spacer(minLength: 8)
+            Button { router.present(profile: false) } label: {
+                Image(systemName: "gearshape.fill")
+                    .font(.system(size: 20))
+                    .foregroundColor(.white)
+                    .frame(width: 42, height: 42)
+                    .background(Circle().fill(Theme.burgundy))
+                    .shadow(color: Theme.burgundy.opacity(0.3), radius: 6, y: 3)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(L("الإعدادات", "Settings"))
+            .accessibilityIdentifier("button.settings")
             Button { router.present(profile: true) } label: {
                 // Your picture once you've chosen one; until then a person mark in the beige circle.
                 Group {
@@ -119,17 +130,6 @@ struct HomeView: View {
             .buttonStyle(.plain)
             .accessibilityLabel(L("الملف الشخصي", "Profile"))
             .accessibilityIdentifier("button.profile")
-            Button { router.present(profile: false) } label: {
-                Image(systemName: "gearshape.fill")
-                    .font(.system(size: 20))
-                    .foregroundColor(.white)
-                    .frame(width: 42, height: 42)
-                    .background(Circle().fill(Theme.burgundy))
-                    .shadow(color: Theme.burgundy.opacity(0.3), radius: 6, y: 3)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(L("الإعدادات", "Settings"))
-            .accessibilityIdentifier("button.settings")
         }
     }
 
