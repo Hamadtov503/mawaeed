@@ -102,11 +102,10 @@ struct SettingsView: View {
 
     private var syncGroup: some View {
         SettingsGroup(title: L("المزامنة مع آي كلاود", "iCloud sync"), footer: nil) {
-            Button { syncNow() } label: {
-                Label(L("زامِن الآن", "Sync now"), systemImage: sync.isSyncing ? "arrow.triangle.2.circlepath.icloud.fill" : "arrow.triangle.2.circlepath.icloud")
-            }
-            Button { pick(.syncFile) } label: { Label(L("استيراد", "Import"), systemImage: "icloud.and.arrow.down") }
-            Button { startSync() } label: { Label(L("تصدير", "Export"), systemImage: "icloud.and.arrow.up") }
+            // Three clearly different marks, each in its own colour.
+            Button { syncNow() } label: { row(L("زامِن الآن", "Sync now"), "arrow.triangle.2.circlepath", Theme.navy) }
+            Button { pick(.syncFile) } label: { row(L("استيراد", "Import"), "arrow.down.doc.fill", Theme.forest) }
+            Button { startSync() } label: { row(L("تصدير", "Export"), "paperplane.fill", Theme.burgundy) }
         }
     }
 
@@ -123,6 +122,20 @@ struct SettingsView: View {
             Button { export() } label: { Label(L("تصدير نسخة احتياطية", "Export a backup"), systemImage: "externaldrive.badge.plus") }
             Button { pick(.restore) } label: { Label(L("استيراد نسخة احتياطية", "Import a backup"), systemImage: "externaldrive.badge.checkmark") }
         }
+    }
+
+    /// A settings row: a coloured mark in a soft square, then the title.
+    private func row(_ title: String, _ icon: String, _ color: Color) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundColor(color)
+                .frame(width: 32, height: 32)
+                .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(color.opacity(0.12)))
+            Text(title).foregroundColor(Theme.ink)
+            Spacer(minLength: 0)
+        }
+        .contentShape(Rectangle())
     }
 
     private func info(_ icon: String, _ title: String, _ value: String) -> some View {
