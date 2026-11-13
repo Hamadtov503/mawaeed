@@ -27,7 +27,7 @@ struct SettingsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                SettingsGroup(title: L("اللغة", "Language"), footer: L("الأرقام بالعربي مع العربية، وبالإنجليزي مع English.", "Arabic uses Arabic digits; English uses Western digits.")) {
+                SettingsGroup(title: L("اللغة", "Language"), footer: nil) {
                     HStack(spacing: 8) {
                         ForEach(AppLanguage.allCases) { lang in
                             Chip(title: lang.title, selected: settings.language == lang) {
@@ -40,7 +40,6 @@ struct SettingsView: View {
                 SettingsGroup(title: L("اسمك", "Your name"), footer: L("يطلع في الترحيب بالرئيسية بعد «صباح الخير / مساء الخير».", "Shown in the home greeting.")) {
                     TextField(L("اكتب اسمك", "Type your name"), text: $settings.userName).font(.app(.body))
                 }
-                syncGroup
                 calendarGroup
                 backupGroup
                 Text(L("مواعيدي — الإصدار \(version)", "Mawaeed · Version \(version)"))
@@ -98,12 +97,9 @@ struct SettingsView: View {
     }
 
     private var calendarGroup: some View {
-        SettingsGroup(title: L("تقويم iCloud", "iCloud Calendar"), footer: L("يضيف مواعيدك في تقويم اسمه «مواعيدي» في حسابك، فتشوفها في تطبيق التقويم بالجوال والماك والساعة.", "Adds your appointments to a calendar called “مواعيدي” in your account, so they show in Calendar on your phone, Mac and Watch.")) {
+        SettingsGroup(title: L("التقويم", "Calendar"), footer: nil) {
             Toggle(isOn: Binding(get: { settings.calendarSync }, set: { enableCalendar($0) })) {
-                Label(L("اعرض مواعيدي في التقويم", "Show my appointments in Calendar"), systemImage: "calendar")
-            }
-            if settings.calendarSync, let acc = calendarAccount {
-                info("person.crop.circle", L("الحساب", "Account"), acc)
+                Label(L("زامن مواعيدك مع تقويم الجهاز", "Sync your appointments with the device calendar"), systemImage: "calendar")
             }
         }
     }
