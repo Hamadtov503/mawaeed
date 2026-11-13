@@ -144,7 +144,21 @@ struct SettingsView: View {
 
     private func pick(_ mode: ImportMode) {
         importMode = mode
-        picker = PickerRequest(mode: .open(mode == .folder ? [.folder] : [.json]))
+        guard mode == .folder else {
+            picker = PickerRequest(mode: .open([.json]))
+            return
+        }
+        // iOS's folder picker looks like a file browser, so say how it works before opening it.
+        menu = MenuRequest(
+            title: L("اختيار مجلد المزامنة", "Choosing the sync folder"),
+            message: L("بتنفتح شاشة الملفات: اختر iCloud Drive، وادخل للمجلد اللي تبيه (أو سوّ مجلد جديد من زر ⋯)، وأنت داخله اضغط «فتح» فوق.",
+                       "The Files screen opens: choose iCloud Drive, go into the folder you want (or make a new one from ⋯), and while inside it tap «Open» at the top."),
+            actions: [
+                MenuAction(title: L("متابعة", "Continue"), icon: "folder") {
+                    picker = PickerRequest(mode: .open([.folder]))
+                },
+                MenuAction(title: L("إلغاء", "Cancel"), icon: "xmark") {},
+            ])
     }
 
     private func export() {
