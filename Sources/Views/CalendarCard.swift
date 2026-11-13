@@ -77,21 +77,44 @@ struct CalendarCard: View {
             .buttonStyle(.plain)
             .accessibilityIdentifier("cal.title")
             Spacer()
-            HStack(spacing: 8) {
-                arrow("chevron.backward", id: "cal.prev") { shift(-1) }
-                arrow("chevron.forward", id: "cal.next") { shift(1) }
+            // Back to today (the month arrows sit on the calendar's sides).
+            Button { goToToday() } label: {
+                Text(L("اليوم", "Today"))
+                    .font(.app(.footnote, .semibold))
+                    .foregroundColor(Theme.burgundy)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 7)
+                    .background(Capsule().fill(Theme.burgundy.opacity(0.1)))
             }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("cal.today")
         }
+    }
+
+    /// The month arrows, half outside the calendar, at the middle of its sides: the previous month on
+    /// the right and the next on the left in Arabic (the other way round in English).
+    private var sideArrows: some View {
+        let prevOnRight = Fmt.isArabic
+        return HStack {
+            arrow("chevron.left", id: prevOnRight ? "cal.next" : "cal.prev") { shift(prevOnRight ? 1 : -1) }
+            Spacer()
+            arrow("chevron.right", id: prevOnRight ? "cal.prev" : "cal.next") { shift(prevOnRight ? -1 : 1) }
+        }
+        .padding(.horizontal, -13)
+        .environment(\.layoutDirection, .leftToRight)   // pinned to the screen's sides
     }
 
     private func arrow(_ icon: String, id: String, _ action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: icon)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(Theme.ink)
-                .frame(width: 32, height: 32)
-                .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Theme.card))
-                .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(Theme.border, lineWidth: 1))
+                .font(.system(size: 12, weight: .bold))
+                .foregroundColor(Theme.burgundy)
+                .frame(width: 26, height: 26)
+                .background(Circle().fill(Theme.card))
+                .overlay(Circle().stroke(Theme.border, lineWidth: 1))
+                .shadow(color: .black.opacity(0.08), radius: 3, y: 1)
+                .frame(width: 40, height: 52)          // a bigger area to tap
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier(id)
@@ -107,7 +130,7 @@ struct CalendarCard: View {
                         .frame(maxWidth: .infinity)
                 }
             }
-            .padding(.vertical, 6)
+            .padding(.vertical, 5)
             .background(Theme.sand)
 
             VStack(spacing: 0) {
@@ -115,7 +138,6 @@ struct CalendarCard: View {
                     HStack(spacing: 0) {
                         ForEach(rows[r]) { cell in dayCell(cell) }
                     }
-                    .padding(.vertical, 1)
                     .background(r % 2 == 0 ? Theme.card.opacity(0.55) : Theme.card)
                 }
             }
@@ -125,6 +147,7 @@ struct CalendarCard: View {
         }
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(Theme.border, lineWidth: 1))
+        .overlay(sideArrows)
         .gesture(DragGesture(minimumDistance: 25).onEnded { v in
             guard abs(v.translation.width) > abs(v.translation.height), abs(v.translation.width) > 50 else { return }
             // Right-to-left: swiping right goes forward in time, left goes back.
@@ -142,7 +165,7 @@ struct CalendarCard: View {
                 if !cell.inMonth { jump(to: cell.date) }
             }
         } label: {
-            VStack(spacing: 0) {
+            VStack(spacing: -2) {
                 Text("\(cell.hijriDay)")
                     .font(.app(size: 15, .bold))
                     .foregroundColor(cell.inMonth ? (isToday ? Theme.navy : Theme.ink) : Theme.muted.opacity(0.7))
@@ -152,19 +175,19 @@ struct CalendarCard: View {
                 Circle()
                     .fill(busy ? Theme.forest : Color.clear)
                     .frame(width: 4, height: 4)
-                    .padding(.top, 1)
+                    .padding(.top, 2)
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 3)
+            .padding(.vertical, 2)
             .background(
                 Circle()
                     .fill(isSelected ? Theme.sand : Color.clear)
-                    .frame(width: 40, height: 40)
+                    .frame(width: 36, height: 36)
             )
             .overlay(
                 Circle()
                     .stroke(isToday ? Theme.burgundy : (isSelected ? Theme.border : Color.clear), lineWidth: isToday ? 1.5 : 1)
-                    .frame(width: 40, height: 40)
+                    .frame(width: 36, height: 36)
             )
             .contentShape(Rectangle())
         }
