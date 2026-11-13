@@ -282,7 +282,7 @@ final class MawaeedUITests: XCTestCase {
 
     private func logFrames(_ step: String) {
         var lines: [String] = ["window \(app.windows.firstMatch.frame)"]
-        for id in ["button.profile", "button.settings", "cal.title", "cal.prev", "cal.next", "dayLine", "menuHandle"] {
+        for id in ["button.profile", "button.settings", "cal.title", "cal.today", "cal.grid", "dayLine", "menuHandle"] {
             let e = app.descendants(matching: .any).matching(identifier: id).firstMatch
             lines.append("\(id): \(e.exists ? "\(e.frame)" : "missing")")
         }
@@ -319,17 +319,19 @@ final class MawaeedUITests: XCTestCase {
         sleep(1)
         XCTAssertFalse(title.exists, "back did not close settings: \(step)")
 
+        // The month changes with a sideways swipe on the calendar (there are no arrows).
         let month = app.buttons["cal.title"]
         let before = month.label
-        app.buttons["cal.next"].tap()
+        let grid = app.descendants(matching: .any).matching(identifier: "cal.grid").firstMatch
+        grid.swipeRight()
         sleep(1)
-        XCTAssertFalse(title.exists, "the month arrow opened a page: \(step)")
-        XCTAssertNotEqual(month.label, before, "the month arrow did not change the month: \(step)")
+        XCTAssertFalse(title.exists, "the swipe opened a page: \(step)")
+        XCTAssertNotEqual(month.label, before, "the swipe did not change the month: \(step)")
         shot("hdr-\(step)-3-next-month")
-        app.buttons["cal.prev"].tap()
+        grid.swipeLeft()
         sleep(1)
-        XCTAssertFalse(title.exists, "the month arrow opened a page: \(step)")
-        XCTAssertEqual(month.label, before, "back arrow did not return to this month: \(step)")
+        XCTAssertFalse(title.exists, "the swipe opened a page: \(step)")
+        XCTAssertEqual(month.label, before, "swiping back did not return to this month: \(step)")
     }
 
     /// Menus and dialogs drawn by iOS (long-press menu, delete confirmation) must read normally,

@@ -120,7 +120,7 @@ struct DayPickerPopup: View {
     }
 
     private var weekdays: [String] {
-        [L("أحد", "Sun"), L("إثنين", "Mon"), L("ثلاثاء", "Tue"), L("أربعاء", "Wed"), L("خميس", "Thu"), L("جمعة", "Fri"), L("سبت", "Sat")]
+        [L("الأحد", "Sun"), L("الإثنين", "Mon"), L("الثلاثاء", "Tue"), L("الأربعاء", "Wed"), L("الخميس", "Thu"), L("الجمعة", "Fri"), L("السبت", "Sat")]
     }
 
     var body: some View {
@@ -134,7 +134,8 @@ struct DayPickerPopup: View {
             }
             HStack(spacing: 0) {
                 ForEach(weekdays, id: \.self) { w in
-                    Text(w).font(.app(size: 10, .semibold)).foregroundColor(Theme.muted).frame(maxWidth: .infinity)
+                    Text(w).font(.app(size: 10, .semibold)).foregroundColor(Theme.muted)
+                        .lineLimit(1).minimumScaleFactor(0.75).frame(maxWidth: .infinity)
                 }
             }
             let all = cells
