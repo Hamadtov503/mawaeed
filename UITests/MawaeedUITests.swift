@@ -369,7 +369,7 @@ final class MawaeedUITests: XCTestCase {
     /// the settings page must still respond: its back button closes it.
     func testSettingsBackAfterFilesPicker() {
         launchToHome()
-        for (i, id) in ["settings.exportBackup", "settings.importBackup"].enumerated() {
+        for (i, id) in ["settings.exportBackup", "settings.importBackup", "settings.exportSync"].enumerated() {
             app.buttons["button.settings"].tap()
             let row = app.buttons[id]
             XCTAssertTrue(row.waitForExistence(timeout: 4), "\(id) missing")

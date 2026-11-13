@@ -41,9 +41,9 @@ struct SettingsView: View {
                     }
                 }
                 calendarGroup
-                // iCloud sync is set aside until the app is signed with an Apple developer account: on
-                // side-loaded builds iOS refuses the app access to its sync file in iCloud Drive.
-                // syncGroup
+                // Kept on show, though on side-loaded builds iOS refuses the app access to its sync file
+                // in iCloud Drive; it is meant to work once the app is signed with an Apple developer account.
+                syncGroup
                 backupGroup
                 Text(L("مواعيدي — الإصدار \(version)", "Mawaeed · Version \(version)"))
                     .font(.app(.caption)).foregroundColor(Theme.muted)
