@@ -154,13 +154,9 @@ struct CalendarCard: View {
         let isToday = Fmt.greg.isDateInToday(cell.date)
         let isSelected = Fmt.greg.isDate(cell.date, inSameDayAs: selection)
         let busy = store.hasAnything(on: cell.date)
-        return Button {
-            withAnimation(Router.soft) {
-                selection = cell.date
-                if !cell.inMonth { jump(to: cell.date) }
-            }
-        } label: {
-            VStack(spacing: 0) {
+        // A tap, not a Button: a Button also fired when a month swipe ended on it, picking that day
+        // (and jumping to its month). A tap fails as soon as the finger moves.
+        return VStack(spacing: 0) {
                 Text("\(cell.hijriDay)")
                     .font(.app(size: 15, .bold))
                     .foregroundColor(cell.inMonth ? (isToday ? Theme.navy : Theme.ink) : Theme.muted.opacity(0.7))
@@ -185,8 +181,13 @@ struct CalendarCard: View {
                     .frame(width: 40, height: 40)
             )
             .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
+            .onTapGesture {
+                withAnimation(Router.soft) {
+                    selection = cell.date
+                    if !cell.inMonth { jump(to: cell.date) }
+                }
+            }
+            .accessibilityAddTraits(.isButton)
     }
 
     // MARK: Navigation

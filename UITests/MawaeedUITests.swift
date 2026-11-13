@@ -376,11 +376,11 @@ final class MawaeedUITests: XCTestCase {
             let row = app.buttons[id]
             XCTAssertTrue(row.waitForExistence(timeout: 4), "\(id) missing")
             row.tap()
-            sleep(3)
-            shot("60-\(i)-picker-\(id)")
-            // Leave the picker: Cancel if it shows one, otherwise swipe the sheet down.
+            // Leave the picker with its Cancel (it can take a few seconds to load).
             let cancel = app.buttons.matching(NSPredicate(format: "label IN %@", ["إلغاء", "Cancel"])).firstMatch
-            if cancel.exists { cancel.tap() } else { app.swipeDown(velocity: .fast) }
+            let loaded = cancel.waitForExistence(timeout: 10)
+            shot("60-\(i)-picker-\(id)")
+            if loaded { cancel.tap() } else { app.swipeDown(velocity: .fast) }
             sleep(2)
             shot("61-\(i)-after-picker-\(id)")
             let back = app.buttons["button.back"]
