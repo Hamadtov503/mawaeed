@@ -56,4 +56,4 @@ jobs:
           cp Mawaeed.ipa "$IPA"
           gh release delete latest --yes --cleanup-tag || true
           gh release create latest "$IPA" --target ${{ github.sha }} --prerelease \
-            --title "مواعيدي 0.1 Beta — build ${{ github.run_number }}" --notes ""
+            --title "مواعيدي 0.1 Beta — build ${{ github.run_number }}" --notes "مواعيدك ومهامك في تطبيق واحد"
