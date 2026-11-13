@@ -150,7 +150,7 @@ struct DayPickerPopup: View {
             VStack(spacing: 0) {
                 Text(Fmt.num(cell.day))
                     .font(.app(size: 15, .bold))
-                    .foregroundColor(selected ? .white : (cell.inMonth ? (today ? Theme.burgundy : Theme.ink) : Theme.muted.opacity(0.5)))
+                    .foregroundColor(selected ? .white : (cell.inMonth ? (today ? Theme.navy : Theme.ink) : Theme.muted.opacity(0.5)))
                 Text(Fmt.num(cell.otherDay))
                     .font(.app(size: 9))
                     .foregroundColor(selected ? .white.opacity(0.85) : Theme.muted.opacity(cell.inMonth ? 1 : 0.5))

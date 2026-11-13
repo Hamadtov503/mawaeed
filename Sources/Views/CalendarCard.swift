@@ -143,7 +143,7 @@ struct CalendarCard: View {
             VStack(spacing: 0) {
                 Text("\(cell.hijriDay)")
                     .font(.app(size: 15, .bold))
-                    .foregroundColor(cell.inMonth ? (isToday ? Theme.burgundy : Theme.ink) : Theme.muted.opacity(0.7))
+                    .foregroundColor(cell.inMonth ? (isToday ? Theme.navy : Theme.ink) : Theme.muted.opacity(0.7))
                 Text("\(cell.gregDay)")
                     .font(.app(size: 9.5))
                     .foregroundColor(cell.inMonth ? Theme.muted : Theme.muted.opacity(0.6))

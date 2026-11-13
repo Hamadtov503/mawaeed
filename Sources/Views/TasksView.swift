@@ -338,7 +338,7 @@ struct TaskEditor: View {
                         if let data = draft.iconImage, let ui = UIImage(data: data) {
                             Image(uiImage: ui).resizable().scaledToFill()
                         } else {
-                            Image(systemName: "photo.badge.plus")
+                            Image(systemName: "square.and.arrow.up")   // upload (works on iOS 15; photo.badge.plus needs 16)
                                 .font(.system(size: 17, weight: .semibold))
                                 .foregroundColor(draft.priority.color)
                         }
