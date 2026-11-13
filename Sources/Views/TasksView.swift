@@ -202,10 +202,13 @@ struct TaskEditor: View {
         AppNavigation {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
-                    card(nil) {
-                        TextField(L("وش المهمة؟", "What's the task?"), text: $draft.title).font(.app(.headline))
-                            .accessibilityIdentifier("field.taskTitle")
-                        iconPicker
+                    card(L("عنوان المهمة", "Task title")) {
+                        // The title, with the two icon buttons on the same line.
+                        HStack(spacing: 10) {
+                            TextField(L("وش المهمة؟", "What's the task?"), text: $draft.title).font(.app(.headline))
+                                .accessibilityIdentifier("field.taskTitle")
+                            iconPicker
+                        }
                     }
 
                     card(L("درجة المهمة", "Priority")) {
@@ -353,6 +356,27 @@ struct TaskEditor: View {
             .buttonStyle(.plain)
             .accessibilityLabel(L("صورة من الألبوم", "Picture from Photos"))
             .accessibilityIdentifier("button.taskPhoto")
+            // A picture can be removed with the small ✕ on its corner (the icon comes back).
+            .overlay(alignment: .topTrailing) {
+                if draft.iconImage != nil {
+                    Button {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) { draft.iconImage = nil }
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundColor(.white)
+                            .frame(width: 20, height: 20)
+                            .background(Circle().fill(Theme.burgundy))
+                            .overlay(Circle().stroke(Theme.card, lineWidth: 2))
+                            .contentShape(Circle().inset(by: -8))
+                    }
+                    .buttonStyle(.plain)
+                    .offset(x: Fmt.isArabic ? -7 : 7, y: -7)   // just outside the outer corner
+                    .transition(.scale.combined(with: .opacity))
+                    .accessibilityLabel(L("احذف الصورة", "Remove picture"))
+                    .accessibilityIdentifier("button.removePhoto")
+                }
+            }
 
             let symbolOn = draft.iconImage == nil
             Button {
@@ -370,9 +394,8 @@ struct TaskEditor: View {
             .buttonStyle(.plain)
             .accessibilityLabel(L("اختر أيقونة", "Choose an icon"))
             .accessibilityIdentifier("button.taskIcons")
-            Spacer(minLength: 0)
         }
-        .padding(.vertical, 2)
+        .fixedSize()
         .sheet(isPresented: $choosingPhoto) {
             PhotoPicker { image in
                 if let data = IconImage.make(from: image) {
