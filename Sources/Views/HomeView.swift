@@ -118,7 +118,7 @@ struct HomeView: View {
         }
     }
 
-    /// "صبآح الخير ❄︎ حمد" — the season's icon sits between the greeting and the name.
+    /// "صبآح الخير ❄︎ <name>" — the season's icon sits between the greeting and the name.
     private func greetingView(now: Date) -> some View {
         let h = Fmt.greg.component(.hour, from: now)
         let greeting = h < 12 ? L("صبآح الخير", "Good morning") : L("مسآء الخير", "Good evening")

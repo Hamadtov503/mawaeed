@@ -10,7 +10,7 @@ enum UITestSupport {
         let d = UserDefaults.standard
         if let id = Bundle.main.bundleIdentifier { d.removePersistentDomain(forName: id) }
         d.set(true, forKey: "onboarded")
-        d.set("حمد", forKey: "userName")
+        d.set("ضيف", forKey: "userName")
         d.set(CommandLine.arguments.contains("-lang-en") ? "en" : "ar", forKey: "language")
         let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         for f in ["appointments.json", "tasks.json", "deleted.json", "items.json"] {
