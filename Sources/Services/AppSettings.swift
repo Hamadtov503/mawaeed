@@ -83,7 +83,7 @@ final class Router: ObservableObject {
     @Published var addingAppointment = false
     @Published var editingTask: TaskItem? = nil
     @Published var showSettings = false
-    @Published var showNotifications = false
+    @Published var showProfile = false
     /// An app-drawn menu or question over the pages (long press on a card, a task row…).
     @Published var menu: MenuRequest? = nil
     /// Notifications sitting in Notification Center, shown as the bell's badge.
@@ -98,7 +98,7 @@ final class Router: ObservableObject {
             page = p
             menuOpen = false
             showSettings = false
-            showNotifications = false
+            showProfile = false
         }
     }
 
@@ -109,17 +109,17 @@ final class Router: ObservableObject {
         withAnimation(Self.glide) { menuOpen = open ?? !menuOpen }
     }
 
-    /// Slides the notifications or settings page in over the current page.
-    func present(notifications: Bool) {
+    /// Slides the profile or settings page in over the current page.
+    func present(profile: Bool) {
         withAnimation(Self.soft) {
             menuOpen = false
-            if notifications { showNotifications = true } else { showSettings = true }
+            if profile { showProfile = true } else { showSettings = true }
         }
     }
 
     func closePages() {
         withAnimation(Self.soft) {
-            showNotifications = false
+            showProfile = false
             showSettings = false
         }
     }

@@ -9,7 +9,7 @@ struct RootView: View {
     @Environment(\.scenePhase) private var phase
 
     var body: some View {
-        let pageOpen = router.showSettings || router.showNotifications
+        let pageOpen = router.showSettings || router.showProfile
         ZStack {
             Theme.background.ignoresSafeArea()
 
@@ -50,8 +50,8 @@ struct RootView: View {
             }
             // The slide-in pages stop taking taps the moment they start sliding away, so a tap on the bell
             // or the gear right after closing one is never caught by the page on its way out.
-            if router.showNotifications {
-                SlidePage(title: L("التنبيهات", "Notifications"), onBack: router.closePages) { NotificationsView() }
+            if router.showProfile {
+                SlidePage(title: L("الملف الشخصي", "Profile"), onBack: router.closePages) { ProfileView() }
                     .transition(.slidePage)
                     .zIndex(4)
             }

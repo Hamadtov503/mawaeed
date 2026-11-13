@@ -89,7 +89,7 @@ struct HomeView: View {
         // Only while home is the page on screen and nothing is drawn over it: switching pages, the menu and
         // slide-in pages scale or shift the home page, which would otherwise move the tab.
         guard lineInContent > 0, router.page == .home, !router.menuOpen,
-              !router.showSettings, !router.showNotifications else { return }
+              !router.showSettings, !router.showProfile else { return }
         let y = scrollTop + lineInContent
         if abs(router.dayLineY - y) > 0.5 { router.dayLineY = y }
     }
@@ -101,26 +101,18 @@ struct HomeView: View {
                 greetingView(now: ctx.date)
             }
             Spacer(minLength: 8)
-            Button { router.present(notifications: true) } label: {
-                Image(systemName: router.deliveredCount > 0 ? "bell.badge" : "bell")
-                    .font(.system(size: 19, weight: .medium))
+            Button { router.present(profile: true) } label: {
+                Image(systemName: "person.fill")
+                    .font(.system(size: 18, weight: .medium))
                     .foregroundColor(Theme.ink)
                     .frame(width: 42, height: 42)
                     .background(Circle().fill(Theme.card))
                     .overlay(Circle().stroke(Theme.border, lineWidth: 1))
-                    .overlay(alignment: .topTrailing) {
-                        if router.deliveredCount > 0 {
-                            Text("\(router.deliveredCount)")
-                                .font(.app(.caption2, .bold)).foregroundColor(.white)
-                                .padding(.horizontal, 5).frame(minWidth: 18, minHeight: 18)
-                                .background(Capsule().fill(Theme.burgundy))
-                        }
-                    }
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(L("التنبيهات", "Notifications"))
-            .accessibilityIdentifier("button.bell")
-            Button { router.present(notifications: false) } label: {
+            .accessibilityLabel(L("الملف الشخصي", "Profile"))
+            .accessibilityIdentifier("button.profile")
+            Button { router.present(profile: false) } label: {
                 Image(systemName: "gearshape.fill")
                     .font(.system(size: 20))
                     .foregroundColor(.white)

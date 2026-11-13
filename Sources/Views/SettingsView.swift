@@ -37,9 +37,6 @@ struct SettingsView: View {
                         }
                     }
                 }
-                SettingsGroup(title: L("اسمك", "Your name"), footer: L("يطلع في الترحيب بالرئيسية بعد «صباح الخير / مساء الخير».", "Shown in the home greeting.")) {
-                    TextField(L("اكتب اسمك", "Type your name"), text: $settings.userName).font(.app(.body))
-                }
                 calendarGroup
                 backupGroup
                 Text(L("مواعيدي — الإصدار \(version)", "Mawaeed · Version \(version)"))

@@ -268,13 +268,13 @@ final class MawaeedUITests: XCTestCase {
         app.swipeDown()
         checkHeaderButtons("after-scroll")
         // Close a page and open the other one right away.
-        app.buttons["button.bell"].tap()
+        app.buttons["button.profile"].tap()
         XCTAssertTrue(app.staticTexts["slidePage.title"].waitForExistence(timeout: 3))
         sleep(1)
         app.buttons["button.back"].tap()
-        app.buttons["button.settings"].tap()   // straight away, while notifications is still sliding out
+        app.buttons["button.settings"].tap()   // straight away, while the profile is still sliding out
         let settingsTitle = app.staticTexts.matching(NSPredicate(format: "identifier == 'slidePage.title' AND label == 'الإعدادات'")).firstMatch
-        XCTAssertTrue(settingsTitle.waitForExistence(timeout: 3), "the gear did not respond right after closing notifications")
+        XCTAssertTrue(settingsTitle.waitForExistence(timeout: 3), "the gear did not respond right after closing the profile")
         sleep(1)
         shot("hdr-quick-settings")
         app.buttons["button.back"].firstMatch.tap()
@@ -282,7 +282,7 @@ final class MawaeedUITests: XCTestCase {
 
     private func logFrames(_ step: String) {
         var lines: [String] = ["window \(app.windows.firstMatch.frame)"]
-        for id in ["button.bell", "button.settings", "cal.title", "cal.prev", "cal.next", "dayLine", "menuHandle"] {
+        for id in ["button.profile", "button.settings", "cal.title", "cal.prev", "cal.next", "dayLine", "menuHandle"] {
             let e = app.descendants(matching: .any).matching(identifier: id).firstMatch
             lines.append("\(id): \(e.exists ? "\(e.frame)" : "missing")")
         }
@@ -298,11 +298,11 @@ final class MawaeedUITests: XCTestCase {
         let title = app.staticTexts["slidePage.title"]
         let back = app.buttons["button.back"]
 
-        let bell = app.buttons["button.bell"]
+        let bell = app.buttons["button.profile"]
         XCTAssertTrue(bell.waitForExistence(timeout: 4), "bell missing: \(step)")
         bell.tap()
         XCTAssertTrue(title.waitForExistence(timeout: 3), "bell did not open a page: \(step)")
-        XCTAssertEqual(title.label, "التنبيهات", "bell opened the wrong page: \(step)")
+        XCTAssertEqual(title.label, "الملف الشخصي", "the profile button opened the wrong page: \(step)")
         sleep(1)
         shot("hdr-\(step)-1-bell")
         back.tap()
