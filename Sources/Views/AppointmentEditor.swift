@@ -46,7 +46,7 @@ struct AppointmentEditor: View {
                     group(L("ملاحظات", "Notes")) {
                         ZStack(alignment: .topLeading) {
                             if draft.notes.isEmpty {
-                                Text(L("رقم الحجز، اسم الدكتور، الأوراق المطلوبة…", "Booking number, doctor's name, documents to bring…"))
+                                Text(L("رقم الحجز، اسم الطبيب، الأوراق المطلوبة…", "Booking number, doctor's name, documents to bring…"))
                                     .foregroundColor(Theme.muted.opacity(0.7))
                                     .padding(.top, 8).padding(.leading, 5)
                             }

@@ -32,7 +32,7 @@ struct AppointmentsView: View {
                         .transition(.opacity)
                 }
                 if upcoming.isEmpty && past.isEmpty && !query.isEmpty {
-                    Text(L("ما فيه نتائج لـ«\(query)»", "No results for “\(query)”")).font(.app(.subheadline)).foregroundColor(Theme.muted)
+                    Text(L("لا توجد نتائج لـ«\(query)»", "No results for “\(query)”")).font(.app(.subheadline)).foregroundColor(Theme.muted)
                         .frame(maxWidth: .infinity).padding(.top, 8)
                 }
             }

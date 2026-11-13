@@ -325,7 +325,7 @@ struct MenuRequest: Identifiable {
 
     /// A short notice with one "OK" (replaces an alert).
     static func notice(_ title: String, message: String) -> MenuRequest {
-        MenuRequest(title: title, message: message, actions: [MenuAction(title: L("تمام", "OK"), icon: "checkmark") {}])
+        MenuRequest(title: title, message: message, actions: [MenuAction(title: L("حسنًا", "OK"), icon: "checkmark") {}])
     }
 }
 

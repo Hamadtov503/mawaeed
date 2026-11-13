@@ -54,7 +54,7 @@ struct ProfileView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .card(padding: 16)
                         .accessibilityIdentifier("field.name")
-                    Text(L("يطلع في الترحيب بالرئيسية بعد «صبآح الخير / مسآء الخير».", "Shown in the home greeting."))
+                    Text(L("يظهر في الترحيب بالصفحة الرئيسية بعد «صبآح الخير / مسآء الخير».", "Shown in the home greeting."))
                         .font(.app(.caption)).foregroundColor(Theme.muted).padding(.horizontal, 6)
                         .fixedSize(horizontal: false, vertical: true)
                 }

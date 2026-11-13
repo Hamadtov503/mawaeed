@@ -138,13 +138,13 @@ struct OnboardingView: View {
         VStack(spacing: 18) {
             Image("Logo").resizable().scaledToFit().frame(width: 130, height: 130)
             Text(L("مواعيدي", "Mawaeed")).font(.ruqaa(size: 56)).foregroundColor(Theme.burgundy)
-            Text(L("سجّل مواعيدك، وأنا أذكّرك قبلها بالوقت اللي يناسبك.", "Add your appointments and I'll remind you ahead, when it suits you."))
+            Text(L("سجّل مواعيدك، وسأذكّرك بها في الوقت الذي يناسبك.", "Add your appointments and I'll remind you ahead, when it suits you."))
                 .font(.app(.title3, .medium)).foregroundColor(Theme.ink)
                 .multilineTextAlignment(.center)
             VStack(alignment: .leading, spacing: 14) {
-                feature("bell.badge.fill", Theme.burgundy, L("تنبيهات قبل الموعد", "Reminders before"), L("من وقت الموعد إلى قبل أسبوع، وملخص كل صباح.", "From the time itself to a week before, plus a morning summary."))
-                feature("moon.stars.fill", Theme.forest, L("هجري وميلادي", "Hijri & Gregorian"), L("كل موعد بالتاريخين، وتقدر تدخله بالهجري.", "Every date in both calendars, and you can enter it in Hijri."))
-                feature("checklist", Theme.navy, L("مواعيدك ومهامك", "Appointments & tasks"), L("تقويم هجري وميلادي يجمعها، ومزامنة بين أجهزتك.", "One Hijri/Gregorian calendar for both, synced across your devices."))
+                feature("bell.badge.fill", Theme.burgundy, L("تنبيهات قبل الموعد", "Reminders before"), L("من وقت الموعد حتى قبله بأسبوع، مع ملخص كل صباح.", "From the time itself to a week before, plus a morning summary."))
+                feature("moon.stars.fill", Theme.forest, L("هجري وميلادي", "Hijri & Gregorian"), L("يظهر كل موعد بالتاريخين، ويمكنك إدخاله بالهجري.", "Every date in both calendars, and you can enter it in Hijri."))
+                feature("checklist", Theme.navy, L("مواعيدك ومهامك", "Appointments & tasks"), L("تقويم هجري وميلادي يجمعها، مع مزامنة بين أجهزتك.", "One Hijri/Gregorian calendar for both, synced across your devices."))
             }
             .padding(18)
             .background(RoundedRectangle(cornerRadius: 24, style: .continuous).fill(Theme.card))
@@ -155,8 +155,8 @@ struct OnboardingView: View {
     private var nameStep: some View {
         VStack(spacing: 18) {
             Tile(icon: "person.fill", color: Theme.navy, size: 84)
-            Text(L("وش نناديك؟", "What should we call you?")).font(.app(.title, .bold)).foregroundColor(Theme.ink)
-            Text(L("اسمك يطلع في الترحيب: «مساء الخير 🌷 اسمك».", "Your name appears in the greeting."))
+            Text(L("بماذا نناديك؟", "What should we call you?")).font(.app(.title, .bold)).foregroundColor(Theme.ink)
+            Text(L("يظهر اسمك في الترحيب: «مساء الخير 🌷 اسمك».", "Your name appears in the greeting."))
                 .font(.app(.subheadline)).foregroundColor(Theme.muted).multilineTextAlignment(.center)
             TextField(L("اسمك", "Your name"), text: $name)
                 .font(.app(.title3, .semibold))
@@ -174,9 +174,9 @@ struct OnboardingView: View {
     private var notificationsStep: some View {
         VStack(spacing: 18) {
             Tile(icon: "bell.and.waves.left.and.right.fill", color: Theme.burgundy, size: 84)
-            Text(name.isEmpty ? L("خلّني أذكّرك", "Let me remind you") : L("خلّني أذكّرك يا \(name)", "Let me remind you, \(name)"))
+            Text(name.isEmpty ? L("دعني أذكّرك", "Let me remind you") : L("دعني أذكّرك يا \(name)", "Let me remind you, \(name)"))
                 .font(.app(.title, .bold)).foregroundColor(Theme.ink).multilineTextAlignment(.center)
-            Text(L("فعّل التنبيهات عشان يوصلك تذكير قبل كل موعد، وملخص الصباح.", "Turn on notifications to get a reminder before each appointment and a morning summary."))
+            Text(L("فعّل التنبيهات ليصلك تذكير قبل كل موعد، وملخص كل صباح.", "Turn on notifications to get a reminder before each appointment and a morning summary."))
                 .font(.app(.body)).foregroundColor(Theme.muted).multilineTextAlignment(.center)
         }
     }
@@ -206,7 +206,7 @@ struct OnboardingView: View {
 
     private var primaryButton: some View {
         Button(action: next) {
-            Text(step == 0 ? L("يلا نبدأ", "Let's start") : (step == 1 ? L("التالي", "Next") : L("فعّل التنبيهات", "Turn on notifications")))
+            Text(step == 0 ? L("لنبدأ", "Let's start") : (step == 1 ? L("التالي", "Next") : L("فعّل التنبيهات", "Turn on notifications")))
                 .font(.app(.headline, .bold))
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
@@ -218,7 +218,7 @@ struct OnboardingView: View {
     }
 
     private var secondaryButton: some View {
-        Button(step == 2 ? L("لاحقاً", "Later") : (step == 1 ? L("تخطي", "Skip") : " ")) {
+        Button(step == 2 ? L("لاحقاً", "Later") : (step == 1 ? L("تخطٍّ", "Skip") : " ")) {
             if step == 1 { advance() } else if step == 2 { finish() }
         }
         .font(.app(.subheadline, .semibold))

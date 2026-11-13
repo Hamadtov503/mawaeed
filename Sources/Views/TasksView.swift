@@ -31,7 +31,7 @@ struct TasksView: View {
                         .transition(.opacity)
                 }
                 if open.isEmpty && done.isEmpty && !query.isEmpty {
-                    Text(L("ما فيه نتائج لـ«\(query)»", "No results for “\(query)”")).font(.app(.subheadline)).foregroundColor(Theme.muted)
+                    Text(L("لا توجد نتائج لـ«\(query)»", "No results for “\(query)”")).font(.app(.subheadline)).foregroundColor(Theme.muted)
                         .frame(maxWidth: .infinity).padding(.top, 8)
                 }
             }
@@ -209,7 +209,7 @@ struct TaskEditor: View {
                     card(L("عنوان المهمة", "Task title")) {
                         // The title, with the two icon buttons on the same line.
                         HStack(spacing: 10) {
-                            TextField(L("وش المهمة؟", "What's the task?"), text: $draft.title).font(.app(.headline))
+                            TextField(L("ما المهمة؟", "What's the task?"), text: $draft.title).font(.app(.headline))
                                 .accessibilityIdentifier("field.taskTitle")
                             iconPicker
                         }
@@ -277,7 +277,7 @@ struct TaskEditor: View {
                             store.toggleTask(draft.id)
                             onFinish()
                         } label: {
-                            Label(draft.isDone ? L("إرجاعها غير منجزة", "Mark as not done") : L("تم إنجاز المهمة", "Mark as done"),
+                            Label(draft.isDone ? L("إعادتها غير منجزة", "Mark as not done") : L("تم إنجاز المهمة", "Mark as done"),
                                   systemImage: draft.isDone ? "arrow.uturn.backward" : "checkmark.circle.fill")
                                 .font(.app(.body, .bold))
                                 .foregroundColor(.white)
@@ -288,7 +288,7 @@ struct TaskEditor: View {
                         .accessibilityIdentifier("button.toggleDone")
 
                         Button(role: .destructive) {
-                            menu = MenuRequest(title: L("تحذف المهمة؟", "Delete this task?"), actions: [
+                            menu = MenuRequest(title: L("هل تريد حذف المهمة؟", "Delete this task?"), actions: [
                                 MenuAction(title: L("حذف", "Delete"), icon: "trash", destructive: true) {
                                     store.deleteTask(draft.id)
                                     onFinish()

@@ -15,7 +15,7 @@ struct AppointmentDetail: View {
                 if let a = store.item(id) {
                     content(a)
                 } else {
-                    EmptyState(icon: "trash", title: L("انحذف هذا الموعد", "This appointment was deleted"), message: "")
+                    EmptyState(icon: "trash", title: L("حُذف هذا الموعد", "This appointment was deleted"), message: "")
                         .frame(maxHeight: .infinity)
                 }
             }
@@ -72,7 +72,7 @@ struct AppointmentDetail: View {
                     action(L("نسخة مكررة", "Duplicate"), "plus.square.on.square") { store.duplicate(a.id) }
                     Divider().padding(.vertical, 12)
                     action(L("حذف الموعد", "Delete appointment"), "trash", color: .red) {
-                        menu = MenuRequest(title: L("تحذف «\(a.title)»؟", "Delete “\(a.title)”?"), actions: [
+                        menu = MenuRequest(title: L("هل تريد حذف «\(a.title)»؟", "Delete “\(a.title)”?"), actions: [
                             MenuAction(title: L("حذف", "Delete"), icon: "trash", destructive: true) {
                                 onClose()
                                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { store.delete(a.id) }

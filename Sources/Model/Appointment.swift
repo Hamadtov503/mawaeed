@@ -102,7 +102,7 @@ enum ReminderOption {
 
     static func label(_ m: Int, hasTime: Bool) -> String {
         switch m {
-        case 0: return hasTime ? L("وقت الموعد", "At the time") : L("صباح نفس اليوم", "Morning of the day")
+        case 0: return hasTime ? L("وقت الموعد", "At the time") : L("صباح اليوم نفسه", "Morning of the day")
         case ..<60: return L("قبل \(Fmt.minutes(m))", "\(Fmt.minutes(m)) before")
         case ..<1440: return L("قبل \(Fmt.hours(m / 60))", "\(Fmt.hours(m / 60)) before")
         case ..<10080: return L("قبل \(Fmt.days(m / 1440))", "\(Fmt.days(m / 1440)) before")

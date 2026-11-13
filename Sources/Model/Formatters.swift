@@ -93,30 +93,35 @@ enum Fmt {
     /// Today / Tomorrow / Yesterday or the full date — used as day headers.
     static func dayTitle(_ d: Date) -> String {
         if greg.isDateInToday(d) { return L("اليوم", "Today") }
-        if greg.isDateInTomorrow(d) { return L("بكرة", "Tomorrow") }
+        if greg.isDateInTomorrow(d) { return L("غدًا", "Tomorrow") }
         if greg.isDateInYesterday(d) { return L("أمس", "Yesterday") }
         return longDay.string(from: d)
     }
 
-    // MARK: Counting — Arabic "يوم / يومين / ٣ أيام / ١١ يوم", English "1 day / 2 days"
+    // MARK: Counting — standard Arabic "يوم / يومان / ٣ أيام / ١١ يومًا / ١٠٠ يوم", English "1 day / 2 days"
 
-    static func count(_ n: Int, one: String, two: String, few: String, many: String, en1: String, enN: String) -> String {
+    /// `many` is the singular after 100, 200…; `acc` is the accusative singular after 11–99
+    /// (يومًا، شهرًا…), the same as `many` for words ending in ة.
+    static func count(_ n: Int, one: String, two: String, few: String, many: String, acc: String? = nil, en1: String, enN: String) -> String {
         if !isArabic { return n == 1 ? "1 \(en1)" : "\(num(n)) \(enN)" }
         switch n {
         case 1: return one
         case 2: return two
         case 3...10: return "\(num(n)) \(few)"
-        default: return "\(num(n)) \(many)"
+        default:
+            let r = n % 100
+            if n > 100, (3...10).contains(r) { return "\(num(n)) \(few)" }
+            return "\(num(n)) \(r >= 11 ? (acc ?? many) : many)"
         }
     }
-    static func days(_ n: Int) -> String { count(n, one: "يوم", two: "يومين", few: "أيام", many: "يوم", en1: "day", enN: "days") }
-    static func weeks(_ n: Int) -> String { count(n, one: "أسبوع", two: "أسبوعين", few: "أسابيع", many: "أسبوع", en1: "week", enN: "weeks") }
-    static func months(_ n: Int) -> String { count(n, one: "شهر", two: "شهرين", few: "أشهر", many: "شهر", en1: "month", enN: "months") }
+    static func days(_ n: Int) -> String { count(n, one: "يوم", two: "يومين", few: "أيام", many: "يوم", acc: "يومًا", en1: "day", enN: "days") }
+    static func weeks(_ n: Int) -> String { count(n, one: "أسبوع", two: "أسبوعين", few: "أسابيع", many: "أسبوع", acc: "أسبوعًا", en1: "week", enN: "weeks") }
+    static func months(_ n: Int) -> String { count(n, one: "شهر", two: "شهرين", few: "أشهر", many: "شهر", acc: "شهرًا", en1: "month", enN: "months") }
     static func years(_ n: Int) -> String { count(n, one: "سنة", two: "سنتين", few: "سنوات", many: "سنة", en1: "year", enN: "years") }
     static func hours(_ n: Int) -> String { count(n, one: "ساعة", two: "ساعتين", few: "ساعات", many: "ساعة", en1: "hour", enN: "hours") }
     static func minutes(_ n: Int) -> String { count(n, one: "دقيقة", two: "دقيقتين", few: "دقائق", many: "دقيقة", en1: "minute", enN: "minutes") }
-    static func appointments(_ n: Int) -> String { count(n, one: "موعد واحد", two: "موعدين", few: "مواعيد", many: "موعد", en1: "appointment", enN: "appointments") }
-    static func tasks(_ n: Int) -> String { count(n, one: "مهمة وحدة", two: "مهمتين", few: "مهام", many: "مهمة", en1: "task", enN: "tasks") }
+    static func appointments(_ n: Int) -> String { count(n, one: "موعد واحد", two: "موعدين", few: "مواعيد", many: "موعد", acc: "موعدًا", en1: "appointment", enN: "appointments") }
+    static func tasks(_ n: Int) -> String { count(n, one: "مهمة واحدة", two: "مهمتين", few: "مهام", many: "مهمة", en1: "task", enN: "tasks") }
 
     /// A human span such as "3 days", "2 months", "1 year and 3 months".
     static func span(from a: Date, to b: Date) -> String {
@@ -134,13 +139,13 @@ enum Fmt {
         switch dayDiff {
         case 0:
             if hasTime {
-                if date < now { return L("فات \(timeText(date))", "Passed \(timeText(date))") }
+                if date < now { return L("مضى \(timeText(date))", "Passed \(timeText(date))") }
                 let mins = Int(date.timeIntervalSince(now) / 60)
-                if mins < 60 { return mins <= 1 ? L("الحين", "Now") : L("بعد \(minutes(mins))", "in \(minutes(mins))") }
+                if mins < 60 { return mins <= 1 ? L("الآن", "Now") : L("بعد \(minutes(mins))", "in \(minutes(mins))") }
                 return L("اليوم \(timeText(date))", "Today \(timeText(date))")
             }
             return L("اليوم", "Today")
-        case 1: return hasTime ? L("بكرة \(timeText(date))", "Tomorrow \(timeText(date))") : L("بكرة", "Tomorrow")
+        case 1: return hasTime ? L("غدًا \(timeText(date))", "Tomorrow \(timeText(date))") : L("غدًا", "Tomorrow")
         case -1: return L("أمس", "Yesterday")
         case 2...: return L("بعد \(span(from: now, to: date))", "in \(span(from: now, to: date))")
         default: return L("قبل \(span(from: date, to: now))", "\(span(from: date, to: now)) ago")

@@ -77,6 +77,8 @@ struct SettingsView: View {
     }
 
     private func syncNow() {
+        // No sync file yet: make a new one (the same as «تصدير»).
+        guard sync.isOn else { startSync(); return }
         syncingByHand = true
         sync.sync()
         // Nothing started (the file couldn't be reached): say so straight away.
@@ -87,11 +89,7 @@ struct SettingsView: View {
     }
 
     private func reportSync() {
-        if !sync.isOn {
-            menu = .notice(L("لم تُفعَّل المزامنة بعد", "Sync isn't set up yet"),
-                           message: L("اختر «تصدير» لحفظ ملف المزامنة في آي كلاود، أو «استيراد» لاختيار ملف مزامنة موجود.",
-                                      "Choose «Export» to save the sync file to iCloud, or «Import» to pick an existing sync file."))
-        } else if let e = sync.lastError {
+        if let e = sync.lastError {
             menu = .notice(L("لم تكتمل المزامنة", "Sync didn't finish"), message: e)
         } else {
             let when = sync.lastSync.map { Fmt.dateText($0, hasTime: true) } ?? ""
@@ -176,7 +174,7 @@ struct SettingsView: View {
         do {
             let url = try sync.makeStarterFile()
             menu = MenuRequest(
-                title: L("تصدير ملف المزامنة", "Exporting the sync file"),
+                title: L(sync.isOn ? "تصدير ملف المزامنة" : "إنشاء ملف مزامنة جديد", sync.isOn ? "Exporting the sync file" : "Creating a new sync file"),
                 message: L("ستُفتح شاشة الحفظ: اختر iCloud Drive (ومجلدًا إن شئت)، ثم اضغط «نقل» أو «حفظ» في الأعلى.",
                            "The save screen opens: choose iCloud Drive (and a folder if you like), then tap «Move» or «Save» at the top."),
                 actions: [
