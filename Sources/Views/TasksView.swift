@@ -76,7 +76,8 @@ struct TaskRow: View {
             if interactive { statusMark }      // no tick on the home page: a task is finished from inside it
             TaskIcon(task: task, size: 42)
             VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 6) {
+                // Same line as an appointment card's: the title and, on the far side, a pill of the same size.
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(task.title.isEmpty ? L("بدون عنوان", "Untitled") : task.title)
                         .font(.app(.headline))
                         .foregroundColor(task.isDone ? Theme.muted : Theme.ink)
@@ -84,10 +85,12 @@ struct TaskRow: View {
                         .lineLimit(1)
                     Spacer(minLength: 4)
                     Text(task.priority.title)
-                        .font(.app(size: 10, .bold))
+                        .font(.app(.footnote, .semibold))
                         .foregroundColor(task.priority.color)
-                        .padding(.horizontal, 7).padding(.vertical, 2)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
                         .background(Capsule().fill(task.priority.color.opacity(0.12)))
+                        .lineLimit(1)
                         .fixedSize()
                 }
                 HStack(spacing: 4) {
