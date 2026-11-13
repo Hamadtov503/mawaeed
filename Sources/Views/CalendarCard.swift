@@ -59,6 +59,8 @@ struct CalendarCard: View {
             header
             grid
         }
+        .contentShape(Rectangle())
+        .simultaneousGesture(monthSwipe)
     }
 
     private var header: some View {
@@ -121,11 +123,18 @@ struct CalendarCard: View {
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(Theme.border, lineWidth: 1))
         .accessibilityIdentifier("cal.grid")
-        .gesture(DragGesture(minimumDistance: 25).onEnded { v in
-            guard abs(v.translation.width) > abs(v.translation.height), abs(v.translation.width) > 50 else { return }
-            // Right-to-left: swiping right goes forward in time, left goes back.
-            shift(v.translation.width > 0 ? 1 : -1)
-        })
+    }
+
+    /// A sideways swipe anywhere on the calendar changes the month. Recognised alongside the day
+    /// buttons (a plain gesture lost to them, so a swipe starting on a day did nothing).
+    private var monthSwipe: some Gesture {
+        DragGesture(minimumDistance: 15).onEnded { v in
+            let dx = v.translation.width, dy = v.translation.height
+            guard abs(dx) > abs(dy) * 1.2, abs(dx) > 40 else { return }
+            // Right-to-left: swiping right goes forward in time, left goes back (mirrored in English).
+            let forward = Fmt.isArabic ? dx > 0 : dx < 0
+            shift(forward ? 1 : -1)
+        }
     }
 
     private func dayCell(_ cell: Cell) -> some View {
