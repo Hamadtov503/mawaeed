@@ -10,10 +10,30 @@ permissions:
 
 jobs:
   ui-tests:
-    runs-on: macos-15
-    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            ios: "18"
+            tag: ui-tests
+            xcode: ""
+          # An older iOS too: phones on TrollStore run iOS 17 or earlier, and some SwiftUI layout
+          # and hit-testing behaviour differs there.
+          - os: macos-14
+            ios: "17"
+            tag: ui-tests-17
+            xcode: /Applications/Xcode_15.4.app
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 50
     steps:
       - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        if: matrix.xcode != ''
+        run: |
+          sudo xcode-select -s "${{ matrix.xcode }}" || ls /Applications | grep Xcode
+          xcodebuild -version
 
       - name: Install tools
         run: brew install xcodegen
@@ -23,15 +43,24 @@ jobs:
 
       - name: Pick a simulator
         run: |
-          SIM=$(xcrun simctl list devices available | grep -oE "iPhone 1[5-7] Pro \(" | head -1 | sed 's/ ($//')
-          echo "SIM=${SIM:-iPhone 16 Pro}" >> $GITHUB_ENV
-          echo "::notice::Simulator: ${SIM:-iPhone 16 Pro}"
+          xcrun simctl list runtimes
+          # The first iPhone Pro listed under an "-- iOS <major>.x --" heading.
+          UDID=$(xcrun simctl list devices available | awk -v want="-- iOS ${{ matrix.ios }}." '
+            /^-- / { on = index($0, want) == 1; next }
+            on && /iPhone 1[4-7] Pro \(/ { match($0, /[0-9A-F-]{36}/); print substr($0, RSTART, RLENGTH); exit }')
+          if [ -z "$UDID" ]; then
+            UDID=$(xcrun simctl list devices available | awk -v want="-- iOS ${{ matrix.ios }}." '
+              /^-- / { on = index($0, want) == 1; next }
+              on && /iPhone/ { match($0, /[0-9A-F-]{36}/); print substr($0, RSTART, RLENGTH); exit }')
+          fi
+          echo "DEST=id=$UDID" >> $GITHUB_ENV
+          echo "::notice::iOS ${{ matrix.ios }} simulator: $UDID"
 
       - name: Run UI tests
         run: |
           set -o pipefail
           xcodebuild test -project Mawaeed.xcodeproj -scheme Mawaeed \
-            -destination "platform=iOS Simulator,name=$SIM" \
+            -destination "$DEST" \
             -resultBundlePath TestResults.xcresult \
             CODE_SIGNING_ALLOWED=NO 2>&1 | tee test.log | grep -E "Test Case|error:|failed|passed|XCTAssert" || true
           if grep -q "TEST SUCCEEDED" test.log; then echo "RESULT=passed" >> $GITHUB_ENV; else echo "RESULT=failed" >> $GITHUB_ENV; fi
@@ -40,20 +69,21 @@ jobs:
         if: always()
         run: |
           mkdir -p shots
-          xcrun xcresulttool export attachments --path TestResults.xcresult --output-path shots || true
+          xcrun xcresulttool export attachments --path TestResults.xcresult --output-path shots \
+            || { brew install chargepoint/xcparse/xcparse && xcparse attachments TestResults.xcresult shots; } || true
           ls -la shots | head -60
           (cd shots && zip -qr ../ui-shots.zip .) || true
           grep -E "error:|failed|Test Case .* (passed|failed)" test.log > failures.txt || true
           tail -150 test.log > test-tail.log
 
-      - name: Publish results as the "ui-tests" pre-release
+      - name: Publish results as a pre-release
         if: always()
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release delete ui-tests --yes --cleanup-tag || true
-          gh release create ui-tests ui-shots.zip failures.txt test-tail.log --prerelease --target ${{ github.sha }} \
-            --title "UI tests — run ${{ github.run_number }} (${{ env.RESULT }})" \
+          gh release delete ${{ matrix.tag }} --yes --cleanup-tag || true
+          gh release create ${{ matrix.tag }} ui-shots.zip failures.txt test-tail.log --prerelease --target ${{ github.sha }} \
+            --title "UI tests iOS ${{ matrix.ios }} — run ${{ github.run_number }} (${{ env.RESULT }})" \
             --notes "Automated simulator run: screenshots of each step and test results."
 
       - name: Fail if tests failed

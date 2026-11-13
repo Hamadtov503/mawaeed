@@ -75,15 +75,16 @@ struct CalendarCard: View {
                 }
             }
             .buttonStyle(.plain)
+            .accessibilityIdentifier("cal.title")
             Spacer()
             HStack(spacing: 8) {
-                arrow("chevron.backward") { shift(-1) }
-                arrow("chevron.forward") { shift(1) }
+                arrow("chevron.backward", id: "cal.prev") { shift(-1) }
+                arrow("chevron.forward", id: "cal.next") { shift(1) }
             }
         }
     }
 
-    private func arrow(_ icon: String, _ action: @escaping () -> Void) -> some View {
+    private func arrow(_ icon: String, id: String, _ action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: icon)
                 .font(.system(size: 13, weight: .semibold))
@@ -93,6 +94,7 @@ struct CalendarCard: View {
                 .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(Theme.border, lineWidth: 1))
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier(id)
     }
 
     private var grid: some View {

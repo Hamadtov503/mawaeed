@@ -103,6 +103,7 @@ struct HomeView: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel(L("التنبيهات", "Notifications"))
+            .accessibilityIdentifier("button.bell")
             Button { router.present(notifications: false) } label: {
                 Image(systemName: "gearshape.fill")
                     .font(.system(size: 20))
@@ -113,6 +114,7 @@ struct HomeView: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel(L("الإعدادات", "Settings"))
+            .accessibilityIdentifier("button.settings")
         }
     }
 

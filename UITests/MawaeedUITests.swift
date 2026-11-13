@@ -233,6 +233,76 @@ final class MawaeedUITests: XCTestCase {
         shot("23-time-closed")
     }
 
+    /// Every top button must react exactly where it is drawn: the bell opens the notifications,
+    /// the gear opens settings, and the month arrows only change the month. Checked on a fresh
+    /// launch and again after adding an appointment (sheet + keyboard), and after a menu round trip.
+    func testHeaderButtons() {
+        launchToHome()
+        checkHeaderButtons("launch")
+        go("appointments")
+        addAppointment(5, dayOffset: 2)
+        go("home")
+        sleep(1)
+        assertHandleLevelWithDayLine("after adding an appointment")
+        checkHeaderButtons("after-add")
+        go("tasks")
+        go("home")
+        sleep(1)
+        checkHeaderButtons("after-menu")
+    }
+
+    private func logFrames(_ step: String) {
+        var lines: [String] = ["window \(app.windows.firstMatch.frame)"]
+        for id in ["button.bell", "button.settings", "cal.title", "cal.prev", "cal.next", "dayLine", "menuHandle"] {
+            let e = app.descendants(matching: .any).matching(identifier: id).firstMatch
+            lines.append("\(id): \(e.exists ? "\(e.frame)" : "missing")")
+        }
+        let a = XCTAttachment(string: lines.joined(separator: "\n"))
+        a.name = "frames-\(step)"
+        a.lifetime = .keepAlways
+        add(a)
+    }
+
+    private func checkHeaderButtons(_ step: String) {
+        logFrames(step)
+        shot("hdr-\(step)-0-home")
+        let title = app.staticTexts["slidePage.title"]
+        let back = app.buttons["button.back"]
+
+        let bell = app.buttons["button.bell"]
+        XCTAssertTrue(bell.waitForExistence(timeout: 4), "bell missing: \(step)")
+        bell.tap()
+        XCTAssertTrue(title.waitForExistence(timeout: 3), "bell did not open a page: \(step)")
+        XCTAssertEqual(title.label, "التنبيهات", "bell opened the wrong page: \(step)")
+        sleep(1)
+        shot("hdr-\(step)-1-bell")
+        back.tap()
+        sleep(1)
+        XCTAssertFalse(title.exists, "back did not close notifications: \(step)")
+
+        let gear = app.buttons["button.settings"]
+        gear.tap()
+        XCTAssertTrue(title.waitForExistence(timeout: 3), "gear did not open a page: \(step)")
+        XCTAssertEqual(title.label, "الإعدادات", "gear opened the wrong page: \(step)")
+        sleep(1)
+        shot("hdr-\(step)-2-settings")
+        back.tap()
+        sleep(1)
+        XCTAssertFalse(title.exists, "back did not close settings: \(step)")
+
+        let month = app.buttons["cal.title"]
+        let before = month.label
+        app.buttons["cal.next"].tap()
+        sleep(1)
+        XCTAssertFalse(title.exists, "the month arrow opened a page: \(step)")
+        XCTAssertNotEqual(month.label, before, "the month arrow did not change the month: \(step)")
+        shot("hdr-\(step)-3-next-month")
+        app.buttons["cal.prev"].tap()
+        sleep(1)
+        XCTAssertFalse(title.exists, "the month arrow opened a page: \(step)")
+        XCTAssertEqual(month.label, before, "back arrow did not return to this month: \(step)")
+    }
+
     /// The same screens in English.
     func testEnglish() {
         app.launchArguments += ["-lang-en"]

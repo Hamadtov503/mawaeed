@@ -269,6 +269,7 @@ struct SlidePage<Content: View>: View {
         VStack(spacing: 0) {
             ZStack {
                 Text(title).font(.app(.headline, .bold)).foregroundColor(Theme.ink)
+                    .accessibilityIdentifier("slidePage.title")
                 HStack {
                     Button(action: onBack) {
                         Image(systemName: "chevron.backward")
@@ -280,6 +281,7 @@ struct SlidePage<Content: View>: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(L("رجوع", "Back"))
+                    .accessibilityIdentifier("button.back")
                     Spacer()
                 }
             }
