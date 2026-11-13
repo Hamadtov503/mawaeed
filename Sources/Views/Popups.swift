@@ -325,7 +325,7 @@ struct MenuRequest: Identifiable {
 
     /// A short notice with one "OK" (replaces an alert).
     static func notice(_ title: String, message: String) -> MenuRequest {
-        MenuRequest(title: title, message: message, actions: [MenuAction(title: L("حسنًا", "OK"), icon: "checkmark") {}])
+        MenuRequest(title: title, message: message, actions: [MenuAction(title: L("حسنًا", "OK"), icon: "") {}])
     }
 }
 
@@ -362,9 +362,14 @@ struct ActionMenu: View {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { a.run() }
                 } label: {
                     HStack(spacing: 12) {
-                        Text(a.title).font(.app(.body, .semibold))
-                        Spacer(minLength: 8)
-                        Image(systemName: a.icon).font(.system(size: 17, weight: .semibold))
+                        // A choice without a mark (the «حسنًا» of a notice) sits alone in the middle.
+                        if a.icon.isEmpty {
+                            Text(a.title).font(.app(.body, .semibold)).frame(maxWidth: .infinity)
+                        } else {
+                            Text(a.title).font(.app(.body, .semibold))
+                            Spacer(minLength: 8)
+                            Image(systemName: a.icon).font(.system(size: 17, weight: .semibold))
+                        }
                     }
                     .foregroundColor(a.destructive ? Theme.burgundy : Theme.ink)
                     .padding(.horizontal, 18)
