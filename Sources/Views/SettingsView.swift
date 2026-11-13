@@ -13,6 +13,7 @@ struct SettingsView: View {
     @State private var pendingRestore: (items: [Appointment], tasks: [TaskItem])? = nil
     @State private var menu: MenuRequest? = nil
     @State private var calendarAccount: String? = nil
+    @State private var syncingByHand = false
 
     enum ImportMode { case syncFile, restore }
 
@@ -67,6 +68,32 @@ struct SettingsView: View {
             .ignoresSafeArea()
         }
         .actionMenu($menu)
+        // "Sync now" always ends with a word on how it went.
+        .onChange(of: sync.isSyncing) { busy in
+            guard !busy, syncingByHand else { return }
+            syncingByHand = false
+            reportSync()
+        }
+    }
+
+    private func syncNow() {
+        syncingByHand = true
+        sync.sync()
+        // Nothing started (the file couldn't be reached): say so straight away.
+        if !sync.isSyncing {
+            syncingByHand = false
+            reportSync()
+        }
+    }
+
+    private func reportSync() {
+        if let e = sync.lastError {
+            menu = .notice(L("ما تمت المزامنة", "Sync didn't finish"), message: e)
+        } else {
+            let when = sync.lastSync.map { Fmt.dateText($0, hasTime: true) } ?? ""
+            menu = .notice(L("تمت المزامنة ✅", "Synced ✅"),
+                           message: L("مواعيدك ومهامك محفوظة في آي كلاود. آخر مزامنة: \(when)", "Your appointments and tasks are saved in iCloud. Last sync: \(when)"))
+        }
     }
 
     // MARK: Groups
@@ -80,7 +107,7 @@ struct SettingsView: View {
                 info("folder.fill", L("المجلد", "Folder"), sync.folderName ?? "")
                 info(sync.isSyncing ? "arrow.triangle.2.circlepath.icloud" : "checkmark.icloud.fill", L("آخر مزامنة", "Last sync"),
                      sync.isSyncing ? L("جاري…", "Syncing…") : (sync.lastSync.map { Fmt.dateText($0, hasTime: true) } ?? "—"))
-                Button { sync.sync() } label: { Label(L("زامن الحين", "Sync now"), systemImage: "arrow.triangle.2.circlepath") }
+                Button { syncNow() } label: { Label(L("زامن الحين", "Sync now"), systemImage: "arrow.triangle.2.circlepath") }
                 Button { pick(.syncFile) } label: { Label(L("اختر ملف مزامنة ثاني", "Choose another sync file"), systemImage: "doc.badge.gearshape") }
                 Button(role: .destructive) { sync.turnOff() } label: {
                     Label(L("أوقف المزامنة على هالجوال", "Stop syncing on this phone"), systemImage: "xmark.icloud").foregroundColor(.red)

@@ -111,7 +111,12 @@ final class SyncManager: ObservableObject {
 
     /// Read the shared file, merge it with this phone's appointments, and write the result back.
     func sync() {
-        guard let folder = resolveFolder() else { return }
+        guard let folder = resolveFolder() else {
+            if UserDefaults.standard.data(forKey: bookmarkKey) != nil {
+                lastError = L("ما قدرت أوصل لملف المزامنة. اختره مرة ثانية.", "Couldn't reach the sync file. Choose it again.")
+            }
+            return
+        }
         if isSyncing { pending = true; return }
         isSyncing = true
 
