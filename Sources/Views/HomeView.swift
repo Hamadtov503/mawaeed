@@ -158,13 +158,6 @@ struct HomeView: View {
     }
 }
 
-func openMaps(_ place: String) {
-    let q = place.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? place
-    if let url = URL(string: place.hasPrefix("http") ? place : "http://maps.apple.com/?q=\(q)") {
-        UIApplication.shared.open(url)
-    }
-}
-
 /// Winter (November–April): a snowman. Summer (May–October): an air conditioner.
 struct SeasonIcon: View {
     let date: Date

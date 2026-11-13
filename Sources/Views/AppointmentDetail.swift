@@ -53,10 +53,7 @@ struct AppointmentDetail: View {
                     row("bell.fill", L("التنبيه", "Reminder"), ReminderOption.summary(a.reminders, hasTime: a.hasTime))
                     if !a.location.isEmpty {
                         Divider()
-                        Button { openMaps(a.location) } label: {
-                            row("mappin.and.ellipse", L("المكان", "Place"), a.location, link: true)
-                        }
-                        .buttonStyle(.plain)
+                        row("mappin.and.ellipse", L("المكان", "Place"), a.location)   // plain text: doesn't open Maps
                     }
                 }
                 .card()
