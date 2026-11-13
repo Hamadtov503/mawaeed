@@ -349,8 +349,11 @@ struct TaskEditor: View {
                 .frame(width: 42, height: 42)
                 .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Theme.card))
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                // Drawn inside the edge, so the long-press preview (which cuts at the edge) shows the
+                // same frame as the button and nothing jumps when the menu closes.
                 .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .stroke(draft.iconImage != nil ? draft.priority.color : Theme.border, lineWidth: draft.iconImage != nil ? 2.5 : 1))
+                    .strokeBorder(draft.iconImage != nil ? draft.priority.color : Theme.border, lineWidth: draft.iconImage != nil ? 2.5 : 1))
+                .contentShape(.contextMenuPreview, RoundedRectangle(cornerRadius: 12, style: .continuous))
             }
             .buttonStyle(.plain)
             .accessibilityLabel(L("صورة من الألبوم", "Picture from Photos"))
