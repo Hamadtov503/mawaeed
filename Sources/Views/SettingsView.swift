@@ -37,6 +37,7 @@ struct SettingsView: View {
                         }
                     }
                 }
+                syncGroup
                 calendarGroup
                 backupGroup
                 Text(L("مواعيدي — الإصدار \(version)", "Mawaeed · Version \(version)"))
@@ -64,10 +65,10 @@ struct SettingsView: View {
     // MARK: Groups
 
     private var syncGroup: some View {
-        SettingsGroup(title: L("المزامنة بين الأجهزة", "Sync between devices"),
+        SettingsGroup(title: L("المزامنة مع آي كلاود", "iCloud sync"),
               footer: sync.isOn
                 ? L("أي تعديل ينحفظ في المجلد، والجوال الثاني يسحبه أول ما تفتح التطبيق وكل 30 ثانية وهو مفتوح.", "Every change is saved to the folder; the other phone picks it up when the app opens and every 30 seconds while open.")
-                : L("عشان نفس المواعيد تطلع في جوال ثاني: اختر مجلد في iCloud Drive هنا، وفي الجوال الثاني اختر نفس المجلد.", "To see the same data on another phone: pick a folder in iCloud Drive here, and the same folder on the other phone.")) {
+                : L("مواعيدك ومهامك تنحفظ في ملف داخل آي كلاود درايف حقك، فتبقى لو غيرت جوالك وتطلع في جوال ثاني. اختر مجلد هنا، وفي الجوال الثاني اختر نفس المجلد.", "Your appointments and tasks are kept in a file in your own iCloud Drive, so they survive a new phone and show on another one. Pick a folder here, and the same folder on the other phone.")) {
             if sync.isOn {
                 info("folder.fill", L("المجلد", "Folder"), sync.folderName ?? "")
                 info(sync.isSyncing ? "arrow.triangle.2.circlepath.icloud" : "checkmark.icloud.fill", L("آخر مزامنة", "Last sync"),
@@ -78,7 +79,7 @@ struct SettingsView: View {
                     Label(L("أوقف المزامنة على هالجوال", "Stop syncing on this phone"), systemImage: "xmark.icloud").foregroundColor(.red)
                 }
             } else {
-                Button { pick(.folder) } label: { Label(L("فعّل المزامنة — اختر مجلد في iCloud Drive", "Turn on sync — pick an iCloud Drive folder"), systemImage: "icloud.fill") }
+                Button { pick(.folder) } label: { Label(L("فعّل المزامنة واختر مجلد في آي كلاود درايف", "Turn on sync and pick an iCloud Drive folder"), systemImage: "icloud.fill") }
             }
             if let e = sync.lastError { Text(e).font(.app(.footnote)).foregroundColor(.orange) }
         }
