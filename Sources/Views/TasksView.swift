@@ -334,7 +334,8 @@ struct TaskEditor: View {
 
     // MARK: Pieces
 
-    /// Two buttons only: your own picture (from Photos), and a symbol that opens a grid of icons.
+    /// Two buttons only: your own picture (a colourful flower, like a photo album), and a magnifying
+    /// glass that opens the grid of icons.
     private var iconPicker: some View {
         HStack(spacing: 10) {
             Button { choosingPhoto = true } label: {
@@ -342,13 +343,11 @@ struct TaskEditor: View {
                     if let data = draft.iconImage, let ui = UIImage(data: data) {
                         Image(uiImage: ui).resizable().scaledToFill()
                     } else {
-                        Image(systemName: "square.and.arrow.up")   // upload (works on iOS 15; photo.badge.plus needs 16)
-                            .font(.system(size: 17, weight: .semibold))
-                            .foregroundColor(draft.priority.color)
+                        PhotosFlower().padding(5)
                     }
                 }
                 .frame(width: 42, height: 42)
-                .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(draft.priority.color.opacity(0.1)))
+                .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white))
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .stroke(draft.iconImage != nil ? draft.priority.color : Color.clear, lineWidth: 2.5))
@@ -367,18 +366,16 @@ struct TaskEditor: View {
                 }
             }
 
-            let symbolOn = draft.iconImage == nil
             Button {
                 // Put the keyboard away so the whole grid shows.
                 UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                 withAnimation(.spring(response: 0.32, dampingFraction: 0.9)) { choosingIcon = true }
             } label: {
-                Image(systemName: draft.displayIcon)
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundColor(symbolOn ? .white : draft.priority.color)
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundColor(Theme.ink)
                     .frame(width: 42, height: 42)
-                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(symbolOn ? draft.priority.color : draft.priority.color.opacity(0.1)))
+                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white))
             }
             .buttonStyle(.plain)
             .accessibilityLabel(L("اختر أيقونة", "Choose an icon"))
@@ -496,5 +493,37 @@ struct TaskEditor: View {
         if draft.icon == nil { draft.icon = "checklist" }
         store.upsertTask(draft)
         onFinish()
+    }
+}
+
+
+/// A small colourful flower of see-through petals: the "pick a photo" button.
+struct PhotosFlower: View {
+    private let colors: [Color] = [
+        Color(red: 0.84, green: 0.27, blue: 0.27), Color(red: 0.86, green: 0.36, blue: 0.62),
+        Color(red: 0.62, green: 0.38, blue: 0.84), Color(red: 0.33, green: 0.37, blue: 0.82),
+        Color(red: 0.33, green: 0.62, blue: 0.85), Color(red: 0.33, green: 0.78, blue: 0.62),
+        Color(red: 0.36, green: 0.76, blue: 0.33), Color(red: 0.62, green: 0.80, blue: 0.33),
+        Color(red: 0.84, green: 0.80, blue: 0.27), Color(red: 0.88, green: 0.62, blue: 0.27),
+        Color(red: 0.86, green: 0.48, blue: 0.30), Color(red: 0.84, green: 0.38, blue: 0.30),
+    ]
+
+    var body: some View {
+        GeometryReader { g in
+            let side = min(g.size.width, g.size.height)
+            ZStack {
+                ForEach(colors.indices, id: \.self) { i in
+                    Capsule()
+                        .fill(colors[i].opacity(0.75))
+                        .frame(width: side * 0.26, height: side * 0.5)
+                        .offset(y: -side * 0.25)
+                        .rotationEffect(.degrees(Double(i) * 360 / Double(colors.count)))
+                }
+                Circle().fill(Color.white).frame(width: side * 0.09, height: side * 0.09)
+            }
+            .frame(width: side, height: side)
+            .position(x: g.size.width / 2, y: g.size.height / 2)
+        }
+        .accessibilityHidden(true)
     }
 }
