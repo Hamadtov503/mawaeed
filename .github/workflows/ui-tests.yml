@@ -8,6 +8,11 @@ on:
 permissions:
   contents: write
 
+# A newer push replaces a run still in progress (two runs publishing the same release clash).
+concurrency:
+  group: ui-tests
+  cancel-in-progress: true
+
 jobs:
   ui-tests:
     strategy:

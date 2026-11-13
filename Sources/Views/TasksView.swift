@@ -355,7 +355,11 @@ struct TaskEditor: View {
             .accessibilityIdentifier("button.taskPhoto")
 
             let symbolOn = draft.iconImage == nil
-            Button { withAnimation(.spring(response: 0.32, dampingFraction: 0.9)) { choosingIcon = true } } label: {
+            Button {
+                // Put the keyboard away so the whole grid shows.
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                withAnimation(.spring(response: 0.32, dampingFraction: 0.9)) { choosingIcon = true }
+            } label: {
                 Image(systemName: draft.displayIcon)
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundColor(symbolOn ? .white : draft.priority.color)

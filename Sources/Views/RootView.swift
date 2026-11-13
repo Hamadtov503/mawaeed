@@ -22,6 +22,9 @@ struct RootView: View {
             .scaleEffect(pageOpen ? 0.95 : (router.menuOpen ? 0.96 : 1), anchor: router.menuOpen ? .trailing : .center)
             .blur(radius: router.menuOpen ? 1.5 : 0)
             .opacity(pageOpen ? 0.6 : 1)
+            // The keyboard (typing in a sheet) must never shift or resize the pages behind it: on some
+            // iOS versions that left the page drawn in one place while taps landed in another.
+            .ignoresSafeArea(.keyboard, edges: .bottom)
 
             if !router.menuOpen && !pageOpen {
                 MenuHandle { router.toggleMenu(true) }
@@ -54,6 +57,7 @@ struct RootView: View {
                     .zIndex(4)
             }
         }
+        .ignoresSafeArea(.keyboard, edges: .bottom)
         .sheet(isPresented: $router.addingAppointment) {
             AppointmentEditor(appointment: AppointmentEditor.blank(), isNew: true) { router.addingAppointment = false }
                 .environmentObject(store)
