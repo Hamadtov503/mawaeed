@@ -119,12 +119,17 @@ struct CalendarCard: View {
             }
             .id("\(year)-\(month)")
             // The new month slides in from the side the finger moves away from, the old one slides out the other way.
-            .transition(.asymmetric(insertion: .move(edge: direction).combined(with: .opacity),
-                                    removal: .move(edge: direction == .leading ? .trailing : .leading).combined(with: .opacity)))
+            .transition(monthTransition)
         }
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(Theme.border, lineWidth: 1))
         .accessibilityIdentifier("cal.grid")
+    }
+
+    private var monthTransition: AnyTransition {
+        let out: Edge = direction == .leading ? .trailing : .leading
+        return .asymmetric(insertion: AnyTransition.move(edge: direction).combined(with: .opacity),
+                           removal: AnyTransition.move(edge: out).combined(with: .opacity))
     }
 
     /// A sideways swipe anywhere on the calendar changes the month, as soon as the finger has moved
@@ -142,7 +147,6 @@ struct CalendarCard: View {
                 shift(forward ? 1 : -1, from: (fromScreenLeft == Fmt.isArabic) ? .trailing : .leading)
             }
             .onEnded { _ in swiped = false }
-    }
     }
 
     private func dayCell(_ cell: Cell) -> some View {
