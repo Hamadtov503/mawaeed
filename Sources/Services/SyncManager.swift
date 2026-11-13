@@ -34,6 +34,9 @@ final class SyncManager: ObservableObject {
     @Published private(set) var isSyncing = false
 
     private let bookmarkKey = "backupFolderBookmark"
+    private let pathKey = "syncTargetPath"
+    /// Why the sync file couldn't be reached the last time, for the error message.
+    private var resolveProblem: String?
     private let lastKey = "lastSyncDate"
     private let queue = DispatchQueue(label: "sync", qos: .utility)
     private var pending = false
@@ -69,7 +72,9 @@ final class SyncManager: ObservableObject {
         let ok = url.startAccessingSecurityScopedResource()
         defer { if ok { url.stopAccessingSecurityScopedResource() } }
         do {
-            let data = try url.bookmarkData(options: [], includingResourceValuesForKeys: nil, relativeTo: nil)
+            // The plain path too: a fall-back when the bookmark can't be resolved (seen on side-loaded builds).
+            UserDefaults.standard.set(url.path, forKey: pathKey)
+            let data = try url.bookmarkData(options: .minimalBookmark, includingResourceValuesForKeys: nil, relativeTo: nil)
             UserDefaults.standard.set(data, forKey: bookmarkKey)
             folderName = Self.displayName(of: url)
             lastError = nil
@@ -81,20 +86,35 @@ final class SyncManager: ObservableObject {
 
     func turnOff() {
         UserDefaults.standard.removeObject(forKey: bookmarkKey)
+        UserDefaults.standard.removeObject(forKey: pathKey)
         folderName = nil
         lastError = nil
     }
 
     private func resolveFolder() -> URL? {
-        guard let data = UserDefaults.standard.data(forKey: bookmarkKey) else { return nil }
-        var stale = false
-        guard let url = try? URL(resolvingBookmarkData: data, options: [], relativeTo: nil, bookmarkDataIsStale: &stale) else {
-            return nil
+        resolveProblem = nil
+        if let data = UserDefaults.standard.data(forKey: bookmarkKey) {
+            do {
+                var stale = false
+                let url = try URL(resolvingBookmarkData: data, options: [], relativeTo: nil, bookmarkDataIsStale: &stale)
+                if stale, let fresh = try? url.bookmarkData(options: .minimalBookmark, includingResourceValuesForKeys: nil, relativeTo: nil) {
+                    UserDefaults.standard.set(fresh, forKey: bookmarkKey)
+                }
+                return url
+            } catch {
+                resolveProblem = error.localizedDescription
+            }
         }
-        if stale, let fresh = try? url.bookmarkData(options: [], includingResourceValuesForKeys: nil, relativeTo: nil) {
-            UserDefaults.standard.set(fresh, forKey: bookmarkKey)
+        // Fall back to the saved path when it is still there.
+        if let path = UserDefaults.standard.string(forKey: pathKey) {
+            let url = URL(fileURLWithPath: path)
+            let placeholder = url.deletingLastPathComponent().appendingPathComponent(".\(url.lastPathComponent).icloud")
+            if FileManager.default.fileExists(atPath: path) || FileManager.default.fileExists(atPath: placeholder.path) {
+                return url
+            }
+            resolveProblem = (resolveProblem.map { $0 + "\n" } ?? "") + L("الملف غير موجود في: \(path)", "No file at: \(path)")
         }
-        return url
+        return nil
     }
 
     /// Pull every 30 seconds while the app is open, so the other phone's changes show up quickly.
@@ -114,6 +134,7 @@ final class SyncManager: ObservableObject {
         guard let folder = resolveFolder() else {
             if UserDefaults.standard.data(forKey: bookmarkKey) != nil {
                 lastError = L("تعذّر الوصول إلى ملف المزامنة. استورده أو صدّره من جديد.", "Couldn't reach the sync file. Choose it again.")
+                    + (resolveProblem.map { "\n\n" + $0 } ?? "")
             }
             return
         }

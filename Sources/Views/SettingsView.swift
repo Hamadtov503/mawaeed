@@ -100,7 +100,7 @@ struct SettingsView: View {
             withAnimation(.easeOut(duration: 0.25)) { syncResult = sync.lastError == nil }
             let shown = syncResult
             DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
-                if syncResult == shown { withAnimation(.easeIn(duration: 0.4)) { syncResult = nil } }
+                if shown == true, syncResult == shown { withAnimation(.easeIn(duration: 0.4)) { syncResult = nil } }
             }
         }
     }
@@ -144,10 +144,15 @@ struct SettingsView: View {
             Text(L("زامِن الآن", "Sync now")).foregroundColor(Theme.ink)
             Spacer(minLength: 8)
             if let ok = syncResult {
-                Text(ok ? L("تمت المزامنة", "Synced") : L("تعذّرت المزامنة", "Sync failed"))
+                Text(ok ? L("تمت المزامنة", "Synced") : L("تعذّرت المزامنة ⓘ", "Sync failed ⓘ"))
                     .font(.app(.subheadline, .semibold))
                     .foregroundColor(ok ? Theme.forest : Theme.burgundy)
                     .transition(.opacity)
+                    // A failure can be tapped for the reason.
+                    .onTapGesture {
+                        guard !ok, let e = sync.lastError else { return }
+                        menu = .notice(L("لم تكتمل المزامنة", "Sync didn't finish"), message: e)
+                    }
             }
         }
         .contentShape(Rectangle())
