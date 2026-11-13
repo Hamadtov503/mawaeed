@@ -319,19 +319,26 @@ final class MawaeedUITests: XCTestCase {
         sleep(1)
         XCTAssertFalse(title.exists, "back did not close settings: \(step)")
 
-        // The month changes with a sideways swipe on the calendar (there are no arrows).
+        // The month changes with a sideways swipe across the middle of the calendar (there are no arrows):
+        // to the right goes forward a month in Arabic, to the left back.
         let month = app.buttons["cal.title"]
         let before = month.label
-        let grid = app.descendants(matching: .any).matching(identifier: "cal.grid").firstMatch
-        grid.swipeRight()
+        let top = month.frame.maxY + 60, w = app.windows.firstMatch.frame.width
+        func swipe(from x0: CGFloat, to x1: CGFloat) {
+            let origin = app.coordinate(withNormalizedOffset: .zero)
+            origin.withOffset(CGVector(dx: x0, dy: top + 90))
+                .press(forDuration: 0.05, thenDragTo: origin.withOffset(CGVector(dx: x1, dy: top + 90)))
+        }
+        swipe(from: w * 0.25, to: w * 0.75)   // to the right
         sleep(1)
+        let afterRight = month.label
         XCTAssertFalse(title.exists, "the swipe opened a page: \(step)")
-        XCTAssertNotEqual(month.label, before, "the swipe did not change the month: \(step)")
+        XCTAssertNotEqual(afterRight, before, "the swipe did not change the month: \(step)")
         shot("hdr-\(step)-3-next-month")
-        grid.swipeLeft()
+        swipe(from: w * 0.75, to: w * 0.25)   // to the left
         sleep(1)
         XCTAssertFalse(title.exists, "the swipe opened a page: \(step)")
-        XCTAssertEqual(month.label, before, "swiping back did not return to this month: \(step)")
+        XCTAssertEqual(month.label, before, "swiping back did not return to this month: \(step) (before: \(before), after right: \(afterRight))")
     }
 
     /// Menus and dialogs drawn by iOS (long-press menu, delete confirmation) must read normally,
