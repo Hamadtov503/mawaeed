@@ -70,7 +70,10 @@ struct HomeView: View {
     }
 
     private func publishLine() {
-        guard lineInContent > 0, !router.menuOpen, !router.showSettings, !router.showNotifications else { return }
+        // Only while home is the page on screen and nothing is drawn over it: switching pages, the menu and
+        // slide-in pages scale or shift the home page, which would otherwise move the tab.
+        guard lineInContent > 0, router.page == .home, !router.menuOpen,
+              !router.showSettings, !router.showNotifications else { return }
         let y = scrollTop + lineInContent
         if abs(router.dayLineY - y) > 0.5 { router.dayLineY = y }
     }
