@@ -13,6 +13,8 @@ final class AppSettings: ObservableObject {
     @Published var calendarSync: Bool { didSet { d.set(calendarSync, forKey: "calendarSync"); changed() } }
     /// The name the greeting uses ("صباح الخير يا …").
     @Published var userName: String { didSet { d.set(userName, forKey: "userName") } }
+    /// Your profile picture: a small square JPEG, or nil for the initial / person mark.
+    @Published var profileImage: Data? { didSet { d.set(profileImage, forKey: "profileImage") } }
     /// The app's language (Arabic by default). Changing it rebuilds the screens and reschedules reminders.
     @Published var language: AppLanguage { didSet { d.set(language.rawValue, forKey: "language"); syncSystemLanguage(); changed() } }
 
@@ -36,6 +38,7 @@ final class AppSettings: ObservableObject {
         digestMinutes = d.integer(forKey: "digestMinutes")
         calendarSync = d.bool(forKey: "calendarSync")
         userName = d.string(forKey: "userName") ?? ""
+        profileImage = d.data(forKey: "profileImage")
         onboarded = d.bool(forKey: "onboarded")
         language = AppLanguage(rawValue: d.string(forKey: "language") ?? "ar") ?? .ar
         syncSystemLanguage()

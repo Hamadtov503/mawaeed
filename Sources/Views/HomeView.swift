@@ -102,12 +102,19 @@ struct HomeView: View {
             }
             Spacer(minLength: 8)
             Button { router.present(profile: true) } label: {
-                Image(systemName: "person.fill")
-                    .font(.system(size: 18, weight: .medium))
-                    .foregroundColor(Theme.ink)
-                    .frame(width: 42, height: 42)
-                    .background(Circle().fill(Theme.card))
-                    .overlay(Circle().stroke(Theme.border, lineWidth: 1))
+                // Your picture once you've chosen one; until then a person mark in the beige circle.
+                Group {
+                    if settings.profileImage != nil {
+                        ProfileBadge(size: 42)
+                    } else {
+                        Image(systemName: "person.fill")
+                            .font(.system(size: 18, weight: .medium))
+                            .foregroundColor(Theme.ink)
+                            .frame(width: 42, height: 42)
+                            .background(Circle().fill(Theme.card))
+                    }
+                }
+                .overlay(Circle().stroke(Theme.border, lineWidth: 1))
             }
             .buttonStyle(.plain)
             .accessibilityLabel(L("الملف الشخصي", "Profile"))

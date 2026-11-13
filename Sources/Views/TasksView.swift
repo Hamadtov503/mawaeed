@@ -153,11 +153,10 @@ struct TaskIcon: View {
 }
 
 enum IconImage {
-    /// Crops to a centred square and shrinks to 120×120, so any picture becomes a small icon (~5 KB).
-    static func make(from image: UIImage) -> Data? {
+    /// Crops to a centred square and shrinks it (120×120 by default), so any picture becomes a small icon.
+    static func make(from image: UIImage, size target: CGFloat = 120) -> Data? {
         let side = min(image.size.width, image.size.height)
         guard side > 0 else { return nil }
-        let target: CGFloat = 120
         let scale = target / side
         let drawSize = CGSize(width: image.size.width * scale, height: image.size.height * scale)
         let format = UIGraphicsImageRendererFormat.default()
