@@ -180,7 +180,7 @@ final class MawaeedUITests: XCTestCase {
         app.buttons["row.time"].tap()
         XCTAssertTrue(app.buttons["popup.done"].waitForExistence(timeout: 4))
         shot("22-time-open")
-        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.97)).tap()
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.88)).tap()   // dimmed area below the card (not the home-indicator strip)
         sleep(1)
         XCTAssertFalse(app.buttons["popup.done"].exists, "time popup did not close on an outside tap")
         shot("23-time-closed")
