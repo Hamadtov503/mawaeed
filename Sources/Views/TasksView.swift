@@ -309,7 +309,7 @@ struct TaskEditor: View {
                         .accessibilityIdentifier("button.save")
                 }
             }
-            .popup(isPresented: $choosingIcon) { iconGrid }
+            .popup(isPresented: $choosingIcon, top: 126) { iconGrid }   // just under the title card, over the headings below it
             .popup(isPresented: Binding(get: { picking == .startDay }, set: { if !$0 { picking = nil } })) {
                 DayPickerPopup(date: startBinding, hijri: false) { close() }
             }
@@ -371,7 +371,7 @@ struct TaskEditor: View {
                             .contentShape(Circle().inset(by: -8))
                     }
                     .buttonStyle(.plain)
-                    .offset(x: Fmt.isArabic ? -7 : 7, y: -7)   // just outside the outer corner
+                    .offset(x: Fmt.isArabic ? -13 : 13, y: -13)   // outside the picture's corner, not over it
                     .transition(.scale.combined(with: .opacity))
                     .accessibilityLabel(L("احذف الصورة", "Remove picture"))
                     .accessibilityIdentifier("button.removePhoto")

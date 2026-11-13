@@ -4,6 +4,8 @@ import PhotosUI
 /// A centred card over a dimmed background. Tapping anywhere outside the card closes it.
 struct PopupModifier<Popup: View>: ViewModifier {
     @Binding var isPresented: Bool
+    /// nil: centred. Otherwise the card's distance from the top.
+    var top: CGFloat? = nil
     let popup: () -> Popup
 
     func body(content: Content) -> some View {
@@ -23,6 +25,8 @@ struct PopupModifier<Popup: View>: ViewModifier {
                     .shadow(color: .black.opacity(0.18), radius: 24, y: 10)
                     .padding(.horizontal, 18)
                     .frame(maxWidth: 460)
+                    .padding(.top, top ?? 0)
+                    .frame(maxHeight: .infinity, alignment: top == nil ? .center : .top)
                     .transition(.scale(scale: 0.92).combined(with: .opacity))
                     .zIndex(11)
             }
@@ -36,8 +40,8 @@ struct PopupModifier<Popup: View>: ViewModifier {
 
 extension View {
     /// Shows `content` as a popup card; an outside tap closes it.
-    func popup<P: View>(isPresented: Binding<Bool>, @ViewBuilder content: @escaping () -> P) -> some View {
-        modifier(PopupModifier(isPresented: isPresented, popup: content))
+    func popup<P: View>(isPresented: Binding<Bool>, top: CGFloat? = nil, @ViewBuilder content: @escaping () -> P) -> some View {
+        modifier(PopupModifier(isPresented: isPresented, top: top, popup: content))
     }
 }
 
