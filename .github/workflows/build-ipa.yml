@@ -8,6 +8,12 @@ on:
 permissions:
   contents: write
 
+# One build at a time, newest wins: an older build that finished later used to replace the newer
+# release (build 74 overwrote build 75).
+concurrency:
+  group: build-ipa
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: macos-15
