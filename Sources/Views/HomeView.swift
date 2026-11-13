@@ -29,7 +29,7 @@ struct HomeView: View {
             VStack(alignment: .leading, spacing: 18) {
                 CalendarCard(selection: $day)
 
-                SectionHeader(title: isToday ? L("اليوم", "Today") : Fmt.dayTitle(day), detail: Fmt.hijriText(day))
+                SectionHeader(title: Fmt.dayLine(day).title, detail: Fmt.dayLine(day).detail)
                     .accessibilityIdentifier("dayLine")
                     // Where this line sits inside the page content: unaffected by scrolling.
                     .background(GeometryReader { g in
