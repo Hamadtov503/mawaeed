@@ -14,6 +14,10 @@ struct SettingsView: View {
     @State private var menu: MenuRequest? = nil
     @State private var calendarAccount: String? = nil
     @State private var syncingByHand = false
+    @State private var spinning = false
+    @State private var syncStarted = Date()
+    /// The word shown on the «زامِن الآن» line once a sync by hand ends: true = done, false = failed.
+    @State private var syncResult: Bool? = nil
 
     enum ImportMode { case syncFile, restore }
 
@@ -68,33 +72,36 @@ struct SettingsView: View {
             .ignoresSafeArea()
         }
         .actionMenu($menu)
-        // "Sync now" always ends with a word on how it went.
+        // A sync by hand ends with a word on the same line: «تمت المزامنة» in green, or a failure in red.
         .onChange(of: sync.isSyncing) { busy in
             guard !busy, syncingByHand else { return }
-            syncingByHand = false
-            reportSync()
+            finishSync()
         }
     }
 
     private func syncNow() {
         // No sync file yet: make a new one (the same as «تصدير»).
         guard sync.isOn else { startSync(); return }
+        guard !spinning else { return }
+        syncResult = nil
+        syncStarted = Date()
+        spinning = true
         syncingByHand = true
         sync.sync()
-        // Nothing started (the file couldn't be reached): say so straight away.
-        if !sync.isSyncing {
-            syncingByHand = false
-            reportSync()
-        }
+        if !sync.isSyncing { finishSync() }   // nothing started (the file couldn't be reached)
     }
 
-    private func reportSync() {
-        if let e = sync.lastError {
-            menu = .notice(L("لم تكتمل المزامنة", "Sync didn't finish"), message: e)
-        } else {
-            let when = sync.lastSync.map { Fmt.dateText($0, hasTime: true) } ?? ""
-            menu = .notice(L("تمت المزامنة ✅", "Synced ✅"),
-                           message: L("مواعيدك ومهامك محفوظة في آي كلاود. آخر مزامنة: \(when)", "Your appointments and tasks are saved in iCloud. Last sync: \(when)"))
+    /// Stops the spinning arrows (after at least a full turn, so a quick sync is still seen) and shows the result.
+    private func finishSync() {
+        syncingByHand = false
+        let wait = max(0, 0.9 - Date().timeIntervalSince(syncStarted))
+        DispatchQueue.main.asyncAfter(deadline: .now() + wait) {
+            spinning = false
+            withAnimation(.easeOut(duration: 0.25)) { syncResult = sync.lastError == nil }
+            let shown = syncResult
+            DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
+                if syncResult == shown { withAnimation(.easeIn(duration: 0.4)) { syncResult = nil } }
+            }
         }
     }
 
@@ -103,7 +110,7 @@ struct SettingsView: View {
     private var syncGroup: some View {
         SettingsGroup(title: L("المزامنة مع آي كلاود", "iCloud sync"), footer: nil) {
             // Three clearly different marks, each in its own colour.
-            Button { syncNow() } label: { row(L("زامِن الآن", "Sync now"), "arrow.triangle.2.circlepath", Theme.navy) }
+            Button { syncNow() } label: { syncRow }
             Button { pick(.syncFile) } label: { row(L("استيراد", "Import"), "arrow.down.doc.fill", Theme.forest) }
             Button { startSync() } label: { row(L("تصدير", "Export"), "paperplane.fill", Theme.burgundy) }
         }
@@ -122,6 +129,28 @@ struct SettingsView: View {
             Button { export() } label: { Label(L("تصدير نسخة احتياطية", "Export a backup"), systemImage: "externaldrive.badge.plus") }
             Button { pick(.restore) } label: { Label(L("استيراد نسخة احتياطية", "Import a backup"), systemImage: "externaldrive.badge.checkmark") }
         }
+    }
+
+    /// «زامِن الآن»: the arrows turn while syncing; then «تمت المزامنة» in green (or a failure in red) on the same line.
+    private var syncRow: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "arrow.triangle.2.circlepath")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundColor(Theme.navy)
+                .rotationEffect(.degrees(spinning ? 360 : 0))
+                .animation(spinning ? .linear(duration: 0.9).repeatForever(autoreverses: false) : .easeOut(duration: 0.2), value: spinning)
+                .frame(width: 32, height: 32)
+                .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(Theme.navy.opacity(0.12)))
+            Text(L("زامِن الآن", "Sync now")).foregroundColor(Theme.ink)
+            Spacer(minLength: 8)
+            if let ok = syncResult {
+                Text(ok ? L("تمت المزامنة", "Synced") : L("تعذّرت المزامنة", "Sync failed"))
+                    .font(.app(.subheadline, .semibold))
+                    .foregroundColor(ok ? Theme.forest : Theme.burgundy)
+                    .transition(.opacity)
+            }
+        }
+        .contentShape(Rectangle())
     }
 
     /// A settings row: a coloured mark in a soft square, then the title.
