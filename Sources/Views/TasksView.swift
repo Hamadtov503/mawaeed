@@ -211,7 +211,7 @@ struct TaskEditor: View {
                         }
                     }
 
-                    card(L("درجة المهمة", "Priority")) {
+                    card(L("مدى أهمية المهمة", "How important")) {
                         HStack(spacing: 6) {
                             ForEach(TaskPriority.allCases) { p in
                                 segment(p.title, on: draft.priority == p, color: p.color) { draft.priority = p }
@@ -219,7 +219,7 @@ struct TaskEditor: View {
                         }
                     }
 
-                    card(L("وقت المهمة", "Task time")) {
+                    card(L("مدة إنجاز المهمة", "Time to complete")) {
                         HStack(spacing: 6) {
                             segment(L("مفتوح", "Open"), on: !scheduled, color: Theme.slate) { setScheduled(false) }
                             segment(L("محدد بوقت", "Scheduled"), on: scheduled, color: Theme.navy) { setScheduled(true) }
