@@ -1,8 +1,7 @@
 name: UI tests
 
+# Manual only (Actions → UI tests → Run workflow): simulator runs use a lot of macOS minutes.
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
