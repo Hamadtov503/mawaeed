@@ -6,6 +6,8 @@ struct PopupModifier<Popup: View>: ViewModifier {
     @Binding var isPresented: Bool
     /// nil: centred. Otherwise the card's distance from the top.
     var top: CGFloat? = nil
+    /// true: the popup draws its own box (menus), so no card is drawn around it.
+    var bare = false
     let popup: () -> Popup
 
     func body(content: Content) -> some View {
@@ -19,10 +21,10 @@ struct PopupModifier<Popup: View>: ViewModifier {
                     .transition(.opacity)
                     .zIndex(10)
                 popup()
-                    .padding(14)
-                    .background(RoundedRectangle(cornerRadius: 26, style: .continuous).fill(Theme.card))
-                    .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous).stroke(Theme.border, lineWidth: 1))
-                    .shadow(color: .black.opacity(0.18), radius: 24, y: 10)
+                    .padding(bare ? 0 : 14)
+                    .background(RoundedRectangle(cornerRadius: 26, style: .continuous).fill(bare ? Color.clear : Theme.card))
+                    .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous).stroke(bare ? Color.clear : Theme.border, lineWidth: 1))
+                    .shadow(color: .black.opacity(bare ? 0 : 0.18), radius: 24, y: 10)
                     .padding(.horizontal, 18)
                     .frame(maxWidth: 460)
                     .padding(.top, top ?? 0)
@@ -40,8 +42,8 @@ struct PopupModifier<Popup: View>: ViewModifier {
 
 extension View {
     /// Shows `content` as a popup card; an outside tap closes it.
-    func popup<P: View>(isPresented: Binding<Bool>, top: CGFloat? = nil, @ViewBuilder content: @escaping () -> P) -> some View {
-        modifier(PopupModifier(isPresented: isPresented, top: top, popup: content))
+    func popup<P: View>(isPresented: Binding<Bool>, top: CGFloat? = nil, bare: Bool = false, @ViewBuilder content: @escaping () -> P) -> some View {
+        modifier(PopupModifier(isPresented: isPresented, top: top, bare: bare, popup: content))
     }
 }
 
@@ -334,53 +336,56 @@ struct ActionMenu: View {
     let onClose: () -> Void
 
     var body: some View {
+        // One box, like an iOS menu: an optional heading, then the choices separated by thin lines.
         VStack(spacing: 0) {
             if request.title != nil || request.message != nil {
-                VStack(spacing: 6) {
+                VStack(spacing: 4) {
                     if let t = request.title {
-                        Text(t).font(.app(.headline, .bold)).foregroundColor(Theme.ink)
+                        Text(t).font(.app(.subheadline, .bold)).foregroundColor(Theme.ink)
                     }
                     if let m = request.message {
-                        Text(m).font(.app(.subheadline)).foregroundColor(Theme.muted)
+                        Text(m).font(.app(.footnote)).foregroundColor(Theme.muted)
                     }
                 }
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
-                .padding(.horizontal, 8)
-                .padding(.bottom, 12)
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                Divider().overlay(Theme.border)
             }
-            VStack(spacing: 0) {
-                ForEach(Array(request.actions.enumerated()), id: \.element.id) { i, a in
-                    if i > 0 { Divider().overlay(Theme.border) }
-                    Button {
-                        onClose()
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { a.run() }
-                    } label: {
-                        HStack(spacing: 12) {
-                            Text(a.title).font(.app(.body, .semibold))
-                            Spacer(minLength: 8)
-                            Image(systemName: a.icon).font(.system(size: 17, weight: .semibold))
-                        }
-                        .foregroundColor(a.destructive ? Theme.burgundy : Theme.ink)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 14)
-                        .contentShape(Rectangle())
+            ForEach(Array(request.actions.enumerated()), id: \.element.id) { i, a in
+                if i > 0 { Divider().overlay(Theme.border) }
+                Button {
+                    onClose()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { a.run() }
+                } label: {
+                    HStack(spacing: 12) {
+                        Text(a.title).font(.app(.body, .semibold))
+                        Spacer(minLength: 8)
+                        Image(systemName: a.icon).font(.system(size: 17, weight: .semibold))
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("menuAction.\(a.title)")
+                    .foregroundColor(a.destructive ? Theme.burgundy : Theme.ink)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 14)
+                    .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("menuAction.\(a.title)")
             }
-            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Theme.background))
-            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Theme.border, lineWidth: 1))
         }
+        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Theme.card))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Theme.border, lineWidth: 1))
+        .shadow(color: .black.opacity(0.18), radius: 20, y: 8)
     }
 }
 
 extension View {
     /// Shows `request` as an app-drawn menu; an outside tap closes it.
-    func actionMenu(_ request: Binding<MenuRequest?>) -> some View {
+    func actionMenu(_ request: Binding<MenuRequest?>, top: CGFloat? = nil) -> some View {
         popup(isPresented: Binding(get: { request.wrappedValue != nil },
-                                   set: { if !$0 { request.wrappedValue = nil } })) {
+                                   set: { if !$0 { request.wrappedValue = nil } }), top: top, bare: true) {
             if let r = request.wrappedValue {
                 ActionMenu(request: r) {
                     withAnimation(.spring(response: 0.32, dampingFraction: 0.9)) { request.wrappedValue = nil }

@@ -181,6 +181,7 @@ struct TaskEditor: View {
     @State private var choosingPhoto = false
     @State private var choosingIcon = false
     @State private var menu: MenuRequest? = nil
+    @State private var photoMenu: MenuRequest? = nil
     let onFinish: () -> Void
 
     enum Picking { case startDay, startTime, endDay, endTime }
@@ -332,6 +333,7 @@ struct TaskEditor: View {
                 TimePickerPopup(date: endBinding) { close() }
             }
             .actionMenu($menu)
+            .actionMenu($photoMenu, top: 126)   // just under the title card, over the headings below it
         }
     }
 
@@ -362,7 +364,7 @@ struct TaskEditor: View {
             // A long press on the picture offers to remove it (the icon comes back).
             .onLongPress {
                 guard draft.iconImage != nil else { return }
-                menu = MenuRequest(actions: [
+                photoMenu = MenuRequest(actions: [
                     MenuAction(title: L("احذف الصورة", "Remove picture"), icon: "trash", destructive: true) {
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) { draft.iconImage = nil }
                     },
