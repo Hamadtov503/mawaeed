@@ -263,6 +263,19 @@ final class MawaeedUITests: XCTestCase {
         go("home")
         sleep(1)
         checkHeaderButtons("after-menu")
+        // Scroll down and back up, then tap the header straight away.
+        app.swipeUp()
+        app.swipeDown()
+        checkHeaderButtons("after-scroll")
+        // Close a page and open the other one right away.
+        app.buttons["button.bell"].tap()
+        XCTAssertTrue(app.staticTexts["slidePage.title"].waitForExistence(timeout: 3))
+        app.buttons["button.back"].tap()
+        app.buttons["button.settings"].tap()
+        XCTAssertTrue(app.staticTexts["slidePage.title"].waitForExistence(timeout: 3), "the gear did not respond right after closing notifications")
+        XCTAssertEqual(app.staticTexts["slidePage.title"].label, "الإعدادات")
+        shot("hdr-quick-settings")
+        app.buttons["button.back"].tap()
     }
 
     private func logFrames(_ step: String) {

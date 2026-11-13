@@ -16,9 +16,17 @@ struct HomeView: View {
         // Another day picked in the calendar: just that day's.
         let appointments = isToday ? store.upcoming() : store.on(day: day)
         let allTasks = isToday ? store.openTasks : store.tasks(on: day)
+        VStack(spacing: 0) {
+        // The greeting and its two buttons stay fixed above the scrolling content: a tap on them never
+        // lands on a page that is still gliding after a scroll (that first tap would only stop it).
+        header
+            .padding(.horizontal, 18)
+            .padding(.top, 2)
+            .padding(.bottom, 12)
+            .frame(maxWidth: 650)
+            .frame(maxWidth: .infinity)
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                header
                 CalendarCard(selection: $day)
 
                 SectionHeader(title: isToday ? L("اليوم", "Today") : Fmt.dayTitle(day), detail: Fmt.hijriText(day))
@@ -53,7 +61,7 @@ struct HomeView: View {
                 }
             }
             .padding(.horizontal, 18)
-            .padding(.top, 2)
+            .padding(.top, 4)
             .padding(.bottom, 28)
             .frame(maxWidth: 650)
             .frame(maxWidth: .infinity)
@@ -67,6 +75,7 @@ struct HomeView: View {
                 .onAppear { scrollTop = top }
                 .onChange(of: top) { scrollTop = $0 }
         })
+        }
         // The menu tab sits level with the day line as the page lays out unscrolled. Both parts are measured
         // independently of scrolling, and only the settled layout is used (the very first pass, before the
         // status bar margin was applied, put the tab about 55 points too high).

@@ -32,29 +32,31 @@ struct RootView: View {
                     .zIndex(1)
             }
 
-            if pageOpen || router.menuOpen {
-                Color.black.opacity(router.menuOpen ? 0.12 : 0.18).ignoresSafeArea()
-                    .onTapGesture {
-                        if router.menuOpen { router.toggleMenu(false) } else { router.closePages() }
-                    }
-                    .transition(.opacity)
-                    .zIndex(2)
-            }
+            // Always in place and only touchable while shown: a dimmed layer that was still fading out
+            // used to swallow the first tap after closing the menu or a page.
+            Color.black.opacity(router.menuOpen ? 0.12 : (pageOpen ? 0.18 : 0)).ignoresSafeArea()
+                .onTapGesture {
+                    if router.menuOpen { router.toggleMenu(false) } else { router.closePages() }
+                }
+                .allowsHitTesting(pageOpen || router.menuOpen)
+                .zIndex(2)
             if router.menuOpen {
                 SideMenu()
                     .transition(.move(edge: .trailing).combined(with: .opacity)
                         .combined(with: .scale(scale: 0.94, anchor: .leading)))
                     .zIndex(3)
             }
-            if router.showNotifications {
-                SlidePage(title: L("التنبيهات", "Notifications"), onBack: router.closePages) { NotificationsView() }
-                    .transition(.move(edge: .trailing))
-                    .zIndex(4)
+            // The two slide-in pages stay in place off screen and are touchable only while shown, so one
+            // that is still sliding away never takes a tap meant for the bell or the gear.
+            slide(router.showNotifications) {
+                SlidePage(title: L("التنبيهات", "Notifications"), onBack: router.closePages) {
+                    NotificationsView().id(router.showNotifications)   // fresh list each time it opens
+                }
             }
-            if router.showSettings {
-                SlidePage(title: L("الإعدادات", "Settings"), onBack: router.closePages) { SettingsView() }
-                    .transition(.move(edge: .trailing))
-                    .zIndex(4)
+            slide(router.showSettings) {
+                SlidePage(title: L("الإعدادات", "Settings"), onBack: router.closePages) {
+                    SettingsView().id(router.showSettings)
+                }
             }
         }
         .actionMenu($router.menu)
@@ -87,6 +89,19 @@ struct RootView: View {
                 break
             }
         }
+    }
+
+    /// A full-screen page that slides in from the side (the trailing edge) and out again.
+    private func slide<V: View>(_ shown: Bool, @ViewBuilder _ content: () -> V) -> some View {
+        GeometryReader { g in
+            let away = (g.size.width + 40) * (Fmt.isArabic ? -1 : 1)   // offset is not mirrored: left in Arabic
+            content()
+                .offset(x: shown ? 0 : away)
+                .opacity(shown ? 1 : 0.001)
+                .allowsHitTesting(shown)
+                .accessibilityHidden(!shown)
+        }
+        .zIndex(4)
     }
 
     /// Every page stays alive; the visible one fades in with a slight drift.
