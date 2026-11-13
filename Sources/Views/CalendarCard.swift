@@ -8,7 +8,7 @@ struct CalendarCard: View {
     @State private var year: Int
     @State private var month: Int
     @State private var direction: Edge = .leading
-    @State private var swiped = false      // one month per swipe
+    @State private var swipeStart: CGPoint? = nil   // the swipe that last changed the month: one month per swipe
 
     private let hc = Fmt.hijriCalendar
     private let weekdays = [L("الأحد", "Sun"), L("الإثنين", "Mon"), L("الثلاثاء", "Tue"), L("الأربعاء", "Wed"), L("الخميس", "Thu"), L("الجمعة", "Fri"), L("السبت", "Sat")]
@@ -135,18 +135,19 @@ struct CalendarCard: View {
     /// A sideways swipe anywhere on the calendar changes the month, as soon as the finger has moved
     /// far enough (not when it lifts). Recognised alongside the day buttons.
     private var monthSwipe: some Gesture {
-        DragGesture(minimumDistance: 12)
+        // Measured on the screen: in a right-to-left layout the local x axis is mirrored.
+        DragGesture(minimumDistance: 12, coordinateSpace: .global)
             .onChanged { v in
                 let dx = v.translation.width, dy = v.translation.height
-                guard !swiped, abs(dx) > abs(dy) * 1.2, abs(dx) > 30 else { return }
-                swiped = true
+                guard swipeStart != v.startLocation, abs(dx) > abs(dy) * 1.2, abs(dx) > 30 else { return }
+                swipeStart = v.startLocation
                 // Right-to-left: swiping right goes forward in time, left goes back (mirrored in English).
                 let forward = Fmt.isArabic ? dx > 0 : dx < 0
                 // The new month comes in from the side the finger is moving away from.
                 let fromScreenLeft = dx > 0
                 shift(forward ? 1 : -1, from: (fromScreenLeft == Fmt.isArabic) ? .trailing : .leading)
             }
-            .onEnded { _ in swiped = false }
+
     }
 
     private func dayCell(_ cell: Cell) -> some View {
