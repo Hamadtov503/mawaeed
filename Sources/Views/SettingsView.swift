@@ -9,14 +9,18 @@ struct SettingsView: View {
     @EnvironmentObject var sync: SyncManager
 
     @State private var importMode: ImportMode = .folder
-    @State private var showImporter = false
-    @State private var showExporter = false
-    @State private var exportDoc = BackupDocument(data: Data())
+    @State private var picker: PickerRequest? = nil
     @State private var pendingRestore: (items: [Appointment], tasks: [TaskItem])? = nil
     @State private var menu: MenuRequest? = nil
     @State private var calendarAccount: String? = nil
 
     enum ImportMode { case folder, restore }
+
+    /// One Files picker at a time: choosing the sync folder, a backup to restore, or where to save a backup.
+    struct PickerRequest: Identifiable {
+        let id = UUID()
+        let mode: DocumentPicker.Mode
+    }
 
     struct AlertInfo: Identifiable {
         let id = UUID()
@@ -52,12 +56,11 @@ struct SettingsView: View {
         }
         .background(Theme.background.ignoresSafeArea())
         .onAppear(perform: refresh)
-        .fileImporter(isPresented: $showImporter,
-                      allowedContentTypes: importMode == .folder ? [.folder] : [.json],
-                      allowsMultipleSelection: false) { handleImport($0) }
-        .fileExporter(isPresented: $showExporter, document: exportDoc, contentType: .json,
-                      defaultFilename: L("مواعيدي-\(Fmt.fileStamp.string(from: Date()))", "Mawaeed-\(Fmt.fileStamp.string(from: Date()))")) { result in
-            if case .failure(let e) = result { menu = .notice(L("ما انحفظ الملف", "The file wasn't saved"), message: e.localizedDescription) }
+        .sheet(item: $picker) { req in
+            DocumentPicker(mode: req.mode) { urls in
+                if case .open = req.mode { handleImport(.success(urls)) }
+            }
+            .ignoresSafeArea()
         }
         .actionMenu($menu)
     }
@@ -141,14 +144,17 @@ struct SettingsView: View {
 
     private func pick(_ mode: ImportMode) {
         importMode = mode
-        DispatchQueue.main.async { showImporter = true }
+        picker = PickerRequest(mode: .open(mode == .folder ? [.folder] : [.json]))
     }
 
     private func export() {
         do {
             let file = SyncFile(items: store.items.map { var a = $0; a.calendarEventID = nil; return a }, tasks: store.tasks, deleted: nil)
-            exportDoc = BackupDocument(data: try Store.encoder.encode(file))
-            showExporter = true
+            // Written to a temporary file named after today, then handed to the Files picker to save a copy.
+            let name = L("مواعيدي-\(Fmt.fileStamp.string(from: Date()))", "Mawaeed-\(Fmt.fileStamp.string(from: Date()))") + ".json"
+            let url = FileManager.default.temporaryDirectory.appendingPathComponent(name)
+            try Store.encoder.encode(file).write(to: url, options: .atomic)
+            picker = PickerRequest(mode: .export(url))
         } catch {
             menu = .notice(L("ما قدرت أجهّز النسخة", "Couldn't prepare the copy"), message: error.localizedDescription)
         }

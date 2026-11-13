@@ -1,5 +1,6 @@
 import SwiftUI
 import PhotosUI
+import UniformTypeIdentifiers
 
 /// A centred card over a dimmed background. Tapping anywhere outside the card closes it.
 struct PopupModifier<Popup: View>: ViewModifier {
@@ -399,6 +400,47 @@ extension View {
         onLongPressGesture(minimumDuration: 0.45) {
             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
             withAnimation(.spring(response: 0.32, dampingFraction: 0.9)) { action() }
+        }
+    }
+}
+
+// MARK: Files
+
+/// iOS's own Files picker, used directly: open a folder or a file, or save a copy of a file.
+/// (SwiftUI's fileImporter and fileExporter on the same page interfered with each other, and
+/// tapping «فتح» on a folder did nothing.)
+struct DocumentPicker: UIViewControllerRepresentable {
+    enum Mode {
+        case open([UTType])
+        case export(URL)
+    }
+
+    let mode: Mode
+    let onPick: ([URL]) -> Void
+
+    func makeCoordinator() -> Coordinator { Coordinator(onPick: onPick) }
+
+    func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
+        let vc: UIDocumentPickerViewController
+        switch mode {
+        case .open(let types):
+            vc = UIDocumentPickerViewController(forOpeningContentTypes: types, asCopy: false)
+            vc.allowsMultipleSelection = false
+        case .export(let url):
+            vc = UIDocumentPickerViewController(forExporting: [url], asCopy: true)
+        }
+        vc.delegate = context.coordinator
+        return vc
+    }
+
+    func updateUIViewController(_ vc: UIDocumentPickerViewController, context: Context) {}
+
+    final class Coordinator: NSObject, UIDocumentPickerDelegate {
+        let onPick: ([URL]) -> Void
+        init(onPick: @escaping ([URL]) -> Void) { self.onPick = onPick }
+
+        func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+            onPick(urls)
         }
     }
 }
