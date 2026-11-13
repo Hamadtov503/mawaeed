@@ -1,7 +1,10 @@
 name: UI tests
 
-# Manual only (Actions → UI tests → Run workflow): simulator runs use a lot of macOS minutes.
+# On every push to main (free while the repository is public). If it goes private again, make this
+# manual-only: simulator runs use a lot of paid macOS minutes on private repositories.
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
