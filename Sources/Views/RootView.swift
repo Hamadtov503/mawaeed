@@ -317,11 +317,13 @@ struct Touchable: ViewModifier {
 }
 
 extension AnyTransition {
-    /// Slides in from the trailing edge; on the way out it slides back and takes no taps.
+    /// Slides in from the trailing edge; on the way out it slides back, fades and takes no taps.
     static var slidePage: AnyTransition {
         .asymmetric(
             insertion: .move(edge: .trailing),
-            removal: .move(edge: .trailing).combined(with: .modifier(active: Touchable(on: false), identity: Touchable(on: true)))
+            // Fades as it leaves, so its shadow doesn't linger as a grey strip on the screen's edge.
+            removal: .move(edge: .trailing).combined(with: .opacity)
+                .combined(with: .modifier(active: Touchable(on: false), identity: Touchable(on: true)))
         )
     }
 
