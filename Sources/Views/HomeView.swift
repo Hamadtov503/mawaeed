@@ -7,6 +7,9 @@ struct HomeView: View {
     @EnvironmentObject var router: Router
     @EnvironmentObject var settings: AppSettings
     @State private var day = Date()
+    /// True while the chosen day is today: then a new day (past midnight, or on coming back to the app)
+    /// moves the choice along with it. A day picked by hand stays put.
+    @State private var followsToday = true
     @State private var lineInContent: CGFloat = 0
     @State private var scrollTop: CGFloat = 0
 
@@ -82,7 +85,15 @@ struct HomeView: View {
         .onChange(of: scrollTop) { _ in publishLine() }
         .onChange(of: lineInContent) { _ in publishLine() }
         .onAppear { DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { publishLine() } }
+        .onChange(of: day) { followsToday = Fmt.greg.isDateInToday($0) }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { _ in catchUpWithToday() }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in catchUpWithToday() }
         .background(Theme.background.ignoresSafeArea())
+    }
+
+    private func catchUpWithToday() {
+        guard followsToday, !Fmt.greg.isDateInToday(day) else { return }
+        withAnimation(Router.soft) { day = Date() }
     }
 
     private func publishLine() {

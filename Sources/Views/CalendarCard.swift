@@ -62,6 +62,11 @@ struct CalendarCard: View {
         }
         .contentShape(Rectangle())
         .simultaneousGesture(monthSwipe)
+        // When the chosen day moves to another month (a new day starting, say), show that month.
+        .onChange(of: selection) { d in
+            let c = hc.dateComponents([.year, .month], from: d)
+            if c.year != year || c.month != month { withAnimation(.spring(response: 0.3, dampingFraction: 0.9)) { jump(to: d) } }
+        }
     }
 
     private var header: some View {
