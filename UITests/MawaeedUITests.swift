@@ -270,12 +270,14 @@ final class MawaeedUITests: XCTestCase {
         // Close a page and open the other one right away.
         app.buttons["button.bell"].tap()
         XCTAssertTrue(app.staticTexts["slidePage.title"].waitForExistence(timeout: 3))
+        sleep(1)
         app.buttons["button.back"].tap()
-        app.buttons["button.settings"].tap()
-        XCTAssertTrue(app.staticTexts["slidePage.title"].waitForExistence(timeout: 3), "the gear did not respond right after closing notifications")
-        XCTAssertEqual(app.staticTexts["slidePage.title"].label, "الإعدادات")
+        app.buttons["button.settings"].tap()   // straight away, while notifications is still sliding out
+        let settingsTitle = app.staticTexts.matching(NSPredicate(format: "identifier == 'slidePage.title' AND label == 'الإعدادات'")).firstMatch
+        XCTAssertTrue(settingsTitle.waitForExistence(timeout: 3), "the gear did not respond right after closing notifications")
+        sleep(1)
         shot("hdr-quick-settings")
-        app.buttons["button.back"].tap()
+        app.buttons["button.back"].firstMatch.tap()
     }
 
     private func logFrames(_ step: String) {

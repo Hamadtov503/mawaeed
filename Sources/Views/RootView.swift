@@ -43,20 +43,22 @@ struct RootView: View {
             if router.menuOpen {
                 SideMenu()
                     .transition(.move(edge: .trailing).combined(with: .opacity)
-                        .combined(with: .scale(scale: 0.94, anchor: .leading)))
+                        .combined(with: .scale(scale: 0.94, anchor: .leading))
+                        .combined(with: .asymmetric(insertion: .identity,
+                                                    removal: .modifier(active: Touchable(on: false), identity: Touchable(on: true)))))
                     .zIndex(3)
             }
-            // The two slide-in pages stay in place off screen and are touchable only while shown, so one
-            // that is still sliding away never takes a tap meant for the bell or the gear.
-            slide(router.showNotifications) {
-                SlidePage(title: L("التنبيهات", "Notifications"), onBack: router.closePages) {
-                    NotificationsView().id(router.showNotifications)   // fresh list each time it opens
-                }
+            // The slide-in pages stop taking taps the moment they start sliding away, so a tap on the bell
+            // or the gear right after closing one is never caught by the page on its way out.
+            if router.showNotifications {
+                SlidePage(title: L("التنبيهات", "Notifications"), onBack: router.closePages) { NotificationsView() }
+                    .transition(.slidePage)
+                    .zIndex(4)
             }
-            slide(router.showSettings) {
-                SlidePage(title: L("الإعدادات", "Settings"), onBack: router.closePages) {
-                    SettingsView().id(router.showSettings)
-                }
+            if router.showSettings {
+                SlidePage(title: L("الإعدادات", "Settings"), onBack: router.closePages) { SettingsView() }
+                    .transition(.slidePage)
+                    .zIndex(4)
             }
         }
         .actionMenu($router.menu)
@@ -89,20 +91,6 @@ struct RootView: View {
                 break
             }
         }
-    }
-
-    /// A full-screen page that slides in from the side (the trailing edge) and out again.
-    private func slide<V: View>(_ shown: Bool, @ViewBuilder _ content: () -> V) -> some View {
-        let page = content()
-        return GeometryReader { g in
-            let away = (g.size.width + 40) * (Fmt.isArabic ? -1 : 1)   // offset is not mirrored: left in Arabic
-            page
-                .offset(x: shown ? 0 : away)
-                .opacity(shown ? 1 : 0.001)
-                .allowsHitTesting(shown)
-                .accessibilityHidden(!shown)
-        }
-        .zIndex(4)
     }
 
     /// Every page stays alive; the visible one fades in with a slight drift.
@@ -317,6 +305,31 @@ struct SlidePage<Content: View>: View {
                 .onEnded { v in
                     if abs(v.translation.width) > 90 && abs(v.translation.height) < 80 { onBack() }
                 }
+        )
+    }
+}
+
+
+/// Turns touches on or off. Used in transitions: a view on its way out stops taking taps at once.
+struct Touchable: ViewModifier {
+    let on: Bool
+    func body(content: Content) -> some View { content.allowsHitTesting(on) }
+}
+
+extension AnyTransition {
+    /// Slides in from the trailing edge; on the way out it slides back and takes no taps.
+    static var slidePage: AnyTransition {
+        .asymmetric(
+            insertion: .move(edge: .trailing),
+            removal: .move(edge: .trailing).combined(with: .modifier(active: Touchable(on: false), identity: Touchable(on: true)))
+        )
+    }
+
+    /// Fades out without taking taps on the way.
+    static var fadeUntouchable: AnyTransition {
+        .asymmetric(
+            insertion: .opacity,
+            removal: .opacity.combined(with: .modifier(active: Touchable(on: false), identity: Touchable(on: true)))
         )
     }
 }
