@@ -105,11 +105,10 @@ extension View {
             .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous).stroke(Theme.border, lineWidth: 1))
     }
 
-    /// Right-to-left, Arabic locale with Western digits, Gregorian calendar.
-    /// Applied at the app root and again at the root of every sheet. SwiftUI does not pick up the
-    /// direction on its own here: without it, Form/List content was drawn mirrored.
+    /// The app's language direction, locale and calendar. Applied at the app root and again at the
+    /// root of every sheet.
     func appEnvironment() -> some View {
-        self.environment(\.layoutDirection, Fmt.isArabic ? .rightToLeft : .leftToRight)
+        self.modifier(AppDirection())
             .environment(\.locale, Fmt.locale)
             .environment(\.calendar, Fmt.greg)
             .font(.app(.body))
@@ -241,6 +240,24 @@ extension TaskPriority {
         case .medium: return Theme.navy
         case .high: return Theme.dyn(0xB4621A, 0xF0A35E)
         case .urgent: return Theme.burgundy
+        }
+    }
+}
+
+
+/// Sets the writing direction only when it differs from the direction iOS itself runs the app in.
+/// Forcing the direction iOS already uses makes SwiftUI flip the parts iOS draws (long-press menus,
+/// date pickers, dialogs) a second time, which mirrors their text. The system language is kept in
+/// step with the app's language (see `AppSettings.syncSystemLanguage`), so normally nothing is forced.
+struct AppDirection: ViewModifier {
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        let wanted: LayoutDirection = Fmt.isArabic ? .rightToLeft : .leftToRight
+        let system: LayoutDirection = UIApplication.shared.userInterfaceLayoutDirection == .rightToLeft ? .rightToLeft : .leftToRight
+        if wanted == system {
+            content
+        } else {
+            content.environment(\.layoutDirection, wanted)
         }
     }
 }

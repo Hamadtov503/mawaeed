@@ -16,7 +16,7 @@ targets:
       properties:
         CFBundleDisplayName: مواعيدي
         CFBundleDevelopmentRegion: ar
-        CFBundleLocalizations: [ar]
+        CFBundleLocalizations: [ar, en]
         CFBundleShortVersionString: "$(MARKETING_VERSION)"
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         MawaeedChannel: Beta

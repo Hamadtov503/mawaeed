@@ -316,9 +316,40 @@ final class MawaeedUITests: XCTestCase {
         XCTAssertEqual(month.label, before, "back arrow did not return to this month: \(step)")
     }
 
+    /// Menus and dialogs drawn by iOS (long-press menu, delete confirmation) must read normally,
+    /// not mirrored. Checked by eye on the screenshots.
+    func testSystemMenusNotMirrored() {
+        launchToHome()
+        go("appointments")
+        addAppointment(7, dayOffset: 1)
+        let card = element(containing: "Clinic 7")
+        XCTAssertTrue(card.waitForExistence(timeout: 4))
+        card.press(forDuration: 1.2)
+        sleep(2)
+        shot("50-long-press-menu")
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.05)).tap()
+        sleep(1)
+        go("tasks")
+        app.buttons["addTask"].tap()
+        let title = app.textFields["field.taskTitle"]
+        XCTAssertTrue(title.waitForExistence(timeout: 5))
+        title.tap()
+        title.typeText("Menu check")
+        app.buttons["button.save"].tap()
+        sleep(2)
+        element(containing: "Menu check").tap()
+        sleep(1)
+        let delete = element(containing: "حذف المهمة")
+        if delete.waitForExistence(timeout: 3) {
+            delete.tap()
+            sleep(1)
+            shot("51-delete-dialog")
+        }
+    }
+
     /// The same screens in English.
     func testEnglish() {
-        app.launchArguments += ["-lang-en"]
+        app.launchArguments = ["-uitest", "-lang-en", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         launchToHome()
         shot("30-en-home")
         go("appointments")

@@ -14,7 +14,13 @@ final class AppSettings: ObservableObject {
     /// The name the greeting uses ("صباح الخير يا …").
     @Published var userName: String { didSet { d.set(userName, forKey: "userName") } }
     /// The app's language (Arabic by default). Changing it rebuilds the screens and reschedules reminders.
-    @Published var language: AppLanguage { didSet { d.set(language.rawValue, forKey: "language"); changed() } }
+    @Published var language: AppLanguage { didSet { d.set(language.rawValue, forKey: "language"); syncSystemLanguage(); changed() } }
+
+    /// iOS runs the app in the first of these languages from the next launch on, so the parts iOS
+    /// draws (menus, pickers, dialogs) follow the app's own language and direction.
+    func syncSystemLanguage() {
+        d.set([language.rawValue], forKey: "AppleLanguages")
+    }
     /// Set once the intro has been completed.
     @Published var onboarded: Bool { didSet { d.set(onboarded, forKey: "onboarded") } }
 
@@ -32,6 +38,7 @@ final class AppSettings: ObservableObject {
         userName = d.string(forKey: "userName") ?? ""
         onboarded = d.bool(forKey: "onboarded")
         language = AppLanguage(rawValue: d.string(forKey: "language") ?? "ar") ?? .ar
+        syncSystemLanguage()
     }
 
     private func changed() {
