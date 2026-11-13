@@ -9,7 +9,6 @@ struct SettingsView: View {
     @EnvironmentObject var sync: SyncManager
 
     @State private var importMode: ImportMode = .syncFile
-    @State private var picker: PickerRequest? = nil
     @State private var pendingRestore: (items: [Appointment], tasks: [TaskItem])? = nil
     @State private var menu: MenuRequest? = nil
     @State private var calendarAccount: String? = nil
@@ -21,11 +20,6 @@ struct SettingsView: View {
 
     enum ImportMode { case syncFile, restore }
 
-    /// One Files picker at a time: choosing the sync folder, a backup to restore, or where to save a backup.
-    struct PickerRequest: Identifiable {
-        let id = UUID()
-        let mode: DocumentPicker.Mode
-    }
 
     struct AlertInfo: Identifiable {
         let id = UUID()
@@ -61,16 +55,6 @@ struct SettingsView: View {
         }
         .background(Theme.background.ignoresSafeArea())
         .onAppear(perform: refresh)
-        .sheet(item: $picker) { req in
-            DocumentPicker(mode: req.mode) { urls in
-                switch req.mode {
-                case .open: handleImport(.success(urls))
-                case .move: if let u = urls.first { sync.setFolder(u) }   // the sync file, now in iCloud Drive
-                case .export: break
-                }
-            }
-            .ignoresSafeArea()
-        }
         .actionMenu($menu)
         // A sync by hand ends with a word on the same line: «تمت المزامنة» in green, or a failure in red.
         .onChange(of: sync.isSyncing) { busy in
@@ -213,14 +197,16 @@ struct SettingsView: View {
 
     private func pick(_ mode: ImportMode) {
         importMode = mode
-        picker = PickerRequest(mode: .open([.json]))
+        FilePicker.present(.open([.json])) { urls in handleImport(.success(urls)) }
     }
 
     /// Save a sync file holding everything on this phone (into iCloud Drive); it is used from then on.
     /// The save screen opens straight away; it has its own Cancel.
     private func startSync() {
         do {
-            picker = PickerRequest(mode: .move(try sync.makeStarterFile()))
+            FilePicker.present(.move(try sync.makeStarterFile())) { urls in
+                if let u = urls.first { sync.setFolder(u) }   // the sync file, now in iCloud Drive
+            }
         } catch {
             menu = .notice(L("تعذّر تجهيز الملف", "Couldn't prepare the file"), message: error.localizedDescription)
         }
@@ -233,7 +219,7 @@ struct SettingsView: View {
             let name = L("مواعيدي-\(Fmt.fileStamp.string(from: Date()))", "Mawaeed-\(Fmt.fileStamp.string(from: Date()))") + ".json"
             let url = FileManager.default.temporaryDirectory.appendingPathComponent(name)
             try Store.encoder.encode(file).write(to: url, options: .atomic)
-            picker = PickerRequest(mode: .export(url))
+            FilePicker.present(.export(url)) { _ in }
         } catch {
             menu = .notice(L("تعذّر تجهيز النسخة", "Couldn't prepare the copy"), message: error.localizedDescription)
         }

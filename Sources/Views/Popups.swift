@@ -447,3 +447,57 @@ struct DocumentPicker: UIViewControllerRepresentable {
         }
     }
 }
+
+
+/// Presents iOS's Files picker straight from UIKit as a page sheet that can be swiped down to cancel
+/// (inside a SwiftUI sheet the picker held the sheet in place, so leaving it took several taps).
+enum FilePicker {
+    private static var current: Delegate?
+
+    static func present(_ mode: DocumentPicker.Mode, onPick: @escaping ([URL]) -> Void) {
+        let vc: UIDocumentPickerViewController
+        switch mode {
+        case .open(let types):
+            vc = Swipeable(forOpeningContentTypes: types, asCopy: false)
+            vc.allowsMultipleSelection = false
+        case .export(let url):
+            vc = Swipeable(forExporting: [url], asCopy: true)
+        case .move(let url):
+            vc = Swipeable(forExporting: [url], asCopy: false)
+        }
+        let delegate = Delegate(onPick: onPick)
+        current = delegate
+        vc.delegate = delegate
+        vc.modalPresentationStyle = .pageSheet
+        vc.presentationController?.delegate = delegate
+        topController()?.present(vc, animated: true)
+    }
+
+    private static func topController() -> UIViewController? {
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        var top = scenes.flatMap(\.windows).first { $0.isKeyWindow }?.rootViewController
+        while let next = top?.presentedViewController { top = next }
+        return top
+    }
+
+    /// Never holds its sheet in place: a swipe down always closes it (and cancels).
+    private final class Swipeable: UIDocumentPickerViewController {
+        override var isModalInPresentation: Bool {
+            get { false }
+            set {}
+        }
+    }
+
+    private final class Delegate: NSObject, UIDocumentPickerDelegate, UIAdaptivePresentationControllerDelegate {
+        let onPick: ([URL]) -> Void
+        init(onPick: @escaping ([URL]) -> Void) { self.onPick = onPick }
+
+        func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+            onPick(urls)
+            FilePicker.current = nil
+        }
+        func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) { FilePicker.current = nil }
+        func presentationControllerShouldDismiss(_ presentationController: UIPresentationController) -> Bool { true }
+        func presentationControllerDidDismiss(_ presentationController: UIPresentationController) { FilePicker.current = nil }
+    }
+}
