@@ -93,8 +93,8 @@ final class Router: ObservableObject {
         }
     }
 
-    /// A slower, fully damped spring so the menu glides in and out without a bounce.
-    static let glide = Animation.spring(response: 0.55, dampingFraction: 1.0)
+    /// A gentle spring for the menu and page changes: a soft glide with only a hint of settle.
+    static let glide = Animation.spring(response: 0.5, dampingFraction: 0.88)
 
     func toggleMenu(_ open: Bool? = nil) {
         withAnimation(Self.glide) { menuOpen = open ?? !menuOpen }

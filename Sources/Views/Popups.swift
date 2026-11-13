@@ -1,4 +1,5 @@
 import SwiftUI
+import PhotosUI
 
 /// A centred card over a dimmed background. Tapping anywhere outside the card closes it.
 struct PopupModifier<Popup: View>: ViewModifier {
@@ -260,6 +261,39 @@ struct TimePickerPopup: View {
                     }
                 }
             }
+        }
+    }
+}
+
+/// Pick one picture from Photos (no photo-library permission needed with PHPicker).
+struct PhotoPicker: UIViewControllerRepresentable {
+    let onPick: (UIImage) -> Void
+    @Environment(\.presentationMode) private var presentationMode
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    func makeUIViewController(context: Context) -> PHPickerViewController {
+        var config = PHPickerConfiguration()
+        config.filter = .images
+        config.selectionLimit = 1
+        let p = PHPickerViewController(configuration: config)
+        p.delegate = context.coordinator
+        return p
+    }
+
+    func updateUIViewController(_ vc: PHPickerViewController, context: Context) {}
+
+    final class Coordinator: NSObject, PHPickerViewControllerDelegate {
+        let parent: PhotoPicker
+        init(_ p: PhotoPicker) { parent = p }
+
+        func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
+            if let r = results.first, r.itemProvider.canLoadObject(ofClass: UIImage.self) {
+                r.itemProvider.loadObject(ofClass: UIImage.self) { obj, _ in
+                    if let img = obj as? UIImage { DispatchQueue.main.async { self.parent.onPick(img) } }
+                }
+            }
+            parent.presentationMode.wrappedValue.dismiss()
         }
     }
 }

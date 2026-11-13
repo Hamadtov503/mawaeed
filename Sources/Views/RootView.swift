@@ -18,7 +18,9 @@ struct RootView: View {
                 page(.appointments) { AppointmentsView() }
                 page(.tasks) { TasksView() }
             }
-            .scaleEffect(pageOpen ? 0.95 : (router.menuOpen ? 0.985 : 1))
+            // While the menu is out the page eases away from it (anchored on the right) and softens.
+            .scaleEffect(pageOpen ? 0.95 : (router.menuOpen ? 0.96 : 1), anchor: router.menuOpen ? .trailing : .center)
+            .blur(radius: router.menuOpen ? 1.5 : 0)
             .opacity(pageOpen ? 0.6 : 1)
 
             if !router.menuOpen && !pageOpen {
@@ -37,7 +39,8 @@ struct RootView: View {
             }
             if router.menuOpen {
                 SideMenu()
-                    .transition(.move(edge: .trailing).combined(with: .opacity))
+                    .transition(.move(edge: .trailing).combined(with: .opacity)
+                        .combined(with: .scale(scale: 0.94, anchor: .leading)))
                     .zIndex(3)
             }
             if router.showNotifications {
@@ -175,11 +178,19 @@ struct UnevenCapsule: Shape {
 struct SideMenu: View {
     @EnvironmentObject var router: Router
     @EnvironmentObject var store: Store
+    @State private var shown = false
 
     var body: some View {
         HStack(spacing: 0) {
             VStack(spacing: 14) {
-                ForEach(Page.allCases) { p in item(p) }
+                    // The items arrive one after another in a soft wave.
+                ForEach(Array(Page.allCases.enumerated()), id: \.element) { i, p in
+                    item(p)
+                        .opacity(shown ? 1 : 0)
+                        .offset(x: shown ? 0 : -22)
+                        .scaleEffect(shown ? 1 : 0.9)
+                        .animation(.spring(response: 0.45, dampingFraction: 0.8).delay(0.05 + 0.06 * Double(i)), value: shown)
+                }
             }
             .environment(\.layoutDirection, Fmt.isArabic ? .rightToLeft : .leftToRight)
             .padding(.vertical, 18)
@@ -198,6 +209,7 @@ struct SideMenu: View {
         }
         .environment(\.layoutDirection, .leftToRight)   // pin the panel to the screen's left edge
         .frame(maxHeight: .infinity)
+        .onAppear { shown = true }
         .gesture(DragGesture(minimumDistance: 20).onEnded { v in
             if abs(v.translation.width) > 50 { router.toggleMenu(false) }
         })

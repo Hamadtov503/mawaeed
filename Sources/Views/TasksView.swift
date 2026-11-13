@@ -72,8 +72,8 @@ struct TaskRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            statusMark
-            Tile(icon: task.displayIcon, color: task.isDone ? Theme.muted : task.priority.color, size: 34)
+            if interactive { statusMark }      // no tick on the home page: a task is finished from inside it
+            TaskIcon(task: task, size: 42)
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
                     Text(task.title.isEmpty ? L("بدون عنوان", "Untitled") : task.title)
@@ -131,6 +131,44 @@ struct TaskRow: View {
     }
 }
 
+/// The task's icon: the user's picture if there is one, otherwise the chosen symbol.
+/// Same size and corner shape as an appointment's icon tile.
+struct TaskIcon: View {
+    let task: TaskItem
+    var size: CGFloat = 42
+
+    var body: some View {
+        if let data = task.iconImage, let ui = UIImage(data: data) {
+            Image(uiImage: ui)
+                .resizable()
+                .scaledToFill()
+                .frame(width: size, height: size)
+                .clipShape(RoundedRectangle(cornerRadius: size * 0.3, style: .continuous))
+                .opacity(task.isDone ? 0.55 : 1)
+        } else {
+            Tile(icon: task.displayIcon, color: task.isDone ? Theme.muted : task.priority.color, size: size)
+        }
+    }
+}
+
+enum IconImage {
+    /// Crops to a centred square and shrinks to 120×120, so any picture becomes a small icon (~5 KB).
+    static func make(from image: UIImage) -> Data? {
+        let side = min(image.size.width, image.size.height)
+        guard side > 0 else { return nil }
+        let target: CGFloat = 120
+        let scale = target / side
+        let drawSize = CGSize(width: image.size.width * scale, height: image.size.height * scale)
+        let format = UIGraphicsImageRendererFormat.default()
+        format.scale = 1
+        let out = UIGraphicsImageRenderer(size: CGSize(width: target, height: target), format: format).image { _ in
+            image.draw(in: CGRect(x: (target - drawSize.width) / 2, y: (target - drawSize.height) / 2,
+                                  width: drawSize.width, height: drawSize.height))
+        }
+        return out.jpegData(compressionQuality: 0.8)
+    }
+}
+
 /// Add or edit a task (a sheet; cards in a ScrollView, no Form): title and icon, priority,
 /// open or scheduled (start now or at a chosen time, and an end), reminder, notes, done.
 struct TaskEditor: View {
@@ -140,6 +178,7 @@ struct TaskEditor: View {
     @State private var startNow: Bool
     @State private var picking: Picking? = nil
     @State private var confirmDelete = false
+    @State private var choosingPhoto = false
     let onFinish: () -> Void
 
     enum Picking { case startDay, startTime, endDay, endTime }
@@ -182,6 +221,7 @@ struct TaskEditor: View {
                             segment(L("محدد بوقت", "Scheduled"), on: scheduled, color: Theme.navy) { setScheduled(true) }
                         }
                         if scheduled {
+                          VStack(alignment: .leading, spacing: 12) {
                             Text(L("بداية المهمة", "Start")).font(.app(.footnote, .bold)).foregroundColor(Theme.muted)
                             HStack(spacing: 6) {
                                 segment(L("الآن", "Now"), on: startNow, color: Theme.forest) {
@@ -192,10 +232,13 @@ struct TaskEditor: View {
                                 segment(L("وقت وتاريخ", "Pick a time"), on: !startNow, color: Theme.forest) { startNow = false }
                             }
                             if !startNow {
-                                PickerRow(title: L("التاريخ", "Date"), value: Fmt.dateText(startBinding.wrappedValue, hasTime: false),
-                                          icon: "calendar") { open(.startDay) }
-                                PickerRow(title: L("الوقت", "Time"), value: Fmt.timeText(startBinding.wrappedValue),
-                                          icon: "clock") { open(.startTime) }
+                                VStack(alignment: .leading, spacing: 12) {
+                                    PickerRow(title: L("التاريخ", "Date"), value: Fmt.dateText(startBinding.wrappedValue, hasTime: false),
+                                              icon: "calendar") { open(.startDay) }
+                                    PickerRow(title: L("الوقت", "Time"), value: Fmt.timeText(startBinding.wrappedValue),
+                                              icon: "clock") { open(.startTime) }
+                                }
+                                .transition(.opacity.combined(with: .move(edge: .top)))
                             }
                             Divider()
                             Text(L("نهاية المهمة", "End")).font(.app(.footnote, .bold)).foregroundColor(Theme.muted)
@@ -205,6 +248,9 @@ struct TaskEditor: View {
                             PickerRow(title: L("الوقت", "Time"), value: Fmt.timeText(endBinding.wrappedValue),
                                       icon: "clock") { open(.endTime) }
                             Toggle(L("ذكّرني عند نهاية المهمة", "Remind me at the end"), isOn: $draft.remind)
+                          }
+                          .transition(.asymmetric(insertion: .opacity.combined(with: .move(edge: .top)),
+                                                  removal: .opacity))
                         }
                     }
 
@@ -245,6 +291,8 @@ struct TaskEditor: View {
                 .padding(18)
                 .frame(maxWidth: 650)
                 .frame(maxWidth: .infinity)
+                .animation(.spring(response: 0.4, dampingFraction: 0.88), value: scheduled)
+                .animation(.spring(response: 0.4, dampingFraction: 0.88), value: startNow)
             }
             .background(Theme.background.ignoresSafeArea())
             .navigationTitle(isNew ? L("مهمة جديدة", "New task") : L("تعديل المهمة", "Edit task"))
@@ -284,9 +332,34 @@ struct TaskEditor: View {
     private var iconPicker: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
+                // Your own picture: shown first, chosen from Photos.
+                Button { choosingPhoto = true } label: {
+                    Group {
+                        if let data = draft.iconImage, let ui = UIImage(data: data) {
+                            Image(uiImage: ui).resizable().scaledToFill()
+                        } else {
+                            Image(systemName: "photo.badge.plus")
+                                .font(.system(size: 17, weight: .semibold))
+                                .foregroundColor(draft.priority.color)
+                        }
+                    }
+                    .frame(width: 42, height: 42)
+                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(draft.priority.color.opacity(0.1)))
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(draft.iconImage != nil ? draft.priority.color : Color.clear, lineWidth: 2.5))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(L("صورة من الألبوم", "Picture from Photos"))
+
                 ForEach(TaskItem.icons, id: \.self) { name in
-                    let on = draft.displayIcon == name
-                    Button { withAnimation(.easeInOut(duration: 0.15)) { draft.icon = name } } label: {
+                    let on = draft.iconImage == nil && draft.displayIcon == name
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.15)) {
+                            draft.icon = name
+                            draft.iconImage = nil
+                        }
+                    } label: {
                         Image(systemName: name)
                             .font(.system(size: 17, weight: .semibold))
                             .foregroundColor(on ? .white : draft.priority.color)
@@ -298,6 +371,14 @@ struct TaskEditor: View {
                 }
             }
             .padding(.vertical, 2)
+        }
+        .sheet(isPresented: $choosingPhoto) {
+            PhotoPicker { image in
+                if let data = IconImage.make(from: image) {
+                    withAnimation(.easeInOut(duration: 0.2)) { draft.iconImage = data }
+                }
+            }
+            .ignoresSafeArea()
         }
     }
 
