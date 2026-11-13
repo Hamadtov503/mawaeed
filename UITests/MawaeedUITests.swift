@@ -162,6 +162,7 @@ final class MawaeedUITests: XCTestCase {
             if n == 1 {
                 // Two icon buttons only; the second opens the grid, and picking an icon closes it.
                 XCTAssertTrue(app.buttons["button.taskPhoto"].exists, "photo button missing")
+                shot("10-icon-buttons")
                 app.buttons["button.taskIcons"].tap()
                 let cart = app.buttons["icon.cart.fill"]
                 XCTAssertTrue(cart.waitForExistence(timeout: 3), "icon grid did not open")

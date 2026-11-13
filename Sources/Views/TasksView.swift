@@ -343,14 +343,14 @@ struct TaskEditor: View {
                     if let data = draft.iconImage, let ui = UIImage(data: data) {
                         Image(uiImage: ui).resizable().scaledToFill()
                     } else {
-                        PhotosFlower().padding(5)
+                        PhotosFlower().padding(6)
                     }
                 }
                 .frame(width: 42, height: 42)
-                .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white))
+                .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Theme.card))
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .stroke(draft.iconImage != nil ? draft.priority.color : Color.clear, lineWidth: 2.5))
+                    .stroke(draft.iconImage != nil ? draft.priority.color : Theme.border, lineWidth: draft.iconImage != nil ? 2.5 : 1))
             }
             .buttonStyle(.plain)
             .accessibilityLabel(L("صورة من الألبوم", "Picture from Photos"))
@@ -371,11 +371,11 @@ struct TaskEditor: View {
                 UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                 withAnimation(.spring(response: 0.32, dampingFraction: 0.9)) { choosingIcon = true }
             } label: {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundColor(Theme.ink)
+                SearchGlass()
+                    .padding(9)
                     .frame(width: 42, height: 42)
-                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white))
+                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Theme.card))
+                    .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(Theme.border, lineWidth: 1))
             }
             .buttonStyle(.plain)
             .accessibilityLabel(L("اختر أيقونة", "Choose an icon"))
@@ -497,15 +497,18 @@ struct TaskEditor: View {
 }
 
 
-/// A small colourful flower of see-through petals: the "pick a photo" button.
+/// The "pick a photo" mark: a flower of see-through petals in the app's own colours
+/// (burgundy, rose, sand gold, forest, teal, navy, slate and plum), overlapping softly.
 struct PhotosFlower: View {
     private let colors: [Color] = [
-        Color(red: 0.84, green: 0.27, blue: 0.27), Color(red: 0.86, green: 0.36, blue: 0.62),
-        Color(red: 0.62, green: 0.38, blue: 0.84), Color(red: 0.33, green: 0.37, blue: 0.82),
-        Color(red: 0.33, green: 0.62, blue: 0.85), Color(red: 0.33, green: 0.78, blue: 0.62),
-        Color(red: 0.36, green: 0.76, blue: 0.33), Color(red: 0.62, green: 0.80, blue: 0.33),
-        Color(red: 0.84, green: 0.80, blue: 0.27), Color(red: 0.88, green: 0.62, blue: 0.27),
-        Color(red: 0.86, green: 0.48, blue: 0.30), Color(red: 0.84, green: 0.38, blue: 0.30),
+        Theme.burgundy,
+        Color(red: 0.76, green: 0.36, blue: 0.42),   // rose
+        Color(red: 0.80, green: 0.62, blue: 0.30),   // sand gold
+        Color(red: 0.45, green: 0.62, blue: 0.36),   // olive
+        Theme.forest,
+        Color(red: 0.22, green: 0.50, blue: 0.55),   // teal
+        Theme.navy,
+        Color(red: 0.45, green: 0.32, blue: 0.55),   // plum
     ]
 
     var body: some View {
@@ -514,16 +517,63 @@ struct PhotosFlower: View {
             ZStack {
                 ForEach(colors.indices, id: \.self) { i in
                     Capsule()
-                        .fill(colors[i].opacity(0.75))
-                        .frame(width: side * 0.26, height: side * 0.5)
+                        .fill(LinearGradient(colors: [colors[i].opacity(0.95), colors[i].opacity(0.6)],
+                                             startPoint: .top, endPoint: .bottom))
+                        .frame(width: side * 0.3, height: side * 0.5)
                         .offset(y: -side * 0.25)
-                        .rotationEffect(.degrees(Double(i) * 360 / Double(colors.count)))
+                        .rotationEffect(.degrees(Double(i) * 45))
+                        .blendMode(.multiply)
                 }
-                Circle().fill(Color.white).frame(width: side * 0.09, height: side * 0.09)
+                Circle().fill(Theme.card).frame(width: side * 0.12, height: side * 0.12)
             }
             .frame(width: side, height: side)
+            .compositingGroup()
             .position(x: g.size.width / 2, y: g.size.height / 2)
         }
+        .accessibilityHidden(true)
+    }
+}
+
+/// The "choose an icon" mark: a magnifying glass drawn to match the app: a navy ring with a soft
+/// glint, and a rounded burgundy handle.
+struct SearchGlass: View {
+    var body: some View {
+        GeometryReader { g in
+            let s = min(g.size.width, g.size.height)
+            let r = s * 0.31                                   // ring radius
+            let c = CGPoint(x: s * 0.42, y: s * 0.42)          // ring centre
+            let line = s * 0.11
+            ZStack {
+                // Handle, from the ring's edge down to the bottom-right.
+                Path { p in
+                    let a = CGFloat.pi / 4
+                    p.move(to: CGPoint(x: c.x + (r + line * 0.3) * cos(a), y: c.y + (r + line * 0.3) * sin(a)))
+                    p.addLine(to: CGPoint(x: s * 0.88, y: s * 0.88))
+                }
+                .stroke(Theme.burgundy, style: StrokeStyle(lineWidth: line * 1.45, lineCap: .round))
+                // Lens and ring.
+                Circle()
+                    .fill(Theme.sand.opacity(0.55))
+                    .frame(width: r * 2, height: r * 2)
+                    .position(c)
+                Circle()
+                    .stroke(Theme.navy, lineWidth: line)
+                    .frame(width: r * 2, height: r * 2)
+                    .position(c)
+                // Glint inside the lens, upper left.
+                Path { p in
+                    p.addArc(center: c, radius: r * 0.62, startAngle: .degrees(200), endAngle: .degrees(250), clockwise: false)
+                }
+                .stroke(Color.white, style: StrokeStyle(lineWidth: line * 0.55, lineCap: .round))
+                Path { p in
+                    p.addArc(center: c, radius: r * 0.62, startAngle: .degrees(265), endAngle: .degrees(282), clockwise: false)
+                }
+                .stroke(Color.white, style: StrokeStyle(lineWidth: line * 0.55, lineCap: .round))
+            }
+            .frame(width: s, height: s)
+            .position(x: g.size.width / 2, y: g.size.height / 2)
+        }
+        .environment(\.layoutDirection, .leftToRight)   // the handle always points to the bottom right
         .accessibilityHidden(true)
     }
 }
