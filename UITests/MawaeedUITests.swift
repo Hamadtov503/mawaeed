@@ -25,6 +25,16 @@ final class MawaeedUITests: XCTestCase {
         app.launch()
         XCTAssertTrue(app.buttons["menuHandle"].waitForExistence(timeout: 10), "menu tab never appeared")
         sleep(2)   // splash fades out
+        assertHandleLevelWithDayLine("after launch")
+    }
+
+    /// The tab's centre must be level with the home page's «اليوم» line (not just stay put).
+    private func assertHandleLevelWithDayLine(_ step: String, file: StaticString = #filePath, line: UInt = #line) {
+        let dayLine = app.descendants(matching: .any).matching(identifier: "dayLine").firstMatch
+        XCTAssertTrue(dayLine.waitForExistence(timeout: 5), "day line missing: \(step)", file: file, line: line)
+        XCTAssertEqual(handle.frame.midY, dayLine.frame.midY, accuracy: 8,
+                       "tab not level with «اليوم»: \(step) (tab \(handle.frame.midY), line \(dayLine.frame.midY))",
+                       file: file, line: line)
     }
 
     private var handle: XCUIElement { app.buttons["menuHandle"] }
@@ -114,6 +124,7 @@ final class MawaeedUITests: XCTestCase {
         sleep(2)
         shot("04-home-with-appointments")
         assertHandle(at: base, "home after swipe")
+        assertHandleLevelWithDayLine("home after adding appointments")
         XCTAssertTrue(app.buttons["card.Clinic 1"].exists || element(containing: "Clinic 1").exists,
                       "home does not show the new appointment")
 
@@ -133,6 +144,7 @@ final class MawaeedUITests: XCTestCase {
         sleep(2)
         shot("06-home-after-relaunch")
         assertHandle(at: base, "after relaunch")
+        assertHandleLevelWithDayLine("after relaunch")
     }
 
     /// Adds tasks, ticks one off, and checks both sections and the tab.

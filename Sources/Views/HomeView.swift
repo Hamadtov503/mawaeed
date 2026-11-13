@@ -7,6 +7,8 @@ struct HomeView: View {
     @EnvironmentObject var router: Router
     @EnvironmentObject var settings: AppSettings
     @State private var day = Date()
+    @State private var lineInContent: CGFloat = 0
+    @State private var scrollTop: CGFloat = 0
 
     var body: some View {
         let isToday = Fmt.greg.isDateInToday(day)
@@ -20,13 +22,13 @@ struct HomeView: View {
                 CalendarCard(selection: $day)
 
                 SectionHeader(title: isToday ? L("اليوم", "Today") : Fmt.dayTitle(day), detail: Fmt.hijriText(day))
-                    // Record where this line sits (unscrolled) once; the menu tab stays at that height
-                    // on every page and does not move with scrolling.
+                    .accessibilityIdentifier("dayLine")
+                    // Where this line sits inside the page content: unaffected by scrolling.
                     .background(GeometryReader { g in
-                        let y = g.frame(in: .global).midY
+                        let y = g.frame(in: .named("homeContent")).midY
                         Color.clear
-                            .onAppear { if router.dayLineY == 0 && y > 150 { router.dayLineY = y } }
-                            .onChange(of: y) { v in if router.dayLineY == 0 && v > 150 { router.dayLineY = v } }
+                            .onAppear { lineInContent = y }
+                            .onChange(of: y) { lineInContent = $0 }
                     })
 
                 label(L("مواعيدي", "Appointments"), "calendar", appointments.count)
@@ -49,8 +51,28 @@ struct HomeView: View {
             .frame(maxWidth: 650)
             .frame(maxWidth: .infinity)
             .animation(Router.soft, value: day)
+            .coordinateSpace(name: "homeContent")
         }
+        // Where the page starts on screen (after the status bar margin is applied): also unaffected by scrolling.
+        .background(GeometryReader { g in
+            let top = g.frame(in: .global).minY
+            Color.clear
+                .onAppear { scrollTop = top }
+                .onChange(of: top) { scrollTop = $0 }
+        })
+        // The menu tab sits level with the day line as the page lays out unscrolled. Both parts are measured
+        // independently of scrolling, and only the settled layout is used (the very first pass, before the
+        // status bar margin was applied, put the tab about 55 points too high).
+        .onChange(of: scrollTop) { _ in publishLine() }
+        .onChange(of: lineInContent) { _ in publishLine() }
+        .onAppear { DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { publishLine() } }
         .background(Theme.background.ignoresSafeArea())
+    }
+
+    private func publishLine() {
+        guard lineInContent > 0, !router.menuOpen, !router.showSettings, !router.showNotifications else { return }
+        let y = scrollTop + lineInContent
+        if abs(router.dayLineY - y) > 0.5 { router.dayLineY = y }
     }
 
     private var header: some View {
