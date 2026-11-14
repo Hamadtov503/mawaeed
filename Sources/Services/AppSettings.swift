@@ -20,12 +20,12 @@ final class AppSettings: ObservableObject {
 
     /// iOS runs the app in the first of these languages from the next launch on, so the parts iOS
     /// draws (menus, pickers, dialogs) follow the app's own language and direction.
-    /// Also sets the region to Saudi Arabia with Arabic digits, so iOS offers the Arabic keyboard first.
+    /// iOS always runs the app in Arabic (Saudi Arabia, Arabic digits) — set at launch in MawaeedApp —
+    /// whatever the app's own language, so the Arabic keyboard comes up first.
     func syncSystemLanguage() {
-        let languages = language == .ar ? ["ar-SA"] : ["en"]
-        let locale = language == .ar ? "ar_SA@numbers=arab" : "en_US"
-        if d.stringArray(forKey: "AppleLanguages")?.first != languages[0] { d.set(languages, forKey: "AppleLanguages") }
-        if d.string(forKey: "AppleLocale") != locale { d.set(locale, forKey: "AppleLocale") }
+        let wanted = "ar_SA@numbers=arab"
+        if d.string(forKey: "AppleLocale") != wanted { d.set(wanted, forKey: "AppleLocale") }
+        if d.stringArray(forKey: "AppleLanguages")?.first != "ar-SA" { d.set(["ar-SA"], forKey: "AppleLanguages") }
     }
     /// Set once the intro has been completed.
     @Published var onboarded: Bool { didSet { d.set(onboarded, forKey: "onboarded") } }
