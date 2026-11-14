@@ -38,6 +38,9 @@ struct MawaeedApp: App {
 
     init() {
         UITestSupport.prepare()   // no-op outside automated UI tests
+        // Before any screen: iOS runs the app in the chosen language and region (Arabic: ar-SA with
+        // Arabic digits), which also makes the Arabic keyboard come up first.
+        AppSettings.shared.syncSystemLanguage()
     }
 
     var body: some Scene {

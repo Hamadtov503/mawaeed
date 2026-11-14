@@ -20,8 +20,12 @@ final class AppSettings: ObservableObject {
 
     /// iOS runs the app in the first of these languages from the next launch on, so the parts iOS
     /// draws (menus, pickers, dialogs) follow the app's own language and direction.
+    /// Also sets the region to Saudi Arabia with Arabic digits, so iOS offers the Arabic keyboard first.
     func syncSystemLanguage() {
-        d.set([language.rawValue], forKey: "AppleLanguages")
+        let languages = language == .ar ? ["ar-SA"] : ["en"]
+        let locale = language == .ar ? "ar_SA@numbers=arab" : "en_US"
+        if d.stringArray(forKey: "AppleLanguages")?.first != languages[0] { d.set(languages, forKey: "AppleLanguages") }
+        if d.string(forKey: "AppleLocale") != locale { d.set(locale, forKey: "AppleLocale") }
     }
     /// Set once the intro has been completed.
     @Published var onboarded: Bool { didSet { d.set(onboarded, forKey: "onboarded") } }
