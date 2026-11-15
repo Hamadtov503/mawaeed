@@ -40,6 +40,7 @@ struct SettingsView: View {
                         }
                     }
                 }
+                remindersGroup
                 calendarGroup
                 // Kept on show, though on side-loaded builds iOS refuses the app access to its sync file
                 // in iCloud Drive; it is meant to work once the app is signed with an Apple developer account.
@@ -101,6 +102,25 @@ struct SettingsView: View {
                 .accessibilityIdentifier("settings.importSync")
             Button { startSync() } label: { row(L("تصدير", "Export"), "arrow.up.doc.fill", Theme.burgundy) }
                 .accessibilityIdentifier("settings.exportSync")
+        }
+    }
+
+    /// Extra reminders for every appointment with a set time, chosen together (any number).
+    private var remindersGroup: some View {
+        SettingsGroup(title: L("التنبيهات", "Reminders"), footer: nil) {
+            Text(L("تنبيهات إضافية للمواعيد المحددة بوقت", "Extra reminders for appointments with a set time"))
+                .font(.app(.subheadline)).foregroundColor(Theme.ink)
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 96), spacing: 8)], alignment: .leading, spacing: 8) {
+                ForEach([60, 180, 1440, 2880, 10080], id: \.self) { m in
+                    let on = settings.extraReminders.contains(m)
+                    Chip(title: ReminderOption.label(m, hasTime: true), selected: on) {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
+                            if on { settings.extraReminders.removeAll { $0 == m } } else { settings.extraReminders.append(m) }
+                        }
+                    }
+                    .accessibilityIdentifier("reminder.\(m)")
+                }
+            }
         }
     }
 

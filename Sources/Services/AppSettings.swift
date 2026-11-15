@@ -10,6 +10,8 @@ final class AppSettings: ObservableObject {
     @Published var reminderMinutes: Int { didSet { d.set(reminderMinutes, forKey: "reminderMinutes"); changed() } }
     @Published var digestEnabled: Bool { didSet { d.set(digestEnabled, forKey: "digestEnabled"); changed() } }
     @Published var digestMinutes: Int { didSet { d.set(digestMinutes, forKey: "digestMinutes"); changed() } }
+    /// Extra reminders (minutes before) for every appointment with a set time, on top of its own reminder.
+    @Published var extraReminders: [Int] { didSet { d.set(extraReminders, forKey: "extraReminders"); changed() } }
     @Published var calendarSync: Bool { didSet { d.set(calendarSync, forKey: "calendarSync"); changed() } }
     /// The name the greeting uses ("صباح الخير يا …").
     @Published var userName: String { didSet { d.set(userName, forKey: "userName") } }
@@ -40,6 +42,7 @@ final class AppSettings: ObservableObject {
         reminderMinutes = d.integer(forKey: "reminderMinutes")
         digestEnabled = d.bool(forKey: "digestEnabled")
         digestMinutes = d.integer(forKey: "digestMinutes")
+        extraReminders = (d.array(forKey: "extraReminders") as? [Int]) ?? []
         calendarSync = d.bool(forKey: "calendarSync")
         userName = d.string(forKey: "userName") ?? ""
         profileImage = d.data(forKey: "profileImage")

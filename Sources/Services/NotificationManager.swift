@@ -49,7 +49,9 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         var reminders: [(Date, UNNotificationRequest)] = []
         for a in items where !a.isPast(now: now) {
             let due = a.dueMoment(reminderMinutes: settings.reminderMinutes)
-            for offset in Set(a.reminders) {
+            // Its own reminder, plus the extra ones from settings for appointments with a set time.
+            let offsets = Set(a.reminders).union(a.hasTime ? settings.extraReminders : [])
+            for offset in offsets {
                 let fire = due.addingTimeInterval(TimeInterval(-offset * 60))
                 guard fire > now else { continue }
                 reminders.append((fire, request(for: a, fire: fire, id: "\(a.id.uuidString)|\(offset)")))
