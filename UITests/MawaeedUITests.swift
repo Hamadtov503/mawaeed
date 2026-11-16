@@ -387,7 +387,12 @@ final class MawaeedUITests: XCTestCase {
             let cancel = app.buttons.matching(NSPredicate(format: "label IN %@", ["إلغاء", "Cancel"])).firstMatch
             let loaded = cancel.waitForExistence(timeout: 10)
             shot("60-\(i)-picker-\(id)")
-            if loaded { cancel.tap() } else { app.swipeDown(velocity: .fast) }
+            // The picker can redraw while loading: tap Cancel only if it is still there, and try again once.
+            for _ in 0..<2 where loaded {
+                if cancel.exists && cancel.isHittable { cancel.tap(); break }
+                sleep(1)
+            }
+            if !loaded { app.swipeDown(velocity: .fast) }
             sleep(2)
             shot("61-\(i)-after-picker-\(id)")
             let back = app.buttons["button.back"]
