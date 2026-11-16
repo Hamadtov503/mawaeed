@@ -67,7 +67,8 @@ extension Fmt {
         var out = ""
         for ch in s {
             if let v = ch.wholeNumberValue { out.append(String(v)) }
-            else if ch == "." || ch == "٫" { out.append(".") }
+            // The Arabic decimal pad's separator shows as a comma; there is no grouping key on it.
+            else if ch == "." || ch == "٫" || ch == "," || ch == "،" { if !out.contains(".") { out.append(".") } }
         }
         return out.isEmpty ? nil : Double(out)
     }
