@@ -67,11 +67,22 @@ enum Fmt {
     }()
 
     /// A number in the app's digits (١٢٣ in Arabic, 123 in English), without grouping.
+    /// Number formatters are costly to make: one per language and digit count, kept for reuse
+    /// (a calendar draws dozens of numbers each time it updates).
+    private static var numFormatters: [String: NumberFormatter] = [:]
+
     static func num(_ n: Int, digits: Int = 1) -> String {
-        let f = NumberFormatter()
-        f.locale = locale
-        f.usesGroupingSeparator = false
-        f.minimumIntegerDigits = digits
+        let key = "\(AppSettings.shared.language.rawValue)|\(digits)"
+        let f: NumberFormatter
+        if let cached = numFormatters[key] {
+            f = cached
+        } else {
+            f = NumberFormatter()
+            f.locale = locale
+            f.usesGroupingSeparator = false
+            f.minimumIntegerDigits = digits
+            numFormatters[key] = f
+        }
         return f.string(from: NSNumber(value: n)) ?? "\(n)"
     }
 

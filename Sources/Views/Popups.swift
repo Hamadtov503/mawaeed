@@ -111,9 +111,11 @@ struct DayPickerPopup: View {
         let first = firstDay
         let days = cal.range(of: .day, in: .month, for: first)?.count ?? 30
         let lead = Fmt.greg.component(.weekday, from: first) - 1
-        let rows = Int(ceil(Double(lead + days) / 7))
-        return (0..<(rows * 7)).compactMap { i in
-            guard let d = Fmt.greg.date(byAdding: .day, value: i - lead, to: Fmt.greg.startOfDay(for: first)) else { return nil }
+        // Always six rows, so the popup keeps one size from month to month.
+        _ = days
+        let start = Fmt.greg.startOfDay(for: first)
+        return (0..<42).compactMap { i in
+            guard let d = Fmt.greg.date(byAdding: .day, value: i - lead, to: start) else { return nil }
             return Cell(date: d, day: cal.component(.day, from: d), otherDay: other.component(.day, from: d),
                         inMonth: cal.component(.month, from: d) == month)
         }
