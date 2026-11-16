@@ -48,8 +48,9 @@ struct CommitmentsView: View {
     }
 }
 
-/// A commitment card, built like an appointment card: icon tile, the title with a pill on the same
-/// line (the share paid), the amount left and when it is due, then a thin progress bar.
+/// A commitment card, built like an appointment card and just as tall: icon tile, the title with a pill
+/// on the same line (the share paid), the amount left and when it is due, and a thin progress bar
+/// along its bottom edge.
 struct CommitmentCard: View {
     @EnvironmentObject var store: Store
     @EnvironmentObject var router: Router
@@ -84,12 +85,16 @@ struct CommitmentCard: View {
                     .font(.app(.subheadline))
                     .foregroundColor(item.isOverdue() ? Theme.burgundy : Theme.muted)
                     .lineLimit(1)
-                ProgressBar(value: item.progress, color: tint)
-                    .padding(.top, 2)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .card(padding: 12)
+        // The bar sits in the card's bottom margin, so the card is exactly as tall as an appointment card.
+        .overlay(alignment: .bottom) {
+            ProgressBar(value: item.progress, color: tint, height: 4)
+                .padding(.horizontal, 18)
+                .padding(.bottom, 5)
+        }
         .contentShape(Rectangle())
         // A tap rather than a Button, so a sideways swipe over the card doesn't open it.
         .onTapGesture { router.editingCommitment = item }
