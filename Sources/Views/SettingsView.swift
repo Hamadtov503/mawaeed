@@ -9,7 +9,7 @@ struct SettingsView: View {
     @EnvironmentObject var sync: SyncManager
 
     @State private var importMode: ImportMode = .syncFile
-    @State private var pendingRestore: (items: [Appointment], tasks: [TaskItem])? = nil
+    @State private var pendingRestore: (items: [Appointment], tasks: [TaskItem], commitments: [Commitment])? = nil
     @State private var menu: MenuRequest? = nil
     @State private var calendarAccount: String? = nil
     @State private var syncingByHand = false
@@ -240,7 +240,8 @@ struct SettingsView: View {
 
     private func export() {
         do {
-            let file = SyncFile(items: store.items.map { var a = $0; a.calendarEventID = nil; return a }, tasks: store.tasks, deleted: nil)
+            let file = SyncFile(items: store.items.map { var a = $0; a.calendarEventID = nil; return a }, tasks: store.tasks, deleted: nil,
+                                commitments: store.commitments)
             // Written to a temporary file named after today, then handed to the Files picker to save a copy.
             let name = L("مواعيدي-\(Fmt.fileStamp.string(from: Date()))", "Mawaeed-\(Fmt.fileStamp.string(from: Date()))") + ".json"
             let url = FileManager.default.temporaryDirectory.appendingPathComponent(name)
@@ -262,7 +263,7 @@ struct SettingsView: View {
             } else {
                 do {
                     let b = try sync.readBackup(at: url)
-                    pendingRestore = (b.items.filter { $0.isAppointment }, b.tasks)
+                    pendingRestore = (b.items.filter { $0.isAppointment }, b.tasks, b.commitments)
                     let n = pendingRestore!
                     menu = MenuRequest(title: L("استيراد \(Fmt.appointments(n.items.count)) و\(Fmt.tasks(n.tasks.count)) من النسخة", "Restore \(Fmt.appointments(n.items.count)) and \(Fmt.tasks(n.tasks.count)) from the copy"), actions: [
                         MenuAction(title: L("الدمج مع البيانات الحالية", "Merge with current"), icon: "arrow.triangle.merge") { restore(replace: false) },
@@ -279,6 +280,7 @@ struct SettingsView: View {
     private func restore(replace: Bool) {
         guard let b = pendingRestore else { return }
         store.restore(b.items, tasks: b.tasks, replace: replace)
+        store.restoreCommitments(b.commitments, replace: replace)
         pendingRestore = nil
         menu = .notice(L("تم الاستيراد ✅", "Restored ✅"), message: L("تم استيراد \(Fmt.appointments(b.items.count)) و\(Fmt.tasks(b.tasks.count)).", "Restored \(Fmt.appointments(b.items.count)) and \(Fmt.tasks(b.tasks.count))."))
     }

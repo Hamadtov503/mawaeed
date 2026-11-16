@@ -22,6 +22,10 @@ final class Store: ObservableObject {
         }
     }
 
+    @Published var commitments: [Commitment] = [] {
+        didSet { saveCommitments() }
+    }
+
     /// Deleted ids (appointments and tasks) with the deletion time, so deletions reach the other phones.
     private(set) var deleted: [String: Date] = [:]
     private var quiet = false
@@ -35,6 +39,7 @@ final class Store: ObservableObject {
     }()
     private let fileURL = Store.dir.appendingPathComponent("appointments.json")
     private let tasksURL = Store.dir.appendingPathComponent("tasks.json")
+    private let commitmentsURL = Store.dir.appendingPathComponent("commitments.json")
     private let deletedURL = Store.dir.appendingPathComponent("deleted.json")
     /// Earlier versions kept everything in items.json; only appointments are carried over.
     private let legacyURL = Store.dir.appendingPathComponent("items.json")
@@ -62,6 +67,9 @@ final class Store: ObservableObject {
         if let data = try? Data(contentsOf: tasksURL), let list = try? Self.decoder.decode([TaskItem].self, from: data) {
             tasks = list
         }
+        if let data = try? Data(contentsOf: commitmentsURL), let list = try? Self.decoder.decode([Commitment].self, from: data) {
+            commitments = list
+        }
         if let data = try? Data(contentsOf: deletedURL), let d = try? Self.decoder.decode([String: Date].self, from: data) {
             deleted = d
         }
@@ -79,6 +87,11 @@ final class Store: ObservableObject {
     private func saveTasks() {
         guard let data = try? Self.encoder.encode(tasks) else { return }
         try? data.write(to: tasksURL, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+    }
+
+    private func saveCommitments() {
+        guard let data = try? Self.encoder.encode(commitments) else { return }
+        try? data.write(to: commitmentsURL, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
     }
 
     private func saveDeleted() {
@@ -180,6 +193,41 @@ final class Store: ObservableObject {
         deleted[id.uuidString] = Date()
         saveDeleted()
         tasks.remove(at: i)
+    }
+
+    // MARK: Commitments
+
+    /// Still being paid, the ones due soonest first (open-ended ones last).
+    var openCommitments: [Commitment] {
+        commitments.filter { !$0.isSettled }.sorted { ($0.due ?? .distantFuture, $0.createdAt) < ($1.due ?? .distantFuture, $1.createdAt) }
+    }
+
+    var settledCommitments: [Commitment] {
+        commitments.filter { $0.isSettled }.sorted { $0.updatedAt > $1.updatedAt }
+    }
+
+    func commitment(_ id: UUID) -> Commitment? { commitments.first { $0.id == id } }
+
+    func upsertCommitment(_ c: Commitment) {
+        var it = c
+        if let d = it.due { it.due = Fmt.greg.startOfDay(for: d) }
+        it.payments.sort { $0.date < $1.date }
+        it.updatedAt = Date()
+        if let i = commitments.firstIndex(where: { $0.id == it.id }) { commitments[i] = it } else { commitments.append(it) }
+    }
+
+    func deleteCommitment(_ id: UUID) {
+        commitments.removeAll { $0.id == id }
+    }
+
+    /// From a backup: replace them all, or merge by id.
+    func restoreCommitments(_ list: [Commitment], replace: Bool) {
+        if replace { commitments = list; return }
+        var merged = commitments
+        for c in list {
+            if let i = merged.firstIndex(where: { $0.id == c.id }) { merged[i] = c } else { merged.append(c) }
+        }
+        commitments = merged
     }
 
     // MARK: Backup

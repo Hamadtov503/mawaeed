@@ -17,6 +17,7 @@ struct RootView: View {
                 page(.home) { HomeView() }
                 page(.appointments) { AppointmentsView() }
                 page(.tasks) { TasksView() }
+                page(.commitments) { CommitmentsView() }
             }
             // While the menu is out the page eases away from it (anchored on the right) and softens.
             .scaleEffect(pageOpen ? 0.95 : (router.menuOpen ? 0.96 : 1), anchor: router.menuOpen ? .trailing : .center)
@@ -70,6 +71,11 @@ struct RootView: View {
         }
         .sheet(item: $router.editingTask) { t in
             TaskEditor(task: t) { router.editingTask = nil }
+                .environmentObject(store)
+                .appEnvironment()
+        }
+        .sheet(item: $router.editingCommitment) { c in
+            CommitmentEditor(commitment: c) { router.editingCommitment = nil }
                 .environmentObject(store)
                 .appEnvironment()
         }
@@ -229,6 +235,7 @@ struct SideMenu: View {
         case .home: return 0
         case .appointments: return store.items.filter { $0.status() == .today }.count
         case .tasks: return store.tasks.filter { !$0.isDone && ($0.isDue(on: Date()) || $0.isOverdue()) }.count
+        case .commitments: return store.commitments.filter { $0.isOverdue() }.count
         }
     }
 

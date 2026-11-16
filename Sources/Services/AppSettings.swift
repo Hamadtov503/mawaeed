@@ -66,13 +66,14 @@ final class AppSettings: ObservableObject {
 }
 
 enum Page: Int, CaseIterable, Identifiable {
-    case home, appointments, tasks
+    case home, appointments, tasks, commitments
     var id: Int { rawValue }
     var title: String {
         switch self {
         case .home: return L("الرئيسية", "Home")
         case .appointments: return L("مواعيدي", "Appointments")
         case .tasks: return L("مهامي", "Tasks")
+        case .commitments: return L("التزاماتي", "Commitments")
         }
     }
     var icon: String {
@@ -80,6 +81,7 @@ enum Page: Int, CaseIterable, Identifiable {
         case .home: return "house.fill"
         case .appointments: return "calendar"
         case .tasks: return "checklist"
+        case .commitments: return "creditcard.fill"
         }
     }
 }
@@ -92,6 +94,7 @@ final class Router: ObservableObject {
     @Published var openID: AppointmentRef? = nil
     @Published var addingAppointment = false
     @Published var editingTask: TaskItem? = nil
+    @Published var editingCommitment: Commitment? = nil
     @Published var showSettings = false
     @Published var showProfile = false
     /// An app-drawn menu or question over the pages (long press on a card, a task row…).
@@ -136,6 +139,10 @@ final class Router: ObservableObject {
 
     func open(_ id: UUID) {
         openID = AppointmentRef(id: id)
+    }
+
+    func newCommitment() {
+        editingCommitment = Commitment()
     }
 
     func newTask(due: Date? = nil) {

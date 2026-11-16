@@ -12,6 +12,8 @@ struct SyncFile: Codable {
     var items: [Appointment]
     var tasks: [TaskItem]? = nil
     var deleted: [String: Date]? = nil
+    /// In backups (not merged by sync yet).
+    var commitments: [Commitment]? = nil
 }
 
 /// Two-way sync through a folder in iCloud Drive that the user picks once on each phone.
@@ -221,7 +223,7 @@ final class SyncManager: ObservableObject {
     }
 
     /// Reads a backup file (or the sync file, or an older items.json).
-    func readBackup(at url: URL) throws -> (items: [Appointment], tasks: [TaskItem]) {
+    func readBackup(at url: URL) throws -> (items: [Appointment], tasks: [TaskItem], commitments: [Commitment]) {
         let ok = url.startAccessingSecurityScopedResource()
         defer { if ok { url.stopAccessingSecurityScopedResource() } }
         var data = Data()
@@ -231,8 +233,8 @@ final class SyncManager: ObservableObject {
             do { data = try Data(contentsOf: u) } catch { readError = error }
         }
         if let e = coordError ?? readError { throw e }
-        if let f = try? Store.decoder.decode(SyncFile.self, from: data) { return (f.items, f.tasks ?? []) }
-        return (try Store.decoder.decode([Appointment].self, from: data), [])
+        if let f = try? Store.decoder.decode(SyncFile.self, from: data) { return (f.items, f.tasks ?? [], f.commitments ?? []) }
+        return (try Store.decoder.decode([Appointment].self, from: data), [], [])
     }
 }
 

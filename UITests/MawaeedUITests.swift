@@ -399,6 +399,34 @@ final class MawaeedUITests: XCTestCase {
         }
     }
 
+    /// التزاماتي: add a commitment with a total and one payment; the card shows the share paid.
+    func testCommitments() {
+        launchToHome()
+        go("commitments")
+        shot("70-commitments-empty")
+        app.buttons["addCommitment"].tap()
+        let title = app.textFields["field.commitmentTitle"]
+        XCTAssertTrue(title.waitForExistence(timeout: 5), "the commitment form did not open")
+        title.tap()
+        title.typeText("Car loan")
+        let total = app.textFields["field.total"]
+        total.tap()
+        total.typeText("1000")
+        let pay = app.textFields["field.payment"]
+        if !pay.isHittable { app.swipeUp() }
+        pay.tap()
+        pay.typeText("250")
+        app.buttons["button.addPayment"].tap()
+        sleep(1)
+        shot("71-commitment-form")
+        app.buttons["button.save"].tap()
+        sleep(2)
+        shot("72-commitments-list")
+        let card = element(containing: "Car loan")
+        XCTAssertTrue(card.waitForExistence(timeout: 4), "the commitment card is missing")
+        XCTAssertTrue(element(containing: "٢٥٪").exists, "the card does not show 25% paid")
+    }
+
     /// The same screens in English.
     func testEnglish() {
         app.launchArguments = ["-uitest", "-lang-en", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
