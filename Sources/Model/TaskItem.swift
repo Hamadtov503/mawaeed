@@ -22,6 +22,14 @@ struct TaskItem: Identifiable, Codable, Equatable {
     var icon: String? = nil
     /// A picture the user chose as the task's icon: a small square JPEG kept with the task, so it syncs too.
     var iconImage: Data? = nil
+    var quantity = 1
+    var unitPrice: Decimal?
+    var lineTotal: Decimal? { unitPrice.map { $0 * Decimal(quantity) } }
+
+    static func money(_ amount: Decimal) -> String {
+        amount.formatted(.currency(code: "SAR").locale(Locale(identifier: Fmt.isArabic ? "ar_SA" : "en_SA")))
+    }
+
     var isShopping = false
     func priorityTitle(_ value: TaskPriority) -> String {
         isShopping && value == .low ? L("عادية", "Normal") : value.title
@@ -42,11 +50,13 @@ struct TaskItem: Identifiable, Codable, Equatable {
     init() {}
 
     enum CodingKeys: String, CodingKey {
-        case isShopping, id, title, notes, icon, iconImage, priority, start, due, hasTime, remind, isDone, doneAt, createdAt, updatedAt
+        case quantity, unitPrice, isShopping, id, title, notes, icon, iconImage, priority, start, due, hasTime, remind, isDone, doneAt, createdAt, updatedAt
     }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
+        quantity = max(1, try c.decodeIfPresent(Int.self, forKey: .quantity) ?? 1)
+        unitPrice = try c.decodeIfPresent(Decimal.self, forKey: .unitPrice)
         isShopping = try c.decodeIfPresent(Bool.self, forKey: .isShopping) ?? false
         id = (try? c.decodeIfPresent(UUID.self, forKey: .id)) ?? UUID()
         title = (try? c.decodeIfPresent(String.self, forKey: .title)) ?? ""
