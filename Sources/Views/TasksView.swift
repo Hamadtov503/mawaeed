@@ -21,6 +21,22 @@ struct TasksView: View {
                 SearchField(prompt: shopping ? L("ابحث في المشتريات", "Search shopping list") : L("ابحث في مهامك", "Search your tasks"), text: $query)
                 AddButton(label: shopping ? L("إضافة صنف", "Add item") : L("مهمة جديدة", "New task"), hint: shopping ? L("أضف صنفًا لقائمة المشتريات", "Add an item to your shopping list") : L("اضغط على علامة + لإضافة مهمة لإنجازها", "Tap + to add a task to get done"), id: shopping ? "addShoppingItem" : "addTask") { router.newTask(shopping: shopping) }
 
+                if shopping {
+                    let remaining = store.openTasks.filter { $0.isShopping }
+                    let total = remaining.compactMap(\.lineTotal).reduce(Decimal.zero, +)
+                    let missing = remaining.filter { $0.unitPrice == nil }.count
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(L("المبلغ المطلوب", "Amount needed")).font(.app(.subheadline))
+                        Text(TaskItem.money(total)).font(.app(.headline))
+                        if missing > 0 {
+                            Text(L("أصناف بدون سعر: \(missing)", "Items without a price: \(missing)"))
+                                .font(.app(.footnote)).foregroundColor(Theme.muted)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .card(padding: 12)
+                }
+
                 if !open.isEmpty {
                     BandHeader(title: shopping ? L("للشراء", "To buy") : L("مهامك الحالية", "Your current tasks"), count: open.count, color: Theme.forest)
                     TaskList(tasks: open)
@@ -94,6 +110,11 @@ struct TaskRow: View {
                         .lineLimit(1)
                         .fixedSize()
                 }
+                if task.isShopping {
+                    let cost = task.lineTotal.map(TaskItem.money) ?? L("بدون سعر", "No price")
+                    Text(L("العدد: \(task.quantity) · \(cost)", "Quantity: \(task.quantity) · \(cost)"))
+                        .font(.app(.subheadline)).foregroundColor(Theme.muted)
+                } else {
                 HStack(spacing: 4) {
                     Image(systemName: task.isScheduled ? (task.remind && !task.isDone ? "bell.fill" : "calendar") : "infinity")
                         .font(.system(size: 10))
@@ -102,6 +123,7 @@ struct TaskRow: View {
                 }
                 .font(.app(.subheadline))
                 .foregroundColor(task.isOverdue() ? Theme.burgundy : Theme.muted)
+                }
             }
         }
         .contentShape(Rectangle())
@@ -178,6 +200,7 @@ enum IconImage {
 struct TaskEditor: View {
     @EnvironmentObject var store: Store
     @State private var draft: TaskItem
+    @State private var priceText: String
     @State private var scheduled: Bool
     @State private var startNow: Bool
     @State private var picking: Picking? = nil
@@ -195,10 +218,20 @@ struct TaskEditor: View {
             t.hasTime = true
             if t.start == nil { t.start = t.createdAt }
         }
+        _priceText = State(initialValue: t.unitPrice.map { NSDecimalNumber(decimal: $0).stringValue } ?? "")
         _draft = State(initialValue: t)
         _scheduled = State(initialValue: t.due != nil)
         _startNow = State(initialValue: false)
         self.onFinish = onFinish
+    }
+
+    private var enteredPrice: Decimal? {
+        let normalized = priceText.map { character -> String in
+            if let digit = character.wholeNumberValue { return String(digit) }
+            return ["٫", ","].contains(character) ? "." : String(character)
+        }.joined()
+        guard normalized.range(of: #"^[0-9]{1,14}(\.[0-9]{0,2})?$"#, options: .regularExpression) != nil else { return nil }
+        return Decimal(string: normalized, locale: Locale(identifier: "en_US_POSIX"))
     }
 
     private var isNew: Bool { store.task(draft.id) == nil }
@@ -224,6 +257,20 @@ struct TaskEditor: View {
                         }
                     }
 
+                    if draft.isShopping {
+                        card(L("الكمية والسعر", "Quantity and price")) {
+                            Stepper(L("العدد: \(draft.quantity)", "Quantity: \(draft.quantity)"),
+                                    value: $draft.quantity, in: 1...Int.max)
+                            TextField(L("سعر الوحدة بالريال", "Unit price in SAR"), text: $priceText)
+                                .keyboardType(.decimalPad)
+                            if let price = enteredPrice {
+                                Text(TaskItem.money(price * Decimal(draft.quantity))).font(.app(.headline))
+                            } else if !priceText.isEmpty {
+                                Text(L("أدخل سعرًا حتى منزلتين عشريتين", "Enter a price with up to two decimal places"))
+                                    .foregroundColor(Theme.burgundy)
+                            }
+                        }
+                    }
                     if !draft.isShopping {
                     card(L("مدة إنجاز المهمة", "Time to complete")) {
                         HStack(spacing: 6) {
@@ -321,7 +368,7 @@ struct TaskEditor: View {
                 ToolbarItem(placement: .cancellationAction) { Button(L("إلغاء", "Cancel"), action: onFinish) }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(L("حفظ", "Save"), action: save)
-                        .disabled(draft.title.trimmingCharacters(in: .whitespaces).isEmpty)
+                        .disabled(draft.title.trimmingCharacters(in: .whitespaces).isEmpty || (draft.isShopping && !priceText.isEmpty && enteredPrice == nil))
                         .accessibilityIdentifier("button.save")
                 }
             }
@@ -494,6 +541,7 @@ struct TaskEditor: View {
     }
 
     private func save() {
+        if draft.isShopping { draft.unitPrice = enteredPrice }
         draft.title = draft.title.trimmingCharacters(in: .whitespacesAndNewlines)
         if scheduled {
             draft.hasTime = true
