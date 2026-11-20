@@ -16,6 +16,7 @@ struct RootView: View {
             ZStack {
                 page(.home) { HomeView() }
                 page(.appointments) { AppointmentsView() }
+                page(.shopping) { TasksView(shopping: true) }
                 page(.tasks) { TasksView() }
                 page(.commitments) { CommitmentsView() }
             }
@@ -232,6 +233,7 @@ struct SideMenu: View {
 
     private func badge(for p: Page) -> Int {
         switch p {
+        case .shopping: return store.tasks.filter { $0.isShopping && !$0.isDone }.count
         case .home: return 0
         case .appointments: return store.items.filter { $0.status() == .today }.count
         case .tasks: return store.tasks.filter { !$0.isDone && ($0.isDue(on: Date()) || $0.isOverdue()) }.count

@@ -5,10 +5,11 @@ import SwiftUI
 struct TasksView: View {
     @EnvironmentObject var store: Store
     @EnvironmentObject var router: Router
+    var shopping = false
     @State private var query = ""
 
     private func matches(_ t: TaskItem) -> Bool {
-        query.isEmpty || t.title.localizedCaseInsensitiveContains(query) || t.notes.localizedCaseInsensitiveContains(query)
+        t.isShopping == shopping && (query.isEmpty || t.title.localizedCaseInsensitiveContains(query) || t.notes.localizedCaseInsensitiveContains(query))
     }
 
     var body: some View {
@@ -16,17 +17,17 @@ struct TasksView: View {
         let done = store.doneTasks.filter(matches)
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                Text(L("مهامي", "Tasks")).font(.app(size: 26, .bold)).foregroundColor(Theme.ink).padding(.top, 2)
-                SearchField(prompt: L("ابحث في مهامك", "Search your tasks"), text: $query)
-                AddButton(label: L("مهمة جديدة", "New task"), hint: L("اضغط على علامة + لإضافة مهمة لإنجازها", "Tap + to add a task to get done"), id: "addTask") { router.newTask() }
+                Text(shopping ? "To buy" : L("مهامي", "Tasks")).font(.app(size: 26, .bold)).foregroundColor(Theme.ink).padding(.top, 2)
+                SearchField(prompt: shopping ? L("ابحث في المشتريات", "Search shopping list") : L("ابحث في مهامك", "Search your tasks"), text: $query)
+                AddButton(label: shopping ? L("إضافة صنف", "Add item") : L("مهمة جديدة", "New task"), hint: shopping ? L("أضف صنفًا لقائمة المشتريات", "Add an item to your shopping list") : L("اضغط على علامة + لإضافة مهمة لإنجازها", "Tap + to add a task to get done"), id: shopping ? "addShoppingItem" : "addTask") { router.newTask(shopping: shopping) }
 
                 if !open.isEmpty {
-                    BandHeader(title: L("مهامك الحالية", "Your current tasks"), count: open.count, color: Theme.forest)
+                    BandHeader(title: shopping ? L("للشراء", "To buy") : L("مهامك الحالية", "Your current tasks"), count: open.count, color: Theme.forest)
                     TaskList(tasks: open)
                         .transition(.opacity.combined(with: .move(edge: .top)))
                 }
                 if !done.isEmpty {
-                    BandHeader(title: L("مهامك المنجزة", "Your completed tasks"), count: done.count, color: Theme.slate)
+                    BandHeader(title: shopping ? L("تم شراؤها", "Purchased") : L("مهامك المنجزة", "Your completed tasks"), count: done.count, color: Theme.slate)
                     TaskList(tasks: done)
                         .transition(.opacity)
                 }
@@ -84,7 +85,7 @@ struct TaskRow: View {
                         .strikethrough(task.isDone, color: Theme.muted)
                         .lineLimit(1)
                     Spacer(minLength: 4)
-                    Text(task.priority.title)
+                    Text(task.priorityTitle(task.priority))
                         .font(.app(.footnote, .semibold))
                         .foregroundColor(task.priority.color)
                         .padding(.horizontal, 12)
@@ -206,23 +207,24 @@ struct TaskEditor: View {
         AppNavigation {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
-                    card(L("عنوان المهمة", "Task title")) {
+                    card(draft.isShopping ? L("اسم الصنف", "Item name") : L("عنوان المهمة", "Task title")) {
                         // The title, with the two icon buttons on the same line.
                         HStack(spacing: 10) {
-                            TextField(L("ما المهمة؟", "What's the task?"), text: $draft.title).font(.app(.headline))
+                            TextField(draft.isShopping ? L("ماذا تريد أن تشتري؟", "What do you need?") : L("ما المهمة؟", "What's the task?"), text: $draft.title).font(.app(.headline))
                                 .accessibilityIdentifier("field.taskTitle")
                             iconPicker
                         }
                     }
 
-                    card(L("مدى أهمية المهمة", "How important")) {
+                    card(draft.isShopping ? L("مستوى الأهمية", "Importance") : L("مدى أهمية المهمة", "How important")) {
                         HStack(spacing: 6) {
-                            ForEach(TaskPriority.allCases) { p in
-                                segment(p.title, on: draft.priority == p, color: p.color) { draft.priority = p }
+                            ForEach(draft.isShopping ? [.urgent, .medium, .low] : TaskPriority.allCases) { p in
+                                segment(draft.priorityTitle(p), on: draft.priority == p, color: p.color) { draft.priority = p }
                             }
                         }
                     }
 
+                    if !draft.isShopping {
                     card(L("مدة إنجاز المهمة", "Time to complete")) {
                         HStack(spacing: 6) {
                             segment(L("مفتوح", "Open"), on: !scheduled, color: Theme.slate) { setScheduled(false) }
@@ -260,6 +262,8 @@ struct TaskEditor: View {
                           .transition(.asymmetric(insertion: .opacity.combined(with: .move(edge: .top)),
                                                   removal: .opacity))
                         }
+                    }
+
                     }
 
                     card(L("ملاحظات", "Notes")) {
@@ -311,7 +315,7 @@ struct TaskEditor: View {
                 .animation(.spring(response: 0.4, dampingFraction: 0.88), value: startNow)
             }
             .background(Theme.background.ignoresSafeArea())
-            .navigationTitle(isNew ? L("مهمة جديدة", "New task") : L("تعديل المهمة", "Edit task"))
+            .navigationTitle(draft.isShopping ? L("صنف المشتريات", "Shopping item") : isNew ? L("مهمة جديدة", "New task") : L("تعديل المهمة", "Edit task"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button(L("إلغاء", "Cancel"), action: onFinish) }

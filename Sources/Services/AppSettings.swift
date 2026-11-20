@@ -66,10 +66,11 @@ final class AppSettings: ObservableObject {
 }
 
 enum Page: Int, CaseIterable, Identifiable {
-    case home, appointments, tasks, commitments
+    case home, appointments, tasks, commitments, shopping
     var id: Int { rawValue }
     var title: String {
         switch self {
+        case .shopping: return "To buy"
         case .home: return L("الرئيسية", "Home")
         case .appointments: return L("مواعيدي", "Appointments")
         case .tasks: return L("مهامي", "Tasks")
@@ -78,6 +79,7 @@ enum Page: Int, CaseIterable, Identifiable {
     }
     var icon: String {
         switch self {
+        case .shopping: return "cart.fill"
         case .home: return "house.fill"
         case .appointments: return "calendar"
         case .tasks: return "checklist"
@@ -145,9 +147,14 @@ final class Router: ObservableObject {
         editingCommitment = Commitment()
     }
 
-    func newTask(due: Date? = nil) {
+    func newTask(due: Date? = nil, shopping: Bool = false) {
         var t = TaskItem()
         t.due = due
+        if shopping {
+            t.isShopping = true
+            t.priority = .low
+            t.icon = "cart.fill"
+        }
         editingTask = t
     }
 }

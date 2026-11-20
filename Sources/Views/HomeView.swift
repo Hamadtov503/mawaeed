@@ -18,7 +18,7 @@ struct HomeView: View {
         // Today (the default): everything coming up and every open task.
         // Another day picked in the calendar: just that day's.
         let appointments = isToday ? store.upcoming() : store.on(day: day)
-        let allTasks = isToday ? store.openTasks : store.tasks(on: day)
+        let allTasks = isToday ? store.openTasks.filter { !$0.isShopping } : store.tasks(on: day)
         VStack(spacing: 0) {
         // The greeting and its two buttons stay fixed above the scrolling content: a tap on them never
         // lands on a page that is still gliding after a scroll (that first tap would only stop it).

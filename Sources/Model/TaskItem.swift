@@ -22,6 +22,10 @@ struct TaskItem: Identifiable, Codable, Equatable {
     var icon: String? = nil
     /// A picture the user chose as the task's icon: a small square JPEG kept with the task, so it syncs too.
     var iconImage: Data? = nil
+    var isShopping = false
+    func priorityTitle(_ value: TaskPriority) -> String {
+        isShopping && value == .low ? L("عادية", "Normal") : value.title
+    }
     var priority: TaskPriority = .medium
     /// When a scheduled task starts (nil for an open task).
     var start: Date? = nil
@@ -38,11 +42,12 @@ struct TaskItem: Identifiable, Codable, Equatable {
     init() {}
 
     enum CodingKeys: String, CodingKey {
-        case id, title, notes, icon, iconImage, priority, start, due, hasTime, remind, isDone, doneAt, createdAt, updatedAt
+        case isShopping, id, title, notes, icon, iconImage, priority, start, due, hasTime, remind, isDone, doneAt, createdAt, updatedAt
     }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
+        isShopping = try c.decodeIfPresent(Bool.self, forKey: .isShopping) ?? false
         id = (try? c.decodeIfPresent(UUID.self, forKey: .id)) ?? UUID()
         title = (try? c.decodeIfPresent(String.self, forKey: .title)) ?? ""
         notes = (try? c.decodeIfPresent(String.self, forKey: .notes)) ?? ""
