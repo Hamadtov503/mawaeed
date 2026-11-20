@@ -35,6 +35,7 @@ jobs:
           xcodebuild -project Mawaeed.xcodeproj -scheme Mawaeed -configuration Release \
             -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            MARKETING_VERSION=1.${{ github.run_number }} \
             CURRENT_PROJECT_VERSION=${{ github.run_number }} \
             build 2>&1 | tee xcodebuild.log || {
               grep -E "error:|is not installed|does not contain|Unable to" xcodebuild.log | sort -u | head -25 | sed 's/^/::error::/'
@@ -61,8 +62,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          IPA="Mawaeed-beta-${{ github.run_number }}.ipa"
+          IPA="Mawaeed-1.${{ github.run_number }}.ipa"
           cp Mawaeed.ipa "$IPA"
           gh release delete latest --yes --cleanup-tag || true
           gh release create latest "$IPA" --target ${{ github.sha }} --prerelease \
-            --title "مواعيدي 0.1 Beta — build ${{ github.run_number }}" --notes "مواعيدك ومهامك في تطبيق واحد"
+            --title "مواعيدي — الإصدار 1.${{ github.run_number }}" --notes "مواعيدك ومهامك في تطبيق واحد"
