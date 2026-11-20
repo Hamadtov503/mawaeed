@@ -1,0 +1,17 @@
+name: Remove published simulator results
+on:
+  push:
+    branches: [maintenance/remove-ui-releases]
+    paths: [.github/workflows/remove-ui-releases.yml]
+permissions:
+  contents: write
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete the two UI releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api --method DELETE repos/Hamadtov503/mawaeed/releases/447713192
+          gh api --method DELETE repos/Hamadtov503/mawaeed/releases/447705707
